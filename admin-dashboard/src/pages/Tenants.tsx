@@ -14,18 +14,24 @@ interface Tenant {
 export function Tenants() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [newTenant, setNewTenant] = useState({ name: '', slug: '', color: '#3B82F6' })
 
   const fetchTenants = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const response = await apiFetch('/admin/tenants')
       if (response.ok) {
         const data = await response.json()
         setTenants(data.tenants)
+      } else {
+        const text = await response.text().catch(() => '')
+        setError(`Request failed (${response.status}): ${text}`)
       }
     } catch (e) {
-      console.error('Failed to fetch tenants:', e)
+      setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
@@ -68,6 +74,12 @@ export function Tenants() {
           Add Tenant
         </button>
       </div>
+
+      {error && (
+        <div style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+          <strong>Could not load tenants:</strong> {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">Loading tenants...</div>
