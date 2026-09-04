@@ -8,34 +8,38 @@ interface Tenant {
   name: string
   plan: string
   created_at: number
-  conversation_count?: number
+  settings?: { primary_color?: string; bot_name?: string }
+}
+
+function tenantColor(t: Tenant): string {
+  const c = t.settings?.primary_color
+  return c && /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#3B82F6'
 }
 
 export function Tenants() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [debug, setDebug] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [newTenant, setNewTenant] = useState({ name: '', slug: '', color: '#3B82F6' })
 
   const fetchTenants = async () => {
     try {
       setLoading(true)
       setError(null)
-      setDebug(null)
       const response = await apiFetch('/admin/tenants')
       const text = await response.text().catch(() => '')
-      setDebug(`Status ${response.status}: ${text.slice(0, 400)}`)
       if (response.ok) {
         try {
           const data = JSON.parse(text)
           setTenants(Array.isArray(data.tenants) ? data.tenants : [])
         } catch {
-          setError('Response was not valid JSON')
+          setError('The server returned an unreadable response.')
         }
       } else {
-        setError(`Request failed (${response.status}): ${text}`)
+        setError(text || `Request failed (${response.status})`)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
@@ -48,84 +52,97 @@ export function Tenants() {
     fetchTenants()
   }, [])
 
+  const openModal = () => {
+    setCreateError(null)
+    setShowModal(true)
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    setCreating(true)
+    setCreateError(null)
     try {
       const response = await apiFetch('/admin/tenants', {
         method: 'POST',
         body: JSON.stringify({
           name: newTenant.name,
           slug: newTenant.slug,
-          primary_color: newTenant.color
-        })
+          primary_color: newTenant.color,
+        }),
       })
+      const text = await response.text().catch(() => '')
       if (response.ok) {
         setShowModal(false)
         setNewTenant({ name: '', slug: '', color: '#3B82F6' })
         fetchTenants()
+      } else {
+        let detail = text
+        try {
+          detail = JSON.parse(text).detail || text
+        } catch {
+          /* keep raw text */
+        }
+        setCreateError(detail || `Request failed (${response.status})`)
       }
-    } catch (e) {
-      console.error('Failed to create tenant:', e)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setCreating(false)
     }
   }
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString()
+    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
   }
 
   return (
     <div className="page">
-      <div style={{ background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all' }}>
-        path: {window.location.pathname} | route: /tenants | loading: {String(loading)} | tenants: {tenants.length}
-        {debug && <div>api: {debug}</div>}
-        {error && <div style={{ color: '#B91C1C' }}>err: {error}</div>}
-        <button type="button" onClick={fetchTenants} style={{ marginTop: 4 }}>Retry</button>
-      </div>
-
       <div className="page-header">
-        <h1>Tenants</h1>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <div>
+          <h1>Tenants</h1>
+          <p className="page-subtitle">Manage your client workspaces and their chat widgets.</p>
+        </div>
+        <button className="btn btn-primary" onClick={openModal}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
           Add Tenant
         </button>
       </div>
 
-      {error && (
-        <div style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-          <strong>Could not load tenants:</strong> {error}
-        </div>
-      )}
+      {error && <div className="error-banner">Could not load tenants: {error}</div>}
 
       {loading ? (
         <div className="loading">Loading tenants...</div>
+      ) : tenants.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🏢</div>
+          <h2>No tenants yet</h2>
+          <p>Click "Add Tenant" to create your first client workspace.</p>
+        </div>
       ) : (
         <div className="tenants-grid">
           {tenants.map((tenant) => (
             <Link key={tenant.id} to={`/tenants/${tenant.id}`} className="tenant-card">
               <div className="tenant-card-header">
-                <div className="tenant-avatar" style={{ backgroundColor: '#3B82F6' }}>
+                <div className="tenant-avatar" style={{ backgroundColor: tenantColor(tenant) }}>
                   {tenant.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
+                <div className="tenant-card-title">
                   <h3>{tenant.name}</h3>
                   <p className="tenant-slug">{tenant.slug}</p>
                 </div>
               </div>
-              <div className="tenant-card-stats">
+              <div className="tenant-card-footer">
                 <span className={`badge badge-${tenant.plan}`}>{tenant.plan}</span>
-                <span>Created: {formatDate(tenant.created_at)}</span>
+                <span className="tenant-created">Created {formatDate(tenant.created_at)}</span>
               </div>
             </Link>
           ))}
-          {tenants.length === 0 && (
-            <div className="empty-state">
-              <p>No tenants yet. Click "Add Tenant" to create your first client.</p>
-              {debug && (
-                <p style={{ fontSize: 12, color: '#64748B', wordBreak: 'break-all' }}>
-                  API said: {debug}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -135,39 +152,53 @@ export function Tenants() {
             <h2>Add New Tenant</h2>
             <form onSubmit={handleCreate}>
               <div className="form-group">
-                <label>Business Name</label>
+                <label htmlFor="tenant-name">Business Name</label>
                 <input
+                  id="tenant-name"
                   type="text"
                   value={newTenant.name}
                   onChange={(e) => setNewTenant({ ...newTenant, name: e.target.value })}
+                  placeholder="e.g. Weblyft Design"
                   required
                 />
               </div>
-              <div className="form-group">
-                <label>Slug (URL-friendly)</label>
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label htmlFor="tenant-slug">Slug</label>
                 <input
+                  id="tenant-slug"
                   type="text"
                   value={newTenant.slug}
-                  onChange={(e) => setNewTenant({ ...newTenant, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                  onChange={(e) =>
+                    setNewTenant({ ...newTenant, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
+                  }
+                  placeholder="e.g. weblyft-design"
                   required
                   pattern="^[a-z0-9-]+$"
                 />
-                <small>Used in widget embed code</small>
+                <small>Lowercase letters, numbers and hyphens. Used in the widget embed code.</small>
               </div>
-              <div className="form-group">
-                <label>Primary Color</label>
-                <input
-                  type="color"
-                  value={newTenant.color}
-                  onChange={(e) => setNewTenant({ ...newTenant, color: e.target.value })}
-                />
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label htmlFor="tenant-color">Primary Color</label>
+                <div className="color-picker-row">
+                  <input
+                    id="tenant-color"
+                    type="color"
+                    value={newTenant.color}
+                    onChange={(e) => setNewTenant({ ...newTenant, color: e.target.value })}
+                  />
+                  <code>{newTenant.color}</code>
+                </div>
+                <small>The chat widget button uses this color.</small>
               </div>
+
+              {createError && <div className="error-banner" style={{ marginTop: 16 }}>{createError}</div>}
+
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Create Tenant
+                <button type="submit" className="btn btn-primary" disabled={creating}>
+                  {creating ? 'Creating...' : 'Create Tenant'}
                 </button>
               </div>
             </form>
