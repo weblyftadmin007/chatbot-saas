@@ -51,7 +51,7 @@ function methodNotAllowed(): Response {
 function matchRoute(pathname: string): { pattern: string; params: string[] } | null {
   // /widget/config/:slug etc.
   const segs = pathname.split('/').filter(Boolean)
-  if (segs.length < 2) return null
+  if (segs.length === 0) return null // reject only the bare root path; /health is a valid 1-segment route
   const head = `/${segs[0]}`
   const tail = segs.slice(1).map(decodeURIComponent)
   switch (head) {
