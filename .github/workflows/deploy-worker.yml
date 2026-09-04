@@ -50,10 +50,14 @@ jobs:
           echo "${{ secrets.ADMIN_EMAILS }}" | npx wrangler secret put ADMIN_EMAILS --name chatbot-api
 
       - name: Set bootstrap admin token (optional, initial onboarding only)
-        if: ${{ secrets.ADMIN_BOOTSTRAP_TOKEN != '' }}
+        # Note: secrets cannot be referenced in an `if:` condition, so guard inside the script.
         working-directory: worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          echo "${{ secrets.ADMIN_BOOTSTRAP_TOKEN }}" | npx wrangler secret put ADMIN_BOOTSTRAP_TOKEN --name chatbot-api
+          if [ -n "${{ secrets.ADMIN_BOOTSTRAP_TOKEN }}" ]; then
+            echo "${{ secrets.ADMIN_BOOTSTRAP_TOKEN }}" | npx wrangler secret put ADMIN_BOOTSTRAP_TOKEN --name chatbot-api
+          else
+            echo "ADMIN_BOOTSTRAP_TOKEN not set - skipping bootstrap admin secret."
+          fi
