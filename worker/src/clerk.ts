@@ -22,11 +22,14 @@ function b64urlDecode(input: string): string {
 function deriveFrontendApi(publishableKey: string): string {
   const parts = publishableKey.split('_')
   const payload = parts[parts.length - 1] || ''
-  const decoded = b64urlDecode(payload) // e.g. "clerk.example.accounts.dev"
-  if (!decoded.includes('.')) {
+  const decoded = b64urlDecode(payload) // e.g. "clerk.example.accounts.dev$"
+  // Clerk terminates the encoded host with a literal '$' — strip it and
+  // anything after it before using the value as a hostname.
+  const host = decoded.split('$')[0] || ''
+  if (!host.includes('.')) {
     throw new Error(`Could not derive Clerk frontend API from key ${publishableKey.slice(0, 12)}...`)
   }
-  return decoded
+  return host
 }
 
 let jwksCache: { keys: JsonWebKey[]; expiresAt: number } | null = null
