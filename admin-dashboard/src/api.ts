@@ -33,5 +33,13 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     }
   }
 
-  return fetch(withBase(path), { ...options, headers })
+  // Time out instead of hanging silently (e.g. blocked request, dead CORS
+  // preflight). Turns an invisible hang into a visible error.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+  try {
+    return await fetch(withBase(path), { ...options, headers, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
 }
