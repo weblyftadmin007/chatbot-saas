@@ -1,5 +1,5 @@
 import React from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { UserButton } from '@clerk/clerk-react'
 
 const navigation = [
@@ -8,7 +8,7 @@ const navigation = [
   { name: 'Settings', href: '/settings' },
 ]
 
-export function Layout() {
+export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
 
   return (
@@ -39,7 +39,7 @@ export function Layout() {
         </div>
       </header>
       <main className="admin-main">
-        <Outlet />
+        {children}
       </main>
     </div>
   )
