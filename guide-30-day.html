@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Zero to First Client in 30 Days — AI Chatbot SaaS</title>
+<style>
+:root {
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --border: #e2e8f0;
+  --code-bg: #f1f5f9;
+  --code-text: #1e293b;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --callout-tip: #dbeafe;
+  --callout-tip-text: #1e40af;
+  --callout-warning: #fef3c7;
+  --callout-warning-text: #92400e;
+  --callout-note: #f1f5f9;
+  --callout-note-text: #475569;
+  --callout-done: #dcfce7;
+  --callout-done-text: #166534;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --border: #334155;
+  --code-bg: #0f172a;
+  --code-text: #e2e8f0;
+  --sidebar-bg: #1e293b;
+  --sidebar-border: #334155;
+  --callout-tip: #1e3a5f;
+  --callout-tip-text: #93c5fd;
+  --callout-warning: #3d2914;
+  --callout-warning-text: #fcd34d;
+  --callout-note: #1e293b;
+  --callout-note-text: #94a3b8;
+  --callout-done: #14532d;
+  --callout-done-text: #86efac;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 16px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  transition: background 0.2s, color 0.2s;
+}
+.skip-link {
+  position: absolute; top: -100%; left: 1rem; padding: 0.5rem 1rem;
+  background: var(--primary); color: white; border-radius: var(--radius);
+  z-index: 100; text-decoration: none;
+}
+.skip-link:focus { top: 1rem; }
+#toc {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem; border-right: 1px solid var(--sidebar-border);
+  background: var(--sidebar-bg);
+}
+#toc-toggle { display: none; }
+#toc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--sidebar-border); }
+#toc-title { font-weight: 700; font-size: 1.1rem; }
+#theme-toggle {
+  background: var(--code-bg); border: 1px solid var(--border);
+  padding: 0.4rem 0.6rem; border-radius: var(--radius); cursor: pointer;
+  font-size: 1.2rem; color: var(--text);
+}
+#toc ul { list-style: none; }
+#toc li { margin: 0.25rem 0; }
+#toc a { display: block; padding: 0.4rem 0.6rem; border-radius: var(--radius); color: var(--text-muted); text-decoration: none; font-size: 0.9rem; transition: all 0.15s; }
+#toc a:hover { background: var(--code-bg); color: var(--text); }
+#toc a.active { background: var(--primary); color: white; }
+#toc .toc-chapter { font-weight: 600; margin-top: 0.75rem; padding-left: 0.25rem; }
+#toc .toc-section { padding-left: 1rem; font-size: 0.85rem; }
+main { padding: 2rem 3rem; max-width: 960px; }
+header { margin-bottom: 3rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+header h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.5rem; }
+header .subtitle { color: var(--text-muted); font-size: 1.2rem; }
+header .meta { margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); display: flex; gap: 1.5rem; flex-wrap: wrap; }
+section.chapter { margin-bottom: 4rem; }
+section.chapter:last-child { margin-bottom: 0; }
+h2 { font-size: 1.8rem; font-weight: 700; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); scroll-margin-top: 100px; }
+h3 { font-size: 1.4rem; font-weight: 600; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 100px; }
+h4 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--text); scroll-margin-top: 100px; }
+p { margin: 1rem 0; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--font-mono); font-size: 0.9em; background: var(--code-bg); color: var(--code-text); padding: 0.15rem 0.4rem; border-radius: 4px; }
+pre { background: var(--code-bg); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 1.5rem 0; border: 1px solid var(--border); position: relative; }
+pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.6; color: var(--code-text); display: block; white-space: pre-wrap; word-wrap: break-word; }
+.copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: var(--text-muted); opacity: 0; transition: opacity 0.2s; }
+pre:hover .copy-btn { opacity: 1; }
+.copy-btn.copied { background: var(--callout-done); color: var(--callout-done-text); }
+ul, ol { margin: 1rem 0; padding-left: 1.5rem; }
+li { margin: 0.5rem 0; }
+li::marker { color: var(--text-muted); }
+table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+th, td { padding: 0.6rem 0.8rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { background: var(--code-bg); font-weight: 600; }
+tr:nth-child(even) td { background: var(--code-bg); }
+blockquote { border-left: 4px solid var(--primary); padding-left: 1rem; margin: 1.5rem 0; color: var(--text-muted); font-style: italic; }
+hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+.callout { padding: 1rem 1.25rem; border-radius: var(--radius); margin: 1.5rem 0; border-left: 4px solid; }
+.callout.tip { background: var(--callout-tip); border-color: var(--primary); color: var(--callout-tip-text); }
+.callout.warning { background: var(--callout-warning); border-color: #f59e0b; color: var(--callout-warning-text); }
+.callout.note { background: var(--callout-note); border-color: var(--border); color: var(--callout-note-text); }
+.callout.done { background: var(--callout-done); border-color: #10b981; color: var(--callout-done-text); }
+.callout strong { display: inline; margin-bottom: 0.25rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--primary); z-index: 100; transform-origin: left; transform: scaleX(0); }
+.search-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding-top: 10vh; }
+.search-modal.open { display: flex; }
+.search-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; width: 90%; max-width: 600px; box-shadow: var(--shadow-lg); }
+.search-box input { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1.1rem; background: var(--bg); color: var(--text); outline: none; }
+.search-results { max-height: 60vh; overflow-y: auto; margin-top: 1rem; }
+.search-result { padding: 0.75rem; border-radius: var(--radius); cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+.search-result:hover { background: var(--code-bg); border-color: var(--border); }
+.search-result .title { font-weight: 600; }
+.search-result .snippet { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+.diagram { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+.diagram svg { max-width: 100%; height: auto; }
+.checklist { list-style: none; padding: 0; }
+.checklist li { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: var(--code-bg); border-radius: var(--radius); margin: 0.5rem 0; border: 1px solid var(--border); }
+.checklist input { width: 1.25rem; height: 1.25rem; accent-color: var(--primary); flex-shrink: 0; margin-top: 0.15rem; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem; margin-bottom: 0.25rem; }
+.badge-f { background: var(--callout-tip); color: var(--callout-tip-text); }
+.badge-p { background: var(--callout-warning); color: var(--callout-warning-text); }
+.badge-c { background: var(--callout-done); color: var(--callout-done-text); }
+.kbd { font-family: var(--font-mono); background: var(--code-bg); border: 1px solid var(--border); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; text-align: center; }
+@media print {
+  /* Print ALWAYS uses the light palette, even when the OS/browser is in dark
+     mode (the PDF engine follows prefers-color-scheme and would otherwise set
+     data-theme=dark, leaving near-white headings on white paper and dark
+     surfaces clashing with the page). Redefining the variables here overrides
+     both :root and [data-theme="dark"] for every printed element. */
+  :root,
+  :root[data-theme="dark"] {
+    --bg: #ffffff;
+    --bg-card: #ffffff;
+    --text: #111827;
+    --text-muted: #4b5563;
+    --primary: #1d4ed8;
+    --primary-hover: #1e3a8a;
+    --border: #cbd5e1;
+    --code-bg: #f1f5f9;
+    --code-text: #0f172a;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #cbd5e1;
+    --callout-tip: #dbeafe;
+    --callout-tip-text: #1e40af;
+    --callout-warning: #fef3c7;
+    --callout-warning-text: #92400e;
+    --callout-note: #f1f5f9;
+    --callout-note-text: #334155;
+    --callout-done: #dcfce7;
+    --callout-done-text: #166534;
+  }
+  /* The cover's dark gradient is hard-coded for the dark theme; force the
+     light one on paper so the title text (now dark) stays readable. */
+  .cover,
+  [data-theme="dark"] .cover {
+    background: linear-gradient(155deg, #e8f1ff 0%, #ffffff 46%, #f4f8ff 100%) !important;
+    border-color: #dbe3ec;
+  }
+  #toc, #toc-toggle, #theme-toggle, .progress-bar, .search-modal, .copy-btn, #toc-toggle-label { display: none !important; }
+  body { display: block; background: white; color: #111827; }
+  main { padding: 0; max-width: none; }
+  a { text-decoration: none; color: black; }
+  section.chapter { page-break-before: always; margin-bottom: 0; }
+  .cover { height: 260mm; box-sizing: border-box; page-break-after: always; border-radius: 0; margin: 0; }
+  .contents { page-break-after: always; }
+  .toc-line { page-break-inside: avoid; }
+  h2 { page-break-after: avoid; }
+  h3 { page-break-after: avoid; }
+  pre { page-break-inside: avoid; }
+  .callout { page-break-inside: avoid; }
+  .diagram { page-break-inside: avoid; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  .diagram svg { max-width: 100% !important; height: auto !important; }
+}
+@media (max-width: 1024px) {
+  body { grid-template-columns: 1fr; }
+  #toc { position: fixed; left: -300px; top: 0; bottom: 0; z-index: 100; width: 280px; box-shadow: var(--shadow-lg); transition: left 0.3s; }
+  #toc.open { left: 0; }
+  #toc-toggle { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--bg-card); border: 1px solid var(--border); padding: 0.5rem 0.75rem; border-radius: var(--radius); cursor: pointer; font-size: 1.25rem; box-shadow: var(--shadow); }
+  main { padding: 1.5rem; }
+}
+.reading-time { color: var(--text-muted); font-size: 0.85rem; }
+.toc-link { display: block; }
+.toc-chapter { cursor: pointer; }
+.toc-section { display: none; }
+.toc-chapter.open + .toc-section { display: block; }
+
+/* ---- Cover page ---- */
+.cover {
+  position: relative;
+  background: linear-gradient(155deg, #e8f1ff 0%, #ffffff 46%, #f4f8ff 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.4rem 2.6rem 1.8rem;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+[data-theme="dark"] .cover {
+  background: linear-gradient(155deg, #172554 0%, #0f172a 55%, #1e293b 100%);
+}
+.cover-accent {
+  position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+  background: linear-gradient(90deg, #2563eb, #60a5fa 55%, #93c5fd);
+}
+.cover-kicker {
+  text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.78rem; font-weight: 700;
+  color: var(--primary); margin: 0 0 0.9rem;
+}
+.cover-title { font-size: 2.6rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+.cover-sub { font-size: 1.25rem; color: var(--text-muted); margin: 0.6rem 0 0; max-width: 46rem; }
+.cover-lede { margin: 1.2rem 0 0; max-width: 50rem; }
+.cover-facts {
+  list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem;
+  padding: 0; margin: 1.4rem 0 0;
+}
+.cover-facts li { margin: 0; font-size: 0.92rem; color: var(--text-muted); }
+.cover-facts b { color: var(--text); font-weight: 600; }
+.cover-included { margin: 1.5rem 0 0; }
+.cover-included h4 {
+  font-size: 0.85rem; margin: 0 0 0.55rem; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-muted);
+}
+.cover-included ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0; margin: 0; }
+.cover-included li { margin: 0; }
+.chip {
+  display: inline-block; border: 1px solid var(--border); background: var(--bg-card);
+  border-radius: 999px; padding: 0.26rem 0.8rem; font-size: 0.85rem; color: var(--text);
+}
+.cover-foot {
+  margin: 1.8rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.85rem; color: var(--text-muted);
+}
+.cover-foot code { font-size: 0.9em; }
+
+/* ---- Printed table of contents ---- */
+.contents { margin-bottom: 0.5rem; }
+.contents-note { font-size: 0.92rem; color: var(--text-muted); margin: 0.1rem 0 1.1rem; }
+.contents-list { list-style: none; padding: 0; margin: 0; }
+.contents-list li { margin: 0; }
+.toc-line {
+  display: flex; align-items: baseline; text-decoration: none; color: var(--text);
+  padding: 0.34rem 0; border-bottom: 1px solid var(--border);
+}
+.toc-line:last-child { border-bottom: none; }
+.toc-line:hover { color: var(--primary); }
+.toc-label { flex: 0 1 auto; }
+.toc-dots { flex: 1 1 auto; border-bottom: 2px dotted var(--border); transform: translateY(-4px); min-width: 1.2rem; }
+.toc-page { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 0.92rem; padding-left: 0.6rem; }
+</style>
+</head>
+<body>
+<a href="#content" class="skip-link">Skip to main content</a>
+<button id="toc-toggle" aria-label="Toggle table of contents">☰</button>
+<nav id="toc" aria-label="Table of contents">
+  <div id="toc-header">
+    <span id="toc-title">30-Day Guide</span>
+    <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+  </div>
+  <ul id="toc-list"></ul>
+</nav>
+<div class="progress-bar" id="progress-bar" aria-hidden="true"></div>
+<div class="search-modal" id="search-modal" role="dialog" aria-label="Search">
+  <div class="search-box">
+    <input type="search" id="search-input" placeholder="Search (Ctrl+K)..." autocomplete="off" aria-label="Search content">
+    <div class="search-results" id="search-results"></div>
+  </div>
+</div>
+<main id="content">
+  <section class="cover">
+    <div class="cover-accent"></div>
+    <p class="cover-kicker">Multi-Tenant AI Chatbot SaaS · 30-Day Launch Playbook</p>
+    <h1 class="cover-title">From Zero to First Client in 30 Days</h1>
+    <p class="cover-sub">The day-by-day guide — build the platform, teach the brain, and launch your first paying client, one day at a time</p>
+    <p class="cover-lede">This is the same project as the Practical Guide (4 relaxed weeks), but sliced into 30 concrete days. Each day has a clear goal, ordered steps, exact commands where they help, and a "how to know it worked" test so you never wonder whether you're done. Work at your own pace — a "day" is one focused session of 30–90 minutes. Cost to you: $0 and roughly 30 focused sessions. The rough edges described in earlier guides are already fixed in this codebase, so the instructions below work as written.</p>
+    <ul class="cover-facts">
+      <li><b>Audience</b> — solo founder / agency owner, technical or not</li>
+      <li><b>Version</b> — v1.0.0 (fixed codebase)</li>
+      <li><b>Date</b> — September 2026</li>
+      <li><b>Reading time</b> — ~60 min</li>
+      <li><b>Total effort</b> — ~30 sessions × 30–90 min</li>
+    </ul>
+    <div class="cover-included">
+      <h4>What's inside</h4>
+      <ul>
+        <li><span class="chip">The plan at a glance</span></li>
+        <li><span class="chip">Days 1–7: Foundation</span></li>
+        <li><span class="chip">Days 8–14: First client</span></li>
+        <li><span class="chip">Days 15–21: Hardening</span></li>
+        <li><span class="chip">Days 22–30: Launch</span></li>
+        <li><span class="chip">Every day: a test</span></li>
+        <li><span class="chip">Quick-reference cards</span></li>
+      </ul>
+    </div>
+    <p class="cover-foot">All tools are free forever · no credit card · the only investment is one focused session a day</p>
+  </section>
+
+  <section class="contents" id="print-contents">
+    <h2>Contents</h2>
+    <p class="contents-note">All 32 chapters. Every entry is a link — click to jump, in the PDF or in your browser. Page numbers are the printed page numbers.</p>
+    <ul class="contents-list">
+      <li><a class="toc-line" href="#d0-plan"><span class="toc-label">The Plan at a Glance</span><span class="toc-dots"></span><span class="toc-page" data-for="d0-plan"></span></a></li>
+      <li><a class="toc-line" href="#d01"><span class="toc-label">Day 1 — Create Your 6 Free Accounts</span><span class="toc-dots"></span><span class="toc-page" data-for="d01"></span></a></li>
+      <li><a class="toc-line" href="#d02"><span class="toc-label">Day 2 — Prepare the Repo &amp; Secrets</span><span class="toc-dots"></span><span class="toc-page" data-for="d02"></span></a></li>
+      <li><a class="toc-line" href="#d03"><span class="toc-label">Day 3 — Deploy the Backend</span><span class="toc-dots"></span><span class="toc-page" data-for="d03"></span></a></li>
+      <li><a class="toc-line" href="#d04"><span class="toc-label">Day 4 — Deploy Widget &amp; Admin</span><span class="toc-dots"></span><span class="toc-page" data-for="d04"></span></a></li>
+      <li><a class="toc-line" href="#d05"><span class="toc-label">Day 5 — Local Dev Environment</span><span class="toc-dots"></span><span class="toc-page" data-for="d05"></span></a></li>
+      <li><a class="toc-line" href="#d06"><span class="toc-label">Day 6 — Tour the Codebase</span><span class="toc-dots"></span><span class="toc-page" data-for="d06"></span></a></li>
+      <li><a class="toc-line" href="#d07"><span class="toc-label">Day 7 — Buffer &amp; Your Stack Card</span><span class="toc-dots"></span><span class="toc-page" data-for="d07"></span></a></li>
+      <li><a class="toc-line" href="#d08"><span class="toc-label">Day 8 — Create Your First Tenant</span><span class="toc-dots"></span><span class="toc-page" data-for="d08"></span></a></li>
+      <li><a class="toc-line" href="#d09"><span class="toc-label">Day 9 — Upload Knowledge</span><span class="toc-dots"></span><span class="toc-page" data-for="d09"></span></a></li>
+      <li><a class="toc-line" href="#d10"><span class="toc-label">Day 10 — Business Hours &amp; Slots</span><span class="toc-dots"></span><span class="toc-page" data-for="d10"></span></a></li>
+      <li><a class="toc-line" href="#d11"><span class="toc-label">Day 11 — Test Every Chat Path</span><span class="toc-dots"></span><span class="toc-page" data-for="d11"></span></a></li>
+      <li><a class="toc-line" href="#d12"><span class="toc-label">Day 12 — Emails End to End</span><span class="toc-dots"></span><span class="toc-page" data-for="d12"></span></a></li>
+      <li><a class="toc-line" href="#d13"><span class="toc-label">Day 13 — Brand the Widget</span><span class="toc-dots"></span><span class="toc-page" data-for="d13"></span></a></li>
+      <li><a class="toc-line" href="#d14"><span class="toc-label">Day 14 — Buffer &amp; Onboarding Checklist</span><span class="toc-dots"></span><span class="toc-page" data-for="d14"></span></a></li>
+      <li><a class="toc-line" href="#d15"><span class="toc-label">Day 15 — Onboard a Second Tenant</span><span class="toc-dots"></span><span class="toc-page" data-for="d15"></span></a></li>
+      <li><a class="toc-line" href="#d16"><span class="toc-label">Day 16 — Monitoring &amp; Alerts</span><span class="toc-dots"></span><span class="toc-page" data-for="d16"></span></a></li>
+      <li><a class="toc-line" href="#d17"><span class="toc-label">Day 17 — Security Pass</span><span class="toc-dots"></span><span class="toc-page" data-for="d17"></span></a></li>
+      <li><a class="toc-line" href="#d18"><span class="toc-label">Day 18 — Backup &amp; Recovery</span><span class="toc-dots"></span><span class="toc-page" data-for="d18"></span></a></li>
+      <li><a class="toc-line" href="#d19"><span class="toc-label">Day 19 — Build Your Sales Kit</span><span class="toc-dots"></span><span class="toc-page" data-for="d19"></span></a></li>
+      <li><a class="toc-line" href="#d20"><span class="toc-label">Day 20 — Quality Pass</span><span class="toc-dots"></span><span class="toc-page" data-for="d20"></span></a></li>
+      <li><a class="toc-line" href="#d21"><span class="toc-label">Day 21 — Buffer &amp; Dry-Run</span><span class="toc-dots"></span><span class="toc-page" data-for="d21"></span></a></li>
+      <li><a class="toc-line" href="#d22"><span class="toc-label">Day 22 — Landing Page &amp; Offer</span><span class="toc-dots"></span><span class="toc-page" data-for="d22"></span></a></li>
+      <li><a class="toc-line" href="#d23"><span class="toc-label">Day 23 — Outreach Day 1</span><span class="toc-dots"></span><span class="toc-page" data-for="d23"></span></a></li>
+      <li><a class="toc-line" href="#d24"><span class="toc-label">Day 24 — Outreach Day 2 &amp; Demos</span><span class="toc-dots"></span><span class="toc-page" data-for="d24"></span></a></li>
+      <li><a class="toc-line" href="#d25"><span class="toc-label">Day 25 — Pilot Kickoff</span><span class="toc-dots"></span><span class="toc-page" data-for="d25"></span></a></li>
+      <li><a class="toc-line" href="#d26"><span class="toc-label">Day 26 — First-Week Check-In</span><span class="toc-dots"></span><span class="toc-page" data-for="d26"></span></a></li>
+      <li><a class="toc-line" href="#d27"><span class="toc-label">Day 27 — Case Study &amp; Testimonial</span><span class="toc-dots"></span><span class="toc-page" data-for="d27"></span></a></li>
+      <li><a class="toc-line" href="#d28"><span class="toc-label">Day 28 — Business Review</span><span class="toc-dots"></span><span class="toc-page" data-for="d28"></span></a></li>
+      <li><a class="toc-line" href="#d29"><span class="toc-label">Day 29 — Scale &amp; Automate</span><span class="toc-dots"></span><span class="toc-page" data-for="d29"></span></a></li>
+      <li><a class="toc-line" href="#d30"><span class="toc-label">Day 30 — Celebrate &amp; 90-Day Plan</span><span class="toc-dots"></span><span class="toc-page" data-for="d30"></span></a></li>
+      <li><a class="toc-line" href="#d31-next"><span class="toc-label">Quick Reference Cards</span><span class="toc-dots"></span><span class="toc-page" data-for="d31-next"></span></a></li>
+    </ul>
+  </section>
+  <article id="article">
+
+  <div class="callout warning">
+    <strong>⚠ Stack update (September 2026) — read this first.</strong> This guide was written when the backend ran as a <strong>Docker Space on Hugging Face</strong>. HF removed the Docker-SDK free tier in July 2026 (only Static Spaces are free), so the codebase now ships a <strong>Cloudflare Worker</strong> backend (<code>worker/</code>) with <strong>Google Gemini</strong> for chat + embeddings. Before starting, follow <code>DEPLOY.md</code> / <code>SETUP.md</code> for the current steps and use the Worker URL <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev</code> wherever a chapter says <code>…hf.space</code>. Chapters about later features (appointments, emails, admin dashboard, PDF upload) are the <strong>roadmap</strong> — they land in Phases 2–4, described in the Appendix “Migration Roadmap” at the end of this guide. The old Python backend is kept in <code>backend/</code> as the reference implementation.
+  </div>
+
+
+  <section class="chapter" id="d0-plan">
+    <h2>The Plan at a Glance (10 min read)</h2>
+
+    <p><strong>Goal:</strong> see the whole month before you start, so every day has a place in the plan.</p>
+
+    <p>You are building a <strong>multi-tenant AI chatbot</strong>: one backend that powers many clients, each with their own widget, colors, knowledge base, business hours, and appointment calendar. Clients pay you monthly. This guide takes you from an empty laptop to a first paying client in 30 focused sessions.</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  A["Days 1-7<br/>Foundation"] --> B["Days 8-14<br/>First Client"]
+  B --> C["Days 15-21<br/>Hardening"]
+  C --> D["Days 22-30<br/>Launch"]
+      </pre>
+    </div>
+
+    <table>
+      <tr><th>Phase</th><th>Days</th><th>Theme</th><th>You end with</th></tr>
+      <tr><td>1. Foundation</td><td>1–7</td><td>Accounts, secrets, deploys, local dev</td><td>A live backend at <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev/health</code>, a downloadable widget, a login screen, and a stack card</td></tr>
+      <tr><td>2. First client</td><td>8–14</td><td>Tenant, knowledge, hours, chat, email</td><td>A fully working demo client: branded widget that answers, books, and emails</td></tr>
+      <tr><td>3. Hardening</td><td>15–21</td><td>Second client, monitoring, security, sales kit</td><td>A repeatable <strong>&lt; 30-minute</strong> onboarding, alerts, and a proposal you can send</td></tr>
+      <tr><td>4. Launch</td><td>22–30</td><td>Landing page, outreach, pilot, review</td><td>A live pilot client, a case study, and a written 90-day plan</td></tr>
+    </table>
+
+    <h3>How each day works</h3>
+    <ul>
+      <li><strong>Goal</strong> — one sentence: what "done" looks like.</li>
+      <li><strong>Steps</strong> — ordered actions, with exact commands where a command helps.</li>
+      <li><strong>How to know it worked</strong> — a concrete test at the end of the day.</li>
+    </ul>
+
+    <div class="callout tip">
+      <strong>Pacing.</strong> A "day" is one focused 30–90-minute session. Skipped a day? Just do the next one — nothing expires. If a day takes far longer than its estimate, stop, note what blocked you, and move on; most "stuck" moments are a typo in a slug, a missing secret, or a deploy still in progress (wait 5–10 minutes before debugging).
+    </div>
+  </section>
+
+  <section class="chapter" id="d01">
+    <h2>Day 1 — Create Your 6 Free Accounts (60 min)</h2>
+
+    <p><strong>Goal:</strong> every account exists, and you've saved the credentials you'll need in one place (a notes app, a spreadsheet, or a paper card). No credit card is required anywhere.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li><strong>GitHub</strong> — go to <code>github.com</code>, sign up, and enable two-factor authentication (Settings → Password and authentication). You'll host the code here and GitHub Actions will do every deploy for free.</li>
+      <li><strong>Cloudflare</strong> — sign up, then create an API token (My Profile → API Tokens → template “Edit Cloudflare Workers” + Account → Pages:Edit) and copy your Account ID. This replaces Hugging Face: the backend now runs as a Cloudflare Worker, which is free and never sleeps, and your widget + admin dashboard will be served from Cloudflare Pages under this same account. Hugging Face Docker Spaces are no longer free (July 2026).</li>
+      <li><strong>Google AI Studio</strong> — at <code>aistudio.google.com/apikey</code> create a Gemini API key (<code>GEMINI_API_KEY</code>). This replaces the local Ollama model — chat and embeddings run on Gemini's free tier.</li>
+      <li><strong>Turso</strong> (the database) — go to <code>turso.tech</code>, sign up, click Create Database, name it <code>chatbot-db</code>, pick the region closest to your clients. After creation, open the database → Show connection details and copy the <strong>Database URL</strong> (<code>libsql://…</code>) and the <strong>Auth Token</strong>.</li>
+      <li><strong>Clerk</strong> (login for your admin dashboard) — go to <code>clerk.com</code>, sign up, create an application named <code>Chatbot Admin</code>. Copy the <strong>Publishable Key</strong> (<code>pk_test_…</code>) and the <strong>Secret Key</strong> (<code>sk_test_…</code>). In the Clerk dashboard: Users &amp; Authentication → Email, Phone, Username → enable <strong>Email</strong> only. Then User &amp; Authentication → Email, Phone, Username → Allowlist → add <strong>your email address</strong>. (You'll add your admin dashboard domain on Day 4.)</li>
+      <li><strong>Google Apps Script</strong> (sends your emails through Gmail) — go to <code>script.google.com</code>, New Project, delete the default code, paste the whole contents of <code>gas-email/Code.gs</code> from this repo, then Deploy → New deployment → gear icon → type: <strong>Web app</strong> → Execute as: <strong>Me</strong> → Who has access: <strong>Anyone</strong> → Deploy. Copy the Web App URL (it ends in <code>/exec</code>). Finally, run the <code>testEmail()</code> function once in the editor to authorize Gmail access.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you have a credentials sheet with exactly these values — <code>TURSO_DATABASE_URL</code>, <code>TURSO_AUTH_TOKEN</code>, <code>GEMINI_API_KEY</code>, <code>CLERK_PUBLISHABLE_KEY</code>, <code>GAS_WEBAPP_URL</code> (Phase 2), <code>ADMIN_EMAILS</code>, <code>ADMIN_BOOTSTRAP_TOKEN</code> (optional), <code>CLOUDFLARE_API_TOKEN</code>, and <code>CLOUDFLARE_ACCOUNT_ID</code>. The test email arrived in your Gmail (if you set up Apps Script).
+    </div>
+  </section>
+
+  <section class="chapter" id="d02">
+    <h2>Day 2 — Prepare the Repo &amp; Secrets (30 min)</h2>
+
+    <p><strong>Goal:</strong> the code lives in your GitHub account and all the secrets are stored so the deploy workflows can use them.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Open this repository on GitHub and click <strong>Use this template</strong> → create your own repo (e.g. <code>chatbot-saas</code>) under your account.</li>
+      <li>Clone it to your machine: <pre><code>git clone https://github.com/YOUR_USERNAME/chatbot-saas.git
+cd chatbot-saas</code></pre></li>
+      <li>Go to your repo → Settings → Secrets and variables → Actions → New repository secret, and add the values from Day 1. The exact secret names are required — copy them precisely:
+        <pre><code>TURSO_DATABASE_URL
+TURSO_AUTH_TOKEN
+GEMINI_API_KEY
+CLERK_PUBLISHABLE_KEY
+ADMIN_EMAILS
+ADMIN_BOOTSTRAP_TOKEN   # optional — first onboarding only (DEPLOY.md §5)
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+GAS_WEBAPP_URL          # needed in Phase 2</code></pre></li>
+      <li><strong>Optional:</strong> <code>CLERK_JWKS_URL</code> — only add this if your Clerk key is unusual; normally the Worker derives the token-verification URL from the publishable key automatically.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the Actions → Secrets page lists exactly 11 names with no typos. (A typo here is the #1 cause of "works locally, fails in production" — double-check the Turso URL and token especially.)
+    </div>
+
+    <div class="callout note">
+      <strong>Why secrets, not files?</strong> The deploy workflows (in <code>.github/workflows/</code>) read these secrets at build time and inject them into the container as environment variables. The app refuses to start without all six backend settings, so missing secrets show up immediately as a failing health check on Day 3.
+    </div>
+  </section>
+
+  <section class="chapter" id="d03">
+    <h2>Day 3 — Deploy the Backend (45 min, mostly waiting)</h2>
+
+    <p><strong>Goal:</strong> your AI backend is live on <strong>Cloudflare Workers</strong> answering the health check; the Turso database has the schema loaded; your Gemini API key is confirmed working.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Make sure the GitHub secrets from Day 2 are set (especially <code>TURSO_DATABASE_URL</code>, <code>TURSO_AUTH_TOKEN</code>, <code>GEMINI_API_KEY</code>, <code>CLOUDFLARE_API_TOKEN</code>, <code>CLOUDFLARE_ACCOUNT_ID</code>).</li>
+      <li>Push the repo to <code>main</code> (or run the workflow manually): <pre><code>git add -A &amp;&amp; git commit -m "Initial deploy" &amp;&amp; git push origin main</code></pre>
+      This triggers <code>Deploy Chatbot API Worker to Cloudflare</code> — it typechecks <code>worker/</code>, runs <code>wrangler deploy</code>, then writes the Worker secrets. Takes 1–3 minutes. Watch it under the Actions tab.</li>
+      <li>When the workflow finishes, open the health check:
+        <pre><code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code></pre>
+        (<code>wrangler whoami</code> shows your subdomain.) You should see <code>{"status":"healthy","version":"1.0.0",...}</code>.</li>
+      <li><strong>Load the database schema</strong> (the Worker talks to Turso over HTTP and needs the tables to exist):
+        <pre><code>turso db shell chatbot-db &lt; worker/db/schema.sql</code></pre>
+        Then verify in the Turso dashboard → your database → Explore/SQL:
+        <pre><code>SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;</code></pre>
+        You should see: <code>appointments</code>, <code>conversations</code>, <code>end_users</code>, <code>knowledge_chunks</code>, <code>knowledge_vec</code>, <code>messages</code>, <code>tenants</code>, <code>usage_logs</code>.</li>
+      <li><strong>Confirm your Gemini key works.</strong> No models to download — chat and embeddings run on the Gemini API. In Google AI Studio, confirm the key from Day 1 is valid and note your model's free daily quota (it varies — see the Appendix note on limits).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> <code>/health</code> returns 200 with <code>healthy</code>; all 8 tables exist in Turso; no model downloads needed.
+    </div>
+
+    <div class="callout warning">
+      <strong>Free-tier limits, not cold starts.</strong> Workers don't sleep (no keep-alive needed), but the Gemini free tier has daily request caps that vary over time. The Worker handles them gracefully — a friendly “I'm at my usage limit” message instead of an error — and you can add a Groq/Workers-AI fallback later (spec §5.7).
+    </div>
+  </section>
+
+  <section class="chapter" id="d04">
+    <h2>Day 4 — Deploy Widget &amp; Admin (45 min)</h2>
+
+    <p><strong>Goal:</strong> the client-facing widget and your admin dashboard are both live on Cloudflare Pages.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Cloudflare dashboard → Workers &amp; Pages → Create → Pages → Connect to Git → pick your repo.</li>
+      <li>Create the <strong>widget</strong> project: name <code>chatbot-widget</code>, production branch <code>main</code>, framework: None, build command <code>cd widget &amp;&amp; npm run build</code>, build output directory <code>widget/dist</code> → Save and Deploy. The build emits exactly <code>widget.js</code>.</li>
+      <li>Create the <strong>admin</strong> project: name <code>chatbot-admin</code>, same branch, build command <code>cd admin-dashboard &amp;&amp; npm run build</code>, output <code>admin-dashboard/dist</code> → Save and Deploy.</li>
+      <li><strong>Give the admin build your Clerk key.</strong> The admin app bakes the publishable key in at build time. In the <code>chatbot-admin</code> project: Settings → Environment variables → add <code>VITE_CLERK_PUBLISHABLE_KEY</code> = your <code>pk_test_…</code> value → Save → redeploy. Without it the page loads but the login screen never appears.</li>
+      <li><strong>Tell Clerk about the admin domain.</strong> Clerk dashboard → Domains → add <code>chatbot-admin.pages.dev</code> (and your custom domain later). Also add it under User &amp; Authentication → Email, Phone, Username → Allowed redirect URLs.</li>
+      <li>Verify both URLs:
+        <ul>
+          <li><code>https://chatbot-widget.pages.dev/widget.js</code> — downloads a JavaScript file.</li>
+          <li><code>https://chatbot-admin.pages.dev</code> — shows the Clerk sign-in screen.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> <code>widget.js</code> downloads; the admin URL shows a login screen; signing in with your allowlisted email works (you'll see "No tenants yet" — that's correct until Day 8).
+    </div>
+  </section>
+
+  <section class="chapter" id="d05">
+    <h2>Day 5 — Local Dev Environment (45 min, optional but recommended)</h2>
+
+    <p><strong>Goal:</strong> you can run and debug the project on your own machine, which makes every later day faster. The database is in the cloud, so "local" means running the API and frontends locally while they talk to the same Turso database.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Install Python 3.11+ and Node 20+ (visit <code>python.org</code> and <code>nodejs.org</code> if you don't have them).</li>
+      <li>Set up the backend: <pre><code>cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt</code></pre></li>
+      <li>Create <code>backend/.env</code> with the six required settings (the app fails at startup without all of them): <pre><code>TURSO_DATABASE_URL=libsql://your-db.turso.io
+TURSO_AUTH_TOKEN=your_token
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+GAS_WEBAPP_URL=https://script.google.com/macros/s/.../exec
+ADMIN_EMAIL=you@example.com</code></pre></li>
+      <li>Run the migration from your machine (it's the same remote database): <pre><code>python run_migrations.py</code></pre></li>
+      <li>Build the frontends once to prove the toolchain works: <pre><code>cd ../widget &amp;&amp; npm install &amp;&amp; npm run build
+cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pre></li>
+      <li>(Optional) Run the API locally: <pre><code>cd ../backend &amp;&amp; uvicorn app.main:app --reload --port 8000</code></pre>
+        then open <code>http://localhost:8000/health</code>.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> <code>pip install</code> finishes without errors (the pinned versions resolve — earlier versions of the requirements file did not, which is fixed); <code>run_migrations.py</code> prints the SQL statements it executed; both <code>npm run build</code> commands succeed; <code>localhost:8000/health</code> returns <code>healthy</code>.
+    </div>
+  </section>
+
+  <section class="chapter" id="d06">
+    <h2>Day 6 — Tour the Codebase (45 min)</h2>
+
+    <p><strong>Goal:</strong> know where every concern lives, so fixing and extending later is a lookup, not a search.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Open the repo in your editor and walk the folder map:
+        <table>
+          <tr><th>Folder</th><th>What lives there</th></tr>
+          <tr><td><code>backend/app/api/</code></td><td>FastAPI routes: <code>widget.py</code> (public chat/config/availability/appointments/history/health), <code>tenant.py</code> (tenant management, admin-auth-protected), <code>admin.py</code> (platform admin + Clerk JWT verification)</td></tr>
+          <tr><td><code>backend/app/services/</code></td><td><code>llm.py</code> (legacy Ollama client — the new backend calls Gemini in <code>worker/src/llm.ts</code>), <code>rag.py</code> (vector search reference), <code>appointments.py</code> (intents + slots + booking + cancel), <code>knowledge.py</code> (PDF/text/FAQ chunking), <code>email.py</code> (GAS email)</td></tr>
+          <tr><td><code>backend/app/middleware/tenant.py</code></td><td>Resolves a tenant from the URL slug, <code>X-Tenant-Slug</code> header, or subdomain</td></tr>
+          <tr><td><code>backend/migrations/</code></td><td><code>001_initial_schema.sql</code> — the whole schema; run by <code>run_migrations.py</code></td></tr>
+          <tr><td><code>widget/src/</code></td><td>The embeddable chat widget (React + Shadow DOM): <code>ChatWidget.tsx</code>, hooks (<code>useChat</code>, <code>useConfig</code>, <code>useSession</code>), components (<code>ChatPanel</code>, <code>SlotPicker</code>, …)</td></tr>
+          <tr><td><code>admin-dashboard/src/</code></td><td>Your control panel: pages (<code>Tenants</code>, <code>TenantDetail</code>, <code>Analytics</code>), components (<code>FileUploader</code>, <code>BusinessHoursEditor</code>), and <code>api.ts</code> (attaches your Clerk token to every request)</td></tr>
+          <tr><td><code>scripts/</code></td><td>CLI helpers: <code>create_tenant.py</code>, <code>upload_knowledge.py</code>, <code>extract_business_hours.py</code>, <code>test_gas_email.py</code>, <code>seed_demo.py</code></td></tr>
+          <tr><td><code>gas-email/</code></td><td>The Apps Script that turns <code>{to, subject, html}</code> into a Gmail send</td></tr>
+          <tr><td><code>.github/workflows/</code></td><td>Auto-deploys (backend → HF, widget + admin → Pages) and the keep-alive pinger</td></tr>
+        </table>
+      </li>
+      <li>Follow one message end-to-end in <code>backend/app/api/widget.py</code>: the <code>/widget/chat/{slug}</code> handler saves your message, classifies intent, and either runs RAG search + LLM synthesis or the booking flow, then streams the answer back as Server-Sent Events. The widget's <code>useChat.ts</code> reads those events.</li>
+      <li>Note the files you'll touch most: <code>backend/app/config.py</code> (model names, rate limits), <code>backend/app/schemas.py</code> (default greeting/colors), <code>nginx.conf</code> (rate limits), <code>widget/src/styles.css</code> (widget look).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> for each question — "where do I change the bot's name?", "where do I add an FAQ?", "where do I change the rate limit?" — you can point at the file without searching.
+    </div>
+  </section>
+
+  <section class="chapter" id="d07">
+    <h2>Day 7 — Buffer &amp; Your Stack Card (30 min)</h2>
+
+    <p><strong>Goal:</strong> catch up on anything that slipped, and create the single page that runs your operation.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Re-visit any day that wasn't fully green. Most common fixes: a secret typo, a deploy that needed a second run, or models still downloading.</li>
+      <li>Re-verify the three core URLs in a browser: <code>chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code>, <code>chatbot-widget.pages.dev/widget.js</code>, <code>chatbot-admin.pages.dev</code>.</li>
+      <li>Write your <strong>Stack Card</strong> — one page with: each service, its URL, your login, what it's for, and its free quota. Include the Space terminal path (Settings → Open in terminal) and the two model-pull commands.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> all three URLs are green, and someone (or you, in a week) could run this operation from the Stack Card alone.
+    </div>
+  </section>
+
+  <section class="chapter" id="d08">
+    <h2>Day 8 — Create Your First Tenant (30 min)</h2>
+
+    <p><strong>Goal:</strong> a real (demo) client exists and its branded widget loads on a test page.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Open the admin dashboard and sign in. Click <strong>Add Tenant</strong> and fill in: Business name (e.g. <em>Weblyft Design</em>), Slug (lowercase letters, numbers, hyphens — e.g. <code>weblyft-design</code>), and a Primary Color (this now maps to the widget's <code>primary_color</code> correctly).</li>
+      <li>Verify the backend knows the tenant: <pre><code>curl https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/config/weblyft-design</code></pre>
+        You should get JSON with your name, colors, greeting, and bot name.</li>
+      <li>Create a test page: a plain HTML file on your computer (or a CodePen) containing the embed line before <code>&lt;/body&gt;</code>: <pre><code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="weblyft-design" data-api-url="https://chatbot-api.YOUR-SUBDOMAIN.workers.dev"&gt;&lt;/script&gt;</code></pre></li>
+      <li>Open the test page: a floating button appears bottom-right in your client's color. Click it — the greeting message shows.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the config endpoint returns the tenant's brand data, and the floating button + greeting render on your test page.
+    </div>
+
+    <div class="callout tip">
+      <strong>CLI alternative.</strong> Everything the dashboard does is also available as commands you can run from your machine (the database is remote, so location doesn't matter): <pre><code>python scripts/create_tenant.py --name "Weblyft Design" --slug weblyft-design --color "#3B82F6"</code></pre>
+      Note: the legacy Python scripts run against the old backend. On the current stack, create the tenant + upload knowledge with the two curl commands in <code>DEPLOY.md</code> §5 instead.
+    </div>
+  </section>
+
+  <section class="chapter" id="d09">
+    <h2>Day 9 — Upload Knowledge (45 min)</h2>
+
+    <p><strong>Goal:</strong> the bot answers questions from the client's own documents, not from thin air.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Prepare the client's information. Best sources, in order of usefulness:
+        <ul>
+          <li>A <strong>FAQ list</strong> — exact questions and answers (works best, because retrieval matches question-shaped text).</li>
+          <li>A <strong>plain-text or Markdown</strong> document of what clients ask about: services, prices, policies, contact info, locations.</li>
+          <li>A <strong>PDF</strong> — must be real text, not scanned images (a scanned PDF has no text to read).</li>
+        </ul>
+      </li>
+      <li>In the admin dashboard: Tenant → Knowledge tab → upload the file, or choose FAQ (JSON) and paste: <pre><code>[{"question": "What are your hours?", "answer": "Mon–Fri 9am–5pm"},
+ {"question": "Do you offer refunds?", "answer": "Yes, full refund if cancelled 24h before"}]</code></pre></li>
+      <li>Confirm chunks were created: the Knowledge tab lists the source with a chunk count. Deeper check in Turso: <pre><code>SELECT source_id, COUNT(*) FROM knowledge_chunks
+WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'weblyft-design')
+GROUP BY source_id;</code></pre></li>
+      <li>Test in the widget: ask a question whose answer is in the document. The bot should answer from it (it streams the answer token by token).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the source shows "N chunks", and the widget answers a question that only the uploaded document could answer.
+    </div>
+
+    <div class="callout warning">
+      <strong>If it says "I don't have that information":</strong> the question didn't match any chunk closely enough (the similarity threshold is 0.7). Rewrite the FAQ using the words customers actually use, or add the exact Q&amp;A pair. If the bot answers but is wordy, that's the temperature setting — fine for now, tune later (Day 20).
+    </div>
+  </section>
+
+  <section class="chapter" id="d10">
+    <h2>Day 10 — Business Hours &amp; Slots (30 min)</h2>
+
+    <p><strong>Goal:</strong> the bot knows when the business is open, how long appointments are, and the buffer between them.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Admin dashboard → Tenant → Settings tab. Set:
+        <ul>
+          <li><strong>Business hours</strong> per day (leave closed days empty — the checkbox toggles them).</li>
+          <li><strong>Timezone</strong> — the business's location, not yours.</li>
+          <li><strong>Slot duration</strong> (15–60 min) and <strong>Buffer</strong> between appointments.</li>
+        </ul>
+        Click Save — the Settings tab is fully wired to the API.</li>
+      <li>Verify the availability endpoint returns sensible slots: <pre><code>curl "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/availability/weblyft-design?start_date=2026-09-14&amp;end_date=2026-09-20&amp;timezone=UTC"</code></pre>
+        Open days should return slots starting on the hour according to open/close times; closed days return none.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> slots exist only on open days, at the right times for the tenant's timezone, honoring slot duration and buffer.
+    </div>
+  </section>
+
+  <section class="chapter" id="d11">
+    <h2>Day 11 — Test Every Chat Path (60 min)</h2>
+
+    <p><strong>Goal:</strong> prove the five intents work, from both the API and the widget UI.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Open the widget on your test page and send these messages, one at a time:
+        <ul>
+          <li><em>"What are your hours?"</em> → answer from your knowledge base (general_query + RAG).</li>
+          <li><em>"What times are open on Friday?"</em> → a list of clickable slots (check_availability).</li>
+          <li><em>"Book Tuesday at 2pm"</em> → either "booked" or "that slot is taken, here are alternatives" (book_appointment).</li>
+          <li><em>"Cancel my appointment"</em> → asks for the booking email (cancel_appointment).</li>
+          <li><em>"Talk to a human"</em> → the handoff message (transfer_human).</li>
+        </ul>
+      </li>
+      <li>When the slot picker appears, click a slot to book, and click the ✕ on the picker (this used to crash — it now dismisses cleanly).</li>
+      <li>Verify conversation continuity: send a message, refresh the page, and confirm the thread resumes (the widget saves the conversation id to localStorage).</li>
+      <li>Confirm the API persists everything — get the conversation id from the widget (or the DB), then: <pre><code>curl "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/history/weblyft-design?conversation_id=REPLACE_ME"</code></pre></li>
+      <li>Spot-check with curl for one path: <pre><code>curl -N -X POST "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/chat/weblyft-design" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What are your hours?", "session_id": "test-session-1"}'</code></pre>
+        You'll see SSE frames: <code>data: {"type":"content",...}</code> then <code>data: {"type":"done",...}</code>.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> all five intents produce the expected response, the slot picker books (and closes), a refresh continues the conversation, and the history endpoint returns the messages.
+    </div>
+  </section>
+
+  <section class="chapter" id="d12">
+    <h2>Day 12 — Emails End to End (45 min)</h2>
+
+    <p><strong>Goal:</strong> bookings trigger real emails: a confirmation to the customer and a notification to the business.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Confirm the Apps Script is authorized and reachable: run <code>testEmail()</code> once more in the Apps Script editor, then from your machine: <pre><code>python scripts/test_gas_email.py --to you@example.com</code></pre>
+        Check both your inbox and the Gmail Sent folder.</li>
+      <li>Set the business notification address. Tenant settings can carry a <code>notification_email</code>; set it in the tenant's <code>settings</code> JSON (via Turso dashboard SQL or a small script): <pre><code>UPDATE tenants SET settings = json_set(settings, '$.notification_email', 'you@example.com')
+WHERE slug = 'weblyft-design';</code></pre></li>
+      <li>Book an appointment for yourself through the API with your real email: <pre><code>curl -X POST "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/appointments/weblyft-design" \
+  -H "Content-Type: application/json" \
+  -d '{"start_time": 1780000000, "end_time": 1780001800, "email": "you@example.com", "name": "Test User", "title": "Consultation"}'</code></pre>
+        (Pick <code>start_time</code>/<code>end_time</code> from a slot the availability endpoint returned.)</li>
+      <li>Verify: you receive the <strong>customer confirmation</strong>, and the business notification arrives at <code>notification_email</code>.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> two emails arrive (customer confirmation + business notification) and both appear in Gmail's Sent folder.
+    </div>
+
+    <div class="callout note">
+      <strong>One honest limitation.</strong> The <em>chat</em> flow books appointments without collecting the visitor's email, so it only notifies the business (no customer email from chat). The API endpoint above takes an email and emails both parties. If you want customer emails from chat, capture the visitor's email in the widget (a small extension: add an email field / extract it from the message) and pass it to <code>send_appointment_confirmation</code>. Watch the 100-email/day Gmail quota.
+    </div>
+  </section>
+
+  <section class="chapter" id="d13">
+    <h2>Day 13 — Brand the Widget (30 min)</h2>
+
+    <p><strong>Goal:</strong> the widget looks like the client's brand on desktop and mobile.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>In the admin dashboard → Tenant → Settings, confirm: primary color (the button + accents), greeting (the first message), bot name (the header), and optionally <code>logo_url</code> (host the client's logo somewhere public and set it — via the settings JSON or a PATCH).</li>
+      <li>Verify the config endpoint reflects everything, then hard-refresh the test page. The button, header, and greeting should match the brand.</li>
+      <li>Test on a phone viewport (DevTools mobile mode or a real phone): the panel fits, the input is usable, the slot picker scrolls.</li>
+      <li>Confirm continuity again: chat a little, reload — the thread and unread badge behave.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the widget matches the brand on desktop and mobile, and a reload continues the conversation.
+    </div>
+  </section>
+
+  <section class="chapter" id="d14">
+    <h2>Day 14 — Buffer &amp; Onboarding Checklist (30 min)</h2>
+
+    <p><strong>Goal:</strong> your client onboarding is a written checklist, and you've timed yourself doing it.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Write the repeatable checklist (you'll reuse it for every client):
+        <ol>
+          <li>Create tenant (name, slug, color) — dashboard.</li>
+          <li>Upload knowledge (FAQ/text/PDF) — Knowledge tab.</li>
+          <li>Set hours, timezone, slot duration, buffer — Settings tab.</li>
+          <li>Optional: <code>notification_email</code> in settings JSON.</li>
+          <li>Test chat: general query, availability, booking, cancel.</li>
+          <li>Give the client the one-line embed code.</li>
+        </ol>
+      </li>
+      <li>Re-run the whole flow for a fresh demo tenant (create one with slug <code>demo</code> or use the seed script) while timing yourself.</li>
+      <li>Note anything that took longer than expected and fix it now (e.g. prepare a standard FAQ template file you can copy per client).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you have a written checklist and a measured time — target under 30 minutes from tenant creation to a live, tested widget.
+    </div>
+  </section>
+
+  <section class="chapter" id="d15">
+    <h2>Day 15 — Onboard a Second Tenant (45 min)</h2>
+
+    <p><strong>Goal:</strong> prove the process repeats — two independent clients, isolated data, no cross-talk.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Onboard a second tenant end-to-end using your Day-14 checklist. Use a different color, different knowledge (write a small fake FAQ), different hours.</li>
+      <li>Verify <strong>isolation</strong>: in the widget for tenant A, ask a question that only tenant B's knowledge knows — tenant A must not answer it.</li>
+      <li>Verify appointments don't leak: book a slot for tenant A, then check tenant B's availability at the same time — it must still be free.</li>
+      <li>Time yourself. Compare with Day 14.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> both tenants work independently — separate colors, separate knowledge, separate calendars — and your onboarding time is close to or under 30 minutes.
+    </div>
+  </section>
+
+  <section class="chapter" id="d16">
+    <h2>Day 16 — Monitoring &amp; Alerts (45 min)</h2>
+
+    <p><strong>Goal:</strong> you get told when the site is down — before a client tells you.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li><strong>No keep-alive needed:</strong> Cloudflare Workers don't sleep, so the old 30-minute keep-alive workflow is gone. Watch Cloudflare's request counters and your Gemini quota instead (dashboard → Workers → <code>chatbot-api</code> → Analytics).</li>
+      <li><strong>External uptime monitor:</strong> set up a free monitor on <code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code> checking every 60 seconds with notifications to Telegram/email. Options: Uptime Kuma (self-hosted, free) or healthchecks.io (free tier). Test the alert by pausing/stopping the Space for a couple of minutes.</li>
+      <li><strong>Logs:</strong> learn where to look when something breaks (Space page → Settings → Open in terminal):
+        <pre><code>tail -f /var/log/supervisor/fastapi_err.log   # the app's errors
+# Worker logs: Cloudflare dashboard → Workers → chatbot-api → Logs
+tail -f /var/log/nginx/error.log              # rate-limit 503s, 404s</code></pre></li>
+      <li><strong>Quotas:</strong> Gmail — run <code>checkQuota()</code> in Apps Script (100/day). Turso — dashboard shows reads vs. the 1 B/month free allowance; RAG searches read the most.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> an alert arrives when the Space is down, keep-alive runs are green, and you know which log to open for each symptom.
+    </div>
+  </section>
+
+  <section class="chapter" id="d17">
+    <h2>Day 17 — Security Pass (45 min)</h2>
+
+    <p><strong>Goal:</strong> confirm the fixes from this codebase's hardening hold up: only you can manage tenants, and nothing sensitive is publicly exposed.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li><strong>Tenant API requires auth:</strong> call a tenant endpoint with a spoofed slug but no token — it must fail: <pre><code>curl -i -X GET "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/api/tenants/me" \
+  -H "X-Tenant-Slug: weblyft-design"
+# → 401 or 403 (HTTPBearer), never tenant data</code></pre></li>
+      <li><strong>Admin only for your email:</strong> with a valid Clerk token from a different account, admin calls return 403. (Test in the dashboard with a second email if you have one.)</li>
+      <li><strong>No public model server:</strong> confirm <code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/ollama/</code> returns 404 — the nginx proxy was removed.</li>
+      <li><strong>Apps Script URL stays private:</strong> the <code>/exec</code> URL is the only secret protecting your Gmail sends. Don't publish it anywhere; anyone with it can send email as you (up to 100/day).</li>
+      <li><strong>Secrets hygiene:</strong> confirm <code>backend/.env</code> is gitignored and never committed; rotate any key you pasted into a chat or public gist.</li>
+      <li><strong>Rate limits on:</strong> nginx limits the widget endpoints to 30 req/s and API/admin to 60 req/s — a public bot can't hammer your free tier.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> unauthenticated tenant calls fail, wrong-account tokens get 403, <code>/ollama/</code> is gone, and your checklist is complete.
+    </div>
+  </section>
+
+  <section class="chapter" id="d18">
+    <h2>Day 18 — Backup &amp; Recovery (30 min)</h2>
+
+    <p><strong>Goal:</strong> you can restore everything (database, models, deploys) in under 30 minutes.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li><strong>Back up the database.</strong> The simplest full backup is a dump from the Turso dashboard, or with the Turso CLI: <pre><code>turso db shell chatbot-db ".dump" &gt; chatbot-db-backup.sql</code></pre>
+        Store it somewhere off-machine (a private GitHub gist, Dropbox, or an encrypted drive). Schedule a weekly reminder to re-dump.</li>
+      <li><strong>Practice a redeploy.</strong> Trigger the "Deploy Chatbot API Worker to Cloudflare" workflow manually (or push a commit touching <code>worker/</code>). When it finishes, confirm <code>/health</code> is green. No model re-downloads — models live in the Gemini API, not the container.</li>
+      <li><strong>Document restore:</strong> write down — restore DB from dump, redeploy, pull models, re-verify health + one chat test.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you have a DB dump file, you successfully redeployed, and your written recovery runbook takes under 30 minutes.
+    </div>
+  </section>
+
+  <section class="chapter" id="d19">
+    <h2>Day 19 — Build Your Sales Kit (60 min)</h2>
+
+    <p><strong>Goal:</strong> you can pitch and close a client without improvising.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li><strong>Pricing.</strong> Pick simple tiers, e.g.: <table>
+        <tr><th>Tier</th><th>Price</th><th>Includes</th></tr>
+        <tr><td>Starter</td><td>$49/mo</td><td>Chat + answers from their info</td></tr>
+        <tr><td>Plus</td><td>$99/mo</td><td>+ Appointment booking + email confirmations</td></tr>
+        <tr><td>Premium</td><td>$149/mo</td><td>+ Custom branding, logo, priority support</td></tr>
+      </table></li>
+      <li><strong>One-page proposal.</strong> A short document with: what it does (3 bullet points), a screenshot/GIF of your demo widget, pricing, and the 30-second install ("one line of code, we do it for you").</li>
+      <li><strong>Client install card.</strong> A one-pager for the client with their embed line and what to expect in the first week.</li>
+      <li><strong>Demo video.</strong> Record a 2-minute Loom (free) of your demo tenant: ask a question, book an appointment, show the email. Reuse it for every prospect.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you can send a complete proposal with pricing, proof (video), and install instructions in under 10 minutes.
+    </div>
+  </section>
+
+  <section class="chapter" id="d20">
+    <h2>Day 20 — Quality Pass (60 min)</h2>
+
+    <p><strong>Goal:</strong> your demo is polished enough to show prospects without apologizing.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Walk the dashboard as a stranger: create a tenant, upload a file, edit hours, view conversations/appointments — click everything, note anything broken or confusing.</li>
+      <li>Harden the bot's answers: add the top 10 questions every client of this type asks as FAQ entries (price, hours, location, cancellation, what to bring…). Re-test the previously weak answers.</li>
+      <li>Check the logs for a day's worth of noise (<code>fastapi_err.log</code>); silence anything repeated.</li>
+      <li>Optional tuning knobs if answers feel off:
+        <ul>
+          <li>Answer too wordy — lower <code>temperature</code> for synthesis in <code>backend/app/services/llm.py</code> (0.2 default).</li>
+          <li>Too many "I don't know" — lower <code>similarity_threshold</code> in <code>rag.py</code> (0.7 default) or improve the FAQ wording.</li>
+          <li>Answers too long — reduce <code>max_tokens</code> (800 default).</li>
+        </ul></li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> a friend (non-technical) can open the admin, find things, and get correct answers to the top questions without your help.
+    </div>
+  </section>
+
+  <section class="chapter" id="d21">
+    <h2>Day 21 — Buffer &amp; Dry-Run (30 min)</h2>
+
+    <p><strong>Goal:</strong> prove you can onboard a brand-new client in under 30 minutes, live.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Create a throwaway tenant (slug like <code>dry-run</code>) and run the whole Day-14 checklist with a stopwatch running: tenant → knowledge → hours → notification email → chat tests → embed line.</li>
+      <li>Record where time went. Fix the top bottleneck (usually: preparing the FAQ, or re-typing settings).</li>
+      <li>Delete the throwaway tenant (admin → DELETE sets <code>plan='deleted'</code>, hiding it everywhere).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> full onboarding measured under 30 minutes, with the bottleneck fixed and noted.
+    </div>
+  </section>
+
+  <section class="chapter" id="d22">
+    <h2>Day 22 — Landing Page &amp; Offer (90 min)</h2>
+
+    <p><strong>Goal:</strong> one link you can send prospects that sells the service — and demonstrates it.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Build a simple one-page site (Carrd, Notion, or a plain HTML file on Cloudflare Pages — all free). Sections: headline ("Never miss a customer again — AI chat + booking for local businesses"), 3 benefits, how it works (3 steps), pricing table, and a call-to-action.</li>
+      <li>Embed your <strong>own widget</strong> on the page using your demo tenant's slug — the page literally demonstrates the product. Set a friendly greeting like "Hi! I'm the demo bot — ask me about our services or book a slot."</li>
+      <li>Make "Book a demo" go through the widget's booking flow (or link to a booking slot on your calendar).</li>
+      <li>Write the one-line value prop you'll use in every outreach message: e.g. "I set up AI assistants that answer your customers' questions and book appointments 24/7 — first two weeks free, then $X/month."</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the page is live, the widget works on it, and you have a one-line pitch you're comfortable sending.
+    </div>
+  </section>
+
+  <section class="chapter" id="d23">
+    <h2>Day 23 — Outreach Day 1 (60 min)</h2>
+
+    <p><strong>Goal:</strong> 20 businesses on your list, 10 contacted, at least one conversation started.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Build the list in a spreadsheet: columns = business name, category, city, contact (email/Instagram/DM), status. Target categories where "missed leads while closed" hurts: dentists, hair/nail salons, plumbers/HVAC, electricians, tutors, consultants, physios, auto shops, restaurants (reservations), real estate agents.</li>
+      <li>Write one personalized message per business (mention something specific: their reviews, their site, their hours). Keep it short:
+        <blockquote>"Hi [Name] — I saw [Business] gets [specific observation]. I build AI chat assistants that answer your customers' questions and book appointments while you're closed — first 2 weeks free, no commitment. Want me to set up a demo on your site?"</blockquote></li>
+      <li>Send 10 messages (email or DM). Log statuses in the sheet.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> 10 messages sent, statuses logged, and at least one reply or "tell me more" in your inbox.
+    </div>
+
+    <div class="callout tip">
+      <strong>The pilot offer.</strong> Free 2-week pilot (your cost is ~1 hour of setup) removes the risk objection. Convert at the end: "want to keep it on?" Most will say yes at $49–99/mo.
+    </div>
+  </section>
+
+  <section class="chapter" id="d24">
+    <h2>Day 24 — Outreach Day 2 &amp; Demos (60 min)</h2>
+
+    <p><strong>Goal:</strong> the list is fully contacted, follow-ups sent, and at least one demo call booked.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Send the remaining 10 messages from your list.</li>
+      <li>Follow up with Day-23 replies (a friendly nudge after 48 h is normal).</li>
+      <li>Book demo calls. Prep a 5-minute demo script: (1) ask what their top questions/booking pain are, (2) show your live demo tenant answering a question like theirs, (3) show a booking + confirmation email, (4) offer the free pilot with a date to install.</li>
+      <li>Add a "Follow-up" date column to your sheet and schedule next touchpoints.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> all 20 contacted, follow-ups sent, and at least one demo call on the calendar (or a clear "no thanks" so you can move on).
+    </div>
+  </section>
+
+  <section class="chapter" id="d25">
+    <h2>Day 25 — Pilot Kickoff (90 min)</h2>
+
+    <p><strong>Goal:</strong> your first pilot client is live on their real website.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Sign the pilot (a simple one-page agreement: free 2 weeks, then $X/month, 30-day notice to cancel).</li>
+      <li>Onboard them with your checklist: tenant (their real name/color), knowledge (their real FAQ/PDF — ask for it, or draft it from their site and confirm), hours/timezone/slots, <code>notification_email</code> = their inbox.</li>
+      <li>Install the widget: either they paste the embed line (give them the exact snippet) or you do it if they'll share a staging page. Verify on the live page: button, colors, greeting, no console errors.</li>
+      <li>Book a test appointment on their site with your email, confirm both emails arrive, then cancel it in the dashboard (or via the bot).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the widget is live on the client's site, answers their real questions, books and emails correctly, and the client knows what happens next (your Day-26 check-in).
+    </div>
+  </section>
+
+  <section class="chapter" id="d26">
+    <h2>Day 26 — First-Week Check-In (45 min)</h2>
+
+    <p><strong>Goal:</strong> the pilot is actually working in the wild, and you've captured the client's feedback.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>In the admin dashboard, review the pilot's conversations and appointments: which questions came in, which booked, any that failed or confused the bot.</li>
+      <li>Fix the top issues you see: add FAQ entries for questions the bot missed, adjust hours if slots were booked at odd times, re-word anything that read badly.</li>
+      <li>Call the client. Ask three questions: (1) what did customers use it for? (2) did anything embarrass you? (3) if it was perfect, what would it do next? Log the answers.</li>
+      <li>Confirm emails are still flowing (their notification inbox).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> the bot handled real traffic, you fixed what surfaced, and the client can name one concrete win from week one.
+    </div>
+  </section>
+
+  <section class="chapter" id="d27">
+    <h2>Day 27 — Case Study &amp; Testimonial (45 min)</h2>
+
+    <p><strong>Goal:</strong> proof you can reuse to close the next clients.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Pull numbers from the admin dashboard + Turso: conversations, appointments booked, questions answered, plus anything the client told you ("saved 6 phone calls", "booked while closed").</li>
+      <li>Take screenshots: the widget on their site, a conversation, a confirmation email.</li>
+      <li>Write a 200-word case study: who, what they installed, what happened in week one, the quote.</li>
+      <li>Ask the client for a one-sentence testimonial and permission to use the case study (offer a month at half price or a small credit for it).</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you have a written case study with real numbers and a client-approved quote you can put on your landing page.
+    </div>
+  </section>
+
+  <section class="chapter" id="d28">
+    <h2>Day 28 — Business Review (45 min)</h2>
+
+    <p><strong>Goal:</strong> know your real numbers: revenue, time, and your effective hourly rate.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Total the time you spent this month (all sessions, including setup). Be honest — it's usually 25–35 hours.</li>
+      <li>Total the revenue (pilot, if it converted; otherwise projected). Compute: effective hourly rate = revenue ÷ hours. With a $99/mo pilot and 30 setup hours, month 1 is negative — that's fine; month 2 is where it flips.</li>
+      <li>Decide pricing for client #2 based on what you now know (don't lower it — raise it if the pilot is happy).</li>
+      <li>Start the ledger: one row per client with price, hours spent, and monthly revenue. This sheet is the whole business.</li>
+      <li>Set your next-month target: e.g. 3 clients, $297/mo MRR, 6 h/week.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you have real numbers in a ledger, a decision on pricing, and a written next-month target.
+    </div>
+  </section>
+
+  <section class="chapter" id="d29">
+    <h2>Day 29 — Scale &amp; Automate (60 min)</h2>
+
+    <p><strong>Goal:</strong> client #3 should take half the time of client #1.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Turn your Day-14 checklist into a template document (with a fill-in-the-blank FAQ file you adapt per client).</li>
+      <li>Automate the boring bits:
+        <ul>
+          <li>Standard FAQ template per industry (dental, salon, trades, tutoring…) — copy, edit, upload.</li>
+          <li>A reusable "new client" runbook with the exact commands/URLs (use the Quick Reference chapter below).</li>
+          <li>A weekly 30-minute maintenance slot on your calendar (logs, quotas, one improvement).</li>
+        </ul></li>
+      <li>Pick the roadmap items that matter next (in rough order):
+        <ol>
+          <li>Email capture in the chat flow (so chat bookings email the customer).</li>
+          <li>Tenant-owner login (each client manages their own hours/knowledge — sells itself).</li>
+          <li>Custom domain for each client's widget.</li>
+          <li>Paid GPU for faster answers when clients complain about speed.</li>
+        </ol></li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> onboarding is a copy-paste template, your week has a fixed maintenance slot, and the roadmap has an agreed next item.
+    </div>
+  </section>
+
+  <section class="chapter" id="d30">
+    <h2>Day 30 — Celebrate &amp; 90-Day Plan (30 min)</h2>
+
+    <p><strong>Goal:</strong> close the month deliberately and set the next three months on paper.</p>
+
+    <h3>Steps</h3>
+    <ol>
+      <li>Look back: list the three things that worked (e.g. the pilot offer, the demo video, the checklist) and the three that didn't (e.g. cold emailing, a feature you overbuilt). Keep the winners, drop the losers.</li>
+      <li>Write the 90-day plan: <table>
+        <tr><th>By</th><th>Target</th></tr>
+        <tr><td>Day 60</td><td>3 paying clients, $250–300 MRR, onboarding under 20 min</td></tr>
+        <tr><td>Day 90</td><td>6–8 clients, $600+ MRR, or a deliberate decision to raise prices / niche down</td></tr>
+      </table></li>
+      <li>Schedule the recurring habits: weekly 30-min maintenance, monthly business review, quarterly price review.</li>
+      <li>Celebrate — you built a real product and launched it at $0 cost. That's the hard part done.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>How to know it worked:</strong> you have a written 90-day plan, a maintenance habit on the calendar, and you can honestly name what to repeat and what to stop.
+    </div>
+  </section>
+
+  <section class="chapter" id="d31-next">
+    <h2>Quick Reference Cards</h2>
+
+    <p><strong>Goal:</strong> one place for the commands and URLs you'll use every week.</p>
+
+    <h3>Core URLs</h3>
+    <table>
+      <tr><th>What</th><th>URL</th></tr>
+      <tr><td>Backend health</td><td><code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code></td></tr>
+      <tr><td>Widget file</td><td><code>https://chatbot-widget.pages.dev/widget.js</code></td></tr>
+      <tr><td>Admin dashboard</td><td><code>https://chatbot-admin.pages.dev</code></td></tr>
+      <tr><td>Tenant config</td><td><code>…/widget/config/{slug}</code></td></tr>
+      <tr><td>Availability</td><td><code>…/widget/availability/{slug}?start_date=…&amp;end_date=…&amp;timezone=…</code></td></tr>
+      <tr><td>History</td><td><code>…/widget/history/{slug}?conversation_id=…</code></td></tr>
+    </table>
+
+    <h3>Client embed line</h3>
+    <pre><code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="client-slug"&gt;&lt;/script&gt;</code></pre>
+
+    <h3>Everyday commands (run from your machine with backend/.env present)</h3>
+    <pre><code># Migrations (idempotent; the container also auto-runs this on boot)
+python backend/run_migrations.py
+
+# Create a tenant
+python scripts/create_tenant.py --name "Business Name" --slug business-slug --color "#3B82F6"
+
+# Upload knowledge
+python scripts/upload_knowledge.py --tenant business-slug --file faq.txt --source-type txt
+
+# Extract business hours from a PDF
+python scripts/extract_business_hours.py --tenant business-slug --file faq.pdf
+
+# Test email
+python scripts/test_gas_email.py --to you@example.com</code></pre>
+
+    <h3>Space terminal (Settings → Open in terminal)</h3>
+    <pre><code># No model downloads — chat + embeddings run on the Gemini API (worker/src/llm.ts)
+tail -f /var/log/supervisor/fastapi_err.log</code></pre>
+
+    <h3>Free quotas that matter</h3>
+    <table>
+      <tr><th>Resource</th><th>Free limit</th><th>Watch for</th></tr>
+      <tr><td>Gmail via Apps Script</td><td>100 emails/day</td><td>15+ emails/day is healthy at pilot scale</td></tr>
+      <tr><td>Turso</td><td>9 GB, 1 B reads/month</td><td>RAG searches read the most; check the dashboard graph</td></tr>
+      <tr><td>Cloudflare Worker</td><td>100k req/day free (10 ms CPU per request)</td><td>No sleeping; watch Gemini daily caps</td></tr>
+      <tr><td>Clerk</td><td>10k monthly active users</td><td>Only your admin signs in — negligible</td></tr>
+      <tr><td>Cloudflare Pages</td><td>Unlimited bandwidth</td><td>—</td></tr>
+    </table>
+
+    <h3>Weekly maintenance (30 min)</h3>
+    <ol>
+      <li>Health URL green; keep-alive workflow green.</li>
+      <li>Tail <code>fastapi_err.log</code> — new errors?</li>
+      <li>Gmail quota check (<code>checkQuota()</code>); Turso reads graph.</li>
+      <li>Review each client's conversations/appointments; answer anything the bot missed by adding FAQ entries.</li>
+    </ol>
+
+    <div class="callout done">
+      <strong>That's the month.</strong> From here, the business runs on the weekly habit and the 90-day plan — the platform itself needs almost no attention.
+    </div>
+  </section>
+
+  <section class="chapter" id="m30-phases">
+    <h2>Appendix — Migration Roadmap: Phases 1–4 in Detail</h2>
+
+    <p><strong>Why this appendix exists:</strong> the original codebase deployed its backend as a Docker Space on Hugging Face. In July 2026 Hugging Face moved Docker (and Gradio) Spaces behind a paid PRO subscription, leaving only Static Spaces free. The project was re-planned around a <strong>$0 Cloudflare stack</strong> and is being ported in phases (tracked in <code>hf-docker-exit-spec.md</code>). This guide describes the Phase-1 build; the phases below show what ships next.</p>
+
+    <table>
+      <tr><th>Phase</th><th>What ships</th><th>Where (code)</th><th>Done when</th></tr>
+      <tr><td><strong>1 — Chat + RAG</strong> ✅ <em>implemented</em></td><td>Widget chat (SSE), RAG answers from per-tenant knowledge, conversation history, admin-lite tenant + knowledge ingest, GitHub Actions deploys</td><td><code>worker/</code> (config, llm, rag, chat, clerk, admin)</td><td>Widget on a test page answers from knowledge; <code>/health</code> green</td></tr>
+      <tr><td><strong>2 — Appointments + email</strong></td><td>Availability slots, booking/cancel in the chat, business-hours parsing, Google Apps Script email confirmations, <code>email_pending</code> retry UX on Gmail quota</td><td><code>worker/src</code> ports of <code>appointments.py</code> + <code>email.py</code>; <code>gas-email/</code></td><td>“Book Tuesday 2pm” books + emails both sides</td></tr>
+      <tr><td><strong>3 — Full admin dashboard</strong></td><td>Tenant CRUD, analytics, conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code></td><td>Admin UI matches the old README feature list</td></tr>
+      <tr><td><strong>4 — Cleanup & docs</strong></td><td>Remaining docs/guides rewritten, legacy <code>scripts/</code> ported to Worker API calls, old FastAPI <code>backend/</code> removed once parity is proven</td><td>Repo root</td><td>Repo has no Hugging Face / Docker remnants</td></tr>
+    </table>
+
+    <h3>Key decisions locked in the spec</h3>
+    <ul>
+      <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims so the vec0 <code>FLOAT[768]</code> vector table needs no migration). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
+      <li><strong>Database:</strong> Turso stays (sqlite-vec is built in). Schema: <code>worker/db/schema.sql</code>.</li>
+      <li><strong>PDFs:</strong> not parsed in the Worker (free-plan CPU limit) — extracted in the browser or CLI, then uploaded as text (§5.6 of the spec).</li>
+      <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>; optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
+      <li><strong>Deploys:</strong> GitHub Actions → <code>deploy-worker.yml</code> (Worker) + Pages workflows (widget/admin).</li>
+    </ul>
+
+    <h3>Reading the rest of this guide</h3>
+    <p>Days 1–2 and 4–7 (accounts, secrets, static deploys, local dev) are current. Days about the backend internals (<code>backend/</code>) describe the reference implementation that the Worker is ported from. Days 10–12+ (appointments, emails, admin uploads, PDFs) are the Phase 2–4 roadmap — the endpoints exist in the old backend and are being ported in order. Where a command says <code>https://…hf.space/…</code>, substitute <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev/…</code>. The live build steps always live in <code>DEPLOY.md</code>.</p>
+  </section>
+
+  </article>
+  <footer>
+    <p>Practical Guide — Multi-Tenant AI Chatbot SaaS project | All tools free, no credit card required</p>
+  </footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+const THEME_KEY = 'guide-theme';
+const CONTENT = document.getElementById('content');
+const ARTICLE = document.getElementById('article');
+const TOC_LIST = document.getElementById('toc-list');
+const TOGGLE = document.getElementById('toc-toggle');
+const THEME_BTN = document.getElementById('theme-toggle');
+const PROGRESS = document.getElementById('progress-bar');
+const SEARCH_MODAL = document.getElementById('search-modal');
+const SEARCH_INPUT = document.getElementById('search-input');
+const SEARCH_RESULTS = document.getElementById('search-results');
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = saved ? saved === 'dark' : prefersDark;
+  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  THEME_BTN.textContent = isDark ? '☀️' : '🌙';
+}
+THEME_BTN.addEventListener('click', () => {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, isDark ? 'light' : 'dark');
+  THEME_BTN.textContent = isDark ? '🌙' : '☀️';
+});
+initTheme();
+
+function buildTOC() {
+  const headings = ARTICLE.querySelectorAll('h2, h3');
+  let chapterUl = null;
+  headings.forEach((h, i) => {
+    const id = h.id || `heading-${i}`;
+    h.id = id;
+    if (h.tagName === 'H2') {
+      const li = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = '#' + id;
+      link.className = 'toc-link toc-chapter';
+      link.textContent = h.textContent;
+      li.appendChild(link);
+      const sectionUl = document.createElement('ul');
+      sectionUl.className = 'toc-section';
+      li.appendChild(sectionUl);
+      TOC_LIST.appendChild(li);
+      chapterUl = sectionUl;
+    } else if (chapterUl) {
+      const li = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = '#' + id;
+      link.className = 'toc-link';
+      link.textContent = h.textContent;
+      li.appendChild(link);
+      chapterUl.appendChild(li);
+    }
+  });
+}
+buildTOC();
+
+if (window.innerWidth <= 1024) {
+  TOGGLE.addEventListener('click', () => document.getElementById('toc').classList.toggle('open'));
+}
+
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  PROGRESS.style.transform = `scaleX(${docHeight > 0 ? scrollTop / docHeight : 0})`;
+}
+window.addEventListener('scroll', updateProgress, { passive: true });
+
+const sections = [];
+ARTICLE.querySelectorAll('h2, h3').forEach(h => sections.push({ id: h.id, top: h.offsetTop }));
+function highlightTOC() {
+  const scrollY = window.scrollY + 120;
+  let current = null;
+  for (const s of sections) { if (s.top <= scrollY) current = s.id; else break; }
+  TOC_LIST.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+}
+window.addEventListener('scroll', highlightTOC, { passive: true });
+
+const searchIndex = [];
+ARTICLE.querySelectorAll('h2, h3, p, li, pre, .callout').forEach(el => {
+  const text = el.textContent.trim();
+  if (text.length > 20) searchIndex.push({ text: text.substring(0, 300), element: el });
+});
+function openSearch() { SEARCH_MODAL.classList.add('open'); SEARCH_INPUT.focus(); }
+function closeSearch() { SEARCH_MODAL.classList.remove('open'); SEARCH_INPUT.value = ''; SEARCH_RESULTS.innerHTML = ''; }
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+  if (e.key === 'Escape') closeSearch();
+});
+SEARCH_MODAL.addEventListener('click', (e) => { if (e.target === SEARCH_MODAL) closeSearch(); });
+SEARCH_INPUT.addEventListener('input', () => {
+  const q = SEARCH_INPUT.value.toLowerCase().trim();
+  SEARCH_RESULTS.innerHTML = '';
+  if (!q) return;
+  searchIndex.filter(item => item.text.toLowerCase().includes(q)).slice(0, 15).forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'search-result';
+    const heading = item.element.closest('section')?.querySelector('h2')?.textContent || 'Content';
+    div.innerHTML = `<div class="title">${heading}</div><div class="snippet">${item.text}</div>`;
+    div.addEventListener('click', () => { item.element.scrollIntoView({ behavior: 'smooth', block: 'center' }); closeSearch(); });
+    SEARCH_RESULTS.appendChild(div);
+  });
+});
+
+document.querySelectorAll('pre').forEach(pre => {
+  if (pre.classList.contains('mermaid')) return; // never touch mermaid source blocks
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(pre.querySelector('code').textContent);
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+  pre.appendChild(btn);
+});
+
+if (window.mermaid) {
+  // Render exactly ONCE after the DOM is ready. Re-running mermaid.run() on
+  // already-rendered elements throws and replaces diagrams with error icons,
+  // so no MutationObserver here.
+  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+  const render = () => mermaid.run();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+  else render();
+}
+
+console.log('Guide loaded:', document.title);
+</script>
+</body>
+</html>

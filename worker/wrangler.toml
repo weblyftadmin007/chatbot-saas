@@ -1,0 +1,27 @@
+# Cloudflare Worker config for the chatbot backend (Phase 1: widget chat + RAG).
+# Docs: ../DEPLOY.md  |  Plan: ../hf-docker-exit-spec.md
+name = "chatbot-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Non-secret configuration. Change values here or override with `wrangler secret put`.
+[vars]
+ENVIRONMENT = "production"
+# Chat model. Free-tier flash-class model — pick the one with the best free
+# Requests-Per-Day in AI Studio (https://aistudio.google.com) at setup time.
+CHAT_MODEL = "gemini-2.5-flash"
+# Embedding model. Keep 768 output dimensions — the vec0 table (db/schema.sql)
+# is declared FLOAT[768] and stored vectors expect 768-dim float32 blobs.
+EMBED_MODEL = "gemini-embedding-001"
+EMBED_DIMENSIONS = "768"
+TOP_K = "5"
+SIMILARITY_THRESHOLD = "0.7"
+CHUNK_SIZE = "500"
+CHUNK_OVERLAP = "50"
+# Optional self-throttle for chat LLM calls (requests/minute/tenant).
+LLM_CHAT_RPM = "10"
+
+# Secrets — set these with `wrangler secret put` (or GitHub Actions):
+#   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, GEMINI_API_KEY,
+#   CLERK_PUBLISHABLE_KEY, ADMIN_EMAILS (comma-separated allowlist)

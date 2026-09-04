@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10.1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Build Your Own AI Chatbot Business</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Build Your Own AI Chatbot Business</h1>
+</header>
+<h1 id="build-your-own-ai-chatbot-business">Build Your Own AI Chatbot
+Business</h1>
+<h2 id="a-simple-guide-no-coding-needed">A Simple Guide (No Coding
+Needed)</h2>
+<hr />
+<h2 id="what-is-this">What Is This?</h2>
+<p>You’re building a <strong>robot helper</strong> that lives on
+websites. It: - Chats with visitors - Answers questions from your
+knowledge base - (Roadmap) Books appointments + sends confirmation
+emails</p>
+<p><strong>You sell this to businesses.</strong> They pay you monthly.
+You manage everything from a dashboard.</p>
+<hr />
+<h2 id="the-tools-all-free-no-credit-card">The Tools (All Free, No
+Credit Card)</h2>
+<table>
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 70%" />
+</colgroup>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What It Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GitHub</strong></td>
+<td>Stores your project files + auto-deploys</td>
+</tr>
+<tr>
+<td><strong>Cloudflare</strong></td>
+<td>Runs the AI backend (Worker, never sleeps) + serves the
+widget/dashboard (Pages)</td>
+</tr>
+<tr>
+<td><strong>Google AI Studio</strong></td>
+<td>The AI brain — Gemini API for chat + embeddings (was a free Hugging
+Face computer until HF made Docker Spaces paid in July 2026)</td>
+</tr>
+<tr>
+<td><strong>Turso</strong></td>
+<td>Database — stores all data (vector search built in)</td>
+</tr>
+<tr>
+<td><strong>Clerk</strong></td>
+<td>Login for your admin dashboard</td>
+</tr>
+<tr>
+<td><strong>Google Apps Script</strong></td>
+<td>Sends emails from your Gmail (Phase 2)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="how-it-works-simple">How It Works (Simple)</h2>
+<pre><code>Visitor asks &quot;What are your hours?&quot;
+         │
+         ▼
+Chat widget on their website
+         │
+         ▼
+Cloudflare Worker (chatbot-api) receives it
+         │
+         ▼
+Worker searches the client&#39;s knowledge base (Turso vectors)
+         │
+         ▼
+Gemini (Google AI) writes the answer, streamed back word-by-word</code></pre>
+<hr />
+<h2 id="week-plan-2-hoursweek">4-Week Plan (2 Hours/Week)</h2>
+<blockquote>
+<p>The detailed step-by-step (with exact clicks, secrets, and curl
+commands) lives in <strong>SETUP.md</strong> (accounts),
+<strong>DEPLOY.md</strong> (deploy + first client), and the three PDF
+guides. This page is the plain-English version.</p>
+</blockquote>
+<h3 id="week-1-set-up-accounts-deploy">WEEK 1: Set Up Accounts &amp;
+Deploy</h3>
+<p><strong>Day 1</strong> - Create the free accounts: - GitHub.com ·
+Cloudflare.com (API token + account ID) · aistudio.google.com (Gemini
+API key) · Turso.tech (database + schema) · Clerk.com (keys) ·
+Script.google.com (email, Phase 2)</p>
+<p><strong>Day 2</strong> - Get the code: - Click “Use this template” on
+GitHub - Go to Settings → Secrets → add the secrets (exact list in
+SETUP.md)</p>
+<p><strong>Day 3</strong> - Deploy the brain: - Push to
+<code>main</code> → GitHub Actions deploys the Cloudflare Worker
+automatically - Check
+<code>https://chatbot-api.&lt;your-subdomain&gt;.workers.dev/health</code>
+→ “healthy” - No 10-minute model downloads, no “keep alive” pings —
+Workers don’t sleep</p>
+<p><strong>Day 4</strong> - Set up the database: -
+<code>turso db shell chatbot-db &lt; worker/db/schema.sql</code> (one
+command, safe to re-run)</p>
+<p><strong>Day 5</strong> - Test: - Health URL shows healthy; tables
+exist in Turso</p>
+<hr />
+<h3 id="week-2-teach-the-brain">WEEK 2: Teach the Brain</h3>
+<p><strong>Day 1</strong> - Test chat works (curl command in DEPLOY.md
+§7)</p>
+<p><strong>Day 2</strong> - Create your first client + upload their
+knowledge (two curl commands, DEPLOY.md §5):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST <span class="st">&quot;</span><span class="va">$API</span><span class="st">/admin/tenants&quot;</span> <span class="at">-H</span> <span class="st">&quot;Authorization: Bearer </span><span class="va">$TOKEN</span><span class="st">&quot;</span> <span class="dt">\</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;name&quot;:&quot;Weblyft Design&quot;,&quot;slug&quot;:&quot;weblyft-design&quot;}&#39;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST <span class="st">&quot;</span><span class="va">$API</span><span class="st">/admin/tenants/TENANT_ID/knowledge/text&quot;</span> <span class="dt">\</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Authorization: Bearer </span><span class="va">$TOKEN</span><span class="st">&quot;</span> <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;source_id&quot;:&quot;faq-1&quot;,&quot;source_type&quot;:&quot;txt&quot;,&quot;content&quot;:&quot;We open at 9am...&quot;}&#39;</span></span></code></pre></div>
+<p><strong>Day 3</strong> - Upload their FAQ PDF: - Convert the PDF to
+text first (<code>pdftotext faq.pdf -</code>), upload the text as above
+- (In Phase 3 the admin dashboard does this for you in the browser)</p>
+<p><strong>Day 4</strong> - Test questions: - “What are your hours?” →
+Answers from their knowledge</p>
+<hr />
+<h3 id="week-3-appointments-widget">WEEK 3: Appointments &amp;
+Widget</h3>
+<p><strong>Day 1</strong> - Set up email (Phase 2 — Apps Script code is
+in <code>gas-email/</code>) <strong>Day 2</strong> - Test booking (Phase
+2 — availability/booking are being ported to the Worker) <strong>Day
+3</strong> - Build widget: - Cloudflare Pages → Connect GitHub → Deploy
+- Get URL: <code>https://chatbot-widget.pages.dev/widget.js</code>
+<strong>Day 4</strong> - Install on client site (add
+<code>data-api-url</code> so the widget finds the Worker):</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode html"><code class="sourceCode html"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> src</span><span class="op">=</span><span class="st">&quot;https://chatbot-widget.pages.dev/widget.js&quot;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ot">        data-tenant</span><span class="op">=</span><span class="st">&quot;weblyft-design&quot;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ot">        data-api-url</span><span class="op">=</span><span class="st">&quot;https://chatbot-api.</span><span class="er">&lt;</span><span class="st">your-subdomain&gt;.workers.dev&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span></code></pre></div>
+<hr />
+<h3 id="week-4-your-dashboard">WEEK 4: Your Dashboard</h3>
+<p><strong>Day 1</strong> - Deploy admin dashboard to Cloudflare Pages
+(works today; its full feature set arrives with Phase 3) <strong>Day
+2</strong> - Login with Clerk → see your client <strong>Day 3</strong> -
+Add new clients (Phase 3: dashboard buttons; today: the curl commands
+above) <strong>Day 4</strong> - Set up monitoring (free uptime checks on
+the <code>/health</code> URL) <strong>Day 5</strong> - Done! 🎉</p>
+<hr />
+<h2 id="adding-a-new-client-5-minutes">Adding a New Client (5
+Minutes)</h2>
+<p>Today (Phase 1): two curl commands from DEPLOY.md §5 (create tenant,
+upload knowledge text), then send the client the two-line embed snippet.
+Phase 3: the same from the admin dashboard (name → slug → color →
+drag-drop PDF → copy embed code).</p>
+<hr />
+<h2 id="commands-cheat-sheet">Commands Cheat Sheet</h2>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set once</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="va">API</span><span class="op">=</span><span class="st">&quot;https://chatbot-api.&lt;your-subdomain&gt;.workers.dev&quot;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="va">TOKEN</span><span class="op">=</span><span class="st">&quot;&lt;your admin token (see DEPLOY.md §5)&gt;&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Health</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="st">&quot;</span><span class="va">$API</span><span class="st">/health&quot;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a client</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST <span class="st">&quot;</span><span class="va">$API</span><span class="st">/admin/tenants&quot;</span> <span class="at">-H</span> <span class="st">&quot;Authorization: Bearer </span><span class="va">$TOKEN</span><span class="st">&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;name&quot;:&quot;Client Name&quot;,&quot;slug&quot;:&quot;client-slug&quot;}&#39;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Upload their knowledge (text)</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-X</span> POST <span class="st">&quot;</span><span class="va">$API</span><span class="st">/admin/tenants/TENANT_ID/knowledge/text&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Authorization: Bearer </span><span class="va">$TOKEN</span><span class="st">&quot;</span> <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;source_id&quot;:&quot;faq-1&quot;,&quot;source_type&quot;:&quot;txt&quot;,&quot;content&quot;:&quot;...&quot;}&#39;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="co"># One-time database setup (safe to re-run)</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="ex">turso</span> db shell chatbot-db <span class="op">&lt;</span> worker/db/schema.sql</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="co"># (The old python scripts/ are legacy — being ported to the API in Phase 4)</span></span></code></pre></div>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<colgroup>
+<col style="width: 64%" />
+<col style="width: 35%" />
+</colgroup>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Widget not showing</td>
+<td>Check the script tag spelling + <code>data-tenant</code>
+exactly</td>
+</tr>
+<tr>
+<td>Wrong AI answer</td>
+<td>Re-upload the knowledge text with clearer info</td>
+</tr>
+<tr>
+<td>No AI answer, “usage limit” message</td>
+<td>Gemini free-tier daily cap — retry later, or check the model’s quota
+in AI Studio</td>
+</tr>
+<tr>
+<td>404 on chat</td>
+<td><code>data-api-url</code> must point at the Worker, not the widget
+Pages URL</td>
+</tr>
+<tr>
+<td>Knowledge not found</td>
+<td>Schema loaded? (<code>worker/db/schema.sql</code>); source uploaded?
+(list: <code>GET /admin/tenants/&lt;id&gt;/knowledge</code>)</td>
+</tr>
+<tr>
+<td>No emails</td>
+<td>Phase 2 feature — check Gmail sent folder; limit 100/day</td>
+</tr>
+<tr>
+<td>Client wants changes</td>
+<td>Re-upload their knowledge / update settings → auto-live</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="costs-0">Costs: $0</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Free Limit</th>
+<th>You’ll Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cloudflare Worker</td>
+<td>100k requests/day</td>
+<td>Tiny</td>
+</tr>
+<tr>
+<td>Gemini API</td>
+<td>Free daily quota (varies — check AI Studio)</td>
+<td>Small</td>
+</tr>
+<tr>
+<td>Turso</td>
+<td>9GB, 1B reads/mo</td>
+<td>~100MB</td>
+</tr>
+<tr>
+<td>Cloudflare Pages</td>
+<td>Unlimited</td>
+<td>Tiny</td>
+</tr>
+<tr>
+<td>Clerk</td>
+<td>10k logins/mo</td>
+<td>Just you</td>
+</tr>
+<tr>
+<td>Gmail</td>
+<td>100 emails/day</td>
+<td>~15/day</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="your-weekly-time">Your Weekly Time</h2>
+<ul>
+<li><strong>Week 1</strong>: 2-3 hours (accounts + deploy)</li>
+<li><strong>Week 2</strong>: 1 hour (upload knowledge, test)</li>
+<li><strong>Week 3</strong>: 2 hours (widget + install)</li>
+<li><strong>Week 4</strong>: 1 hour (dashboard + launch)</li>
+<li><strong>Total</strong>: ~6 hours over 4 weeks</li>
+</ul>
+<hr />
+<h2 id="what-you-need-from-me">What You Need From Me</h2>
+<ol type="1">
+<li><strong>GitHub template repository</strong> (all code ready)</li>
+<li><strong>Exact secret names/values</strong> for GitHub
+(SETUP.md)</li>
+<li><strong>Step-by-step commands</strong> for each day (DEPLOY.md + the
+PDF guides)</li>
+<li><strong>Support</strong> if something breaks</li>
+</ol>
+<hr />
+<h2 id="migration-status-what-changed-and-why">Migration Status (what
+changed and why)</h2>
+<ul>
+<li><strong>Before (2024–mid 2026):</strong> backend ran as a Docker
+Space on Hugging Face with a local Ollama model.</li>
+<li><strong>July 2026:</strong> Hugging Face made Docker/Gradio Spaces
+paid — only Static Spaces are free.</li>
+<li><strong>Now:</strong> backend = Cloudflare Worker
+(<code>worker/</code>) calling the Gemini API; Turso database unchanged;
+widget/dashboard on Cloudflare Pages; all deploys via GitHub
+Actions.</li>
+<li><strong>Phases:</strong> 1 Chat+RAG ✅ live · 2 Appointments+email ·
+3 Full admin dashboard · 4 Cleanup (details in
+<code>hf-docker-exit-spec.md</code> + the PDF guide appendixes).</li>
+</ul>
+<hr />
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>Tenant</strong> = Your client (business using chatbot)</li>
+<li><strong>Widget</strong> = Floating chat button on their site</li>
+<li><strong>Worker</strong> = The free Cloudflare program that runs your
+backend API</li>
+<li><strong>RAG</strong> = The robot searches your knowledge base, then
+answers from what it found</li>
+<li><strong>Embedding</strong> = A “meaning fingerprint” — 768 numbers
+per piece of text (Gemini makes them)</li>
+<li><strong>Deploy</strong> = Push code so it goes live (GitHub does
+this automatically)</li>
+<li><strong>API</strong> = How computers talk to each other</li>
+<li><strong>Slug</strong> = Short name in URL (like
+<code>bobs-plumbing</code>)</li>
+<li><strong>data-api-url</strong> = Extra attribute that tells the
+widget where the Worker lives</li>
+</ul>
+</body>
+</html>

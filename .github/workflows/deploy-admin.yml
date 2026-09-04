@@ -1,0 +1,36 @@
+name: Deploy Admin Dashboard to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-dashboard/**'
+      - '.github/workflows/deploy-admin.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd admin-dashboard && npm install
+
+      - name: Build admin
+        run: cd admin-dashboard && npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: chatbot-admin
+          directory: admin-dashboard/dist
+          branch: main

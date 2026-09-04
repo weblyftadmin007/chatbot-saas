@@ -1,0 +1,21 @@
+{
+  "name": "chatbot-api-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for the multi-tenant chatbot (Phase 1: widget chat + RAG). Port of the FastAPI backend in backend/ — see hf-docker-exit-spec.md.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240925.0",
+    "typescript": "^5.6.2",
+    "wrangler": "^3.80.0"
+  }
+}

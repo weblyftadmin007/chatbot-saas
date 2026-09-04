@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Your Own AI Chatbot SaaS — Deep-Dive Technical Guide</title>
+<style>
+:root {
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --border: #e2e8f0;
+  --code-bg: #f1f5f9;
+  --code-text: #1e293b;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --callout-tip: #dbeafe;
+  --callout-tip-text: #1e40af;
+  --callout-warning: #fef3c7;
+  --callout-warning-text: #92400e;
+  --callout-note: #f1f5f9;
+  --callout-note-text: #475569;
+  --callout-done: #dcfce7;
+  --callout-done-text: #166534;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --border: #334155;
+  --code-bg: #0f172a;
+  --code-text: #e2e8f0;
+  --sidebar-bg: #1e293b;
+  --sidebar-border: #334155;
+  --callout-tip: #1e3a5f;
+  --callout-tip-text: #93c5fd;
+  --callout-warning: #3d2914;
+  --callout-warning-text: #fcd34d;
+  --callout-note: #1e293b;
+  --callout-note-text: #94a3b8;
+  --callout-done: #14532d;
+  --callout-done-text: #86efac;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 16px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  transition: background 0.2s, color 0.2s;
+}
+.skip-link {
+  position: absolute; top: -100%; left: 1rem; padding: 0.5rem 1rem;
+  background: var(--primary); color: white; border-radius: var(--radius);
+  z-index: 100; text-decoration: none;
+}
+.skip-link:focus { top: 1rem; }
+#toc {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem; border-right: 1px solid var(--sidebar-border);
+  background: var(--sidebar-bg);
+}
+#toc-toggle { display: none; }
+#toc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--sidebar-border); }
+#toc-title { font-weight: 700; font-size: 1.1rem; }
+#theme-toggle {
+  background: var(--code-bg); border: 1px solid var(--border);
+  padding: 0.4rem 0.6rem; border-radius: var(--radius); cursor: pointer;
+  font-size: 1.2rem; color: var(--text);
+}
+#toc ul { list-style: none; }
+#toc li { margin: 0.25rem 0; }
+#toc a { display: block; padding: 0.4rem 0.6rem; border-radius: var(--radius); color: var(--text-muted); text-decoration: none; font-size: 0.9rem; transition: all 0.15s; }
+#toc a:hover { background: var(--code-bg); color: var(--text); }
+#toc a.active { background: var(--primary); color: white; }
+#toc .toc-chapter { font-weight: 600; margin-top: 0.75rem; padding-left: 0.25rem; }
+#toc .toc-section { padding-left: 1rem; font-size: 0.85rem; }
+main { padding: 2rem 3rem; max-width: 960px; }
+header { margin-bottom: 3rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+header h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.5rem; }
+header .subtitle { color: var(--text-muted); font-size: 1.2rem; }
+header .meta { margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); display: flex; gap: 1.5rem; flex-wrap: wrap; }
+section.chapter { margin-bottom: 4rem; }
+section.chapter:last-child { margin-bottom: 0; }
+h2 { font-size: 1.8rem; font-weight: 700; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); scroll-margin-top: 100px; }
+h3 { font-size: 1.4rem; font-weight: 600; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 100px; }
+h4 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--text); scroll-margin-top: 100px; }
+p { margin: 1rem 0; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--font-mono); font-size: 0.9em; background: var(--code-bg); color: var(--code-text); padding: 0.15rem 0.4rem; border-radius: 4px; }
+pre { background: var(--code-bg); border-radius: var(--radius); padding: 1rem; overflow-x: auto; margin: 1.5rem 0; border: 1px solid var(--border); position: relative; }
+pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.6; color: var(--code-text); display: block; white-space: pre-wrap; word-wrap: break-word; }
+.copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: var(--text-muted); opacity: 0; transition: opacity 0.2s; }
+pre:hover .copy-btn { opacity: 1; }
+.copy-btn.copied { background: var(--callout-done); color: var(--callout-done-text); }
+ul, ol { margin: 1rem 0; padding-left: 1.5rem; }
+li { margin: 0.5rem 0; }
+li::marker { color: var(--text-muted); }
+table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+th, td { padding: 0.6rem 0.8rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { background: var(--code-bg); font-weight: 600; }
+tr:nth-child(even) td { background: var(--code-bg); }
+blockquote { border-left: 4px solid var(--primary); padding-left: 1rem; margin: 1.5rem 0; color: var(--text-muted); font-style: italic; }
+hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+.callout { padding: 1rem 1.25rem; border-radius: var(--radius); margin: 1.5rem 0; border-left: 4px solid; }
+.callout.tip { background: var(--callout-tip); border-color: var(--primary); color: var(--callout-tip-text); }
+.callout.warning { background: var(--callout-warning); border-color: #f59e0b; color: var(--callout-warning-text); }
+.callout.note { background: var(--callout-note); border-color: var(--border); color: var(--callout-note-text); }
+.callout.done { background: var(--callout-done); border-color: #10b981; color: var(--callout-done-text); }
+.callout strong { display: inline; margin-bottom: 0.25rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--primary); z-index: 100; transform-origin: left; transform: scaleX(0); }
+.search-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding-top: 10vh; }
+.search-modal.open { display: flex; }
+.search-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; width: 90%; max-width: 600px; box-shadow: var(--shadow-lg); }
+.search-box input { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1.1rem; background: var(--bg); color: var(--text); outline: none; }
+.search-results { max-height: 60vh; overflow-y: auto; margin-top: 1rem; }
+.search-result { padding: 0.75rem; border-radius: var(--radius); cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+.search-result:hover { background: var(--code-bg); border-color: var(--border); }
+.search-result .title { font-weight: 600; }
+.search-result .snippet { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+.diagram { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+.diagram svg { max-width: 100%; height: auto; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem; margin-bottom: 0.25rem; }
+.kbd { font-family: var(--font-mono); background: var(--code-bg); border: 1px solid var(--border); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem; text-align: center; }
+@media print {
+  /* Print ALWAYS uses the light palette, even when the OS/browser is in dark
+     mode (the PDF engine follows prefers-color-scheme and would otherwise set
+     data-theme=dark, leaving near-white headings on white paper and dark
+     surfaces clashing with the page). Redefining the variables here overrides
+     both :root and [data-theme="dark"] for every printed element. */
+  :root,
+  :root[data-theme="dark"] {
+    --bg: #ffffff;
+    --bg-card: #ffffff;
+    --text: #111827;
+    --text-muted: #4b5563;
+    --primary: #1d4ed8;
+    --primary-hover: #1e3a8a;
+    --border: #cbd5e1;
+    --code-bg: #f1f5f9;
+    --code-text: #0f172a;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #cbd5e1;
+    --callout-tip: #dbeafe;
+    --callout-tip-text: #1e40af;
+    --callout-warning: #fef3c7;
+    --callout-warning-text: #92400e;
+    --callout-note: #f1f5f9;
+    --callout-note-text: #334155;
+    --callout-done: #dcfce7;
+    --callout-done-text: #166534;
+  }
+  /* The cover's dark gradient is hard-coded for the dark theme; force the
+     light one on paper so the title text (now dark) stays readable. */
+  .cover,
+  [data-theme="dark"] .cover {
+    background: linear-gradient(155deg, #e8f1ff 0%, #ffffff 46%, #f4f8ff 100%) !important;
+    border-color: #dbe3ec;
+  }
+  #toc, #toc-toggle, #theme-toggle, .progress-bar, .search-modal, .copy-btn, #toc-toggle-label { display: none !important; }
+  body { display: block; background: white; color: #111827; }
+  main { padding: 0; max-width: none; }
+  a { text-decoration: none; color: black; }
+  section.chapter { page-break-before: always; margin-bottom: 0; }
+  .cover { height: 260mm; box-sizing: border-box; page-break-after: always; border-radius: 0; margin: 0; }
+  .contents { page-break-after: always; }
+  .toc-line { page-break-inside: avoid; }
+  h2 { page-break-after: avoid; }
+  h3 { page-break-after: avoid; }
+  pre { page-break-inside: avoid; }
+  .callout { page-break-inside: avoid; }
+  .diagram { page-break-inside: avoid; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  .diagram svg { max-width: 100% !important; height: auto !important; }
+}
+@media (max-width: 1024px) {
+  body { grid-template-columns: 1fr; }
+  #toc { position: fixed; left: -300px; top: 0; bottom: 0; z-index: 100; width: 280px; box-shadow: var(--shadow-lg); transition: left 0.3s; }
+  #toc.open { left: 0; }
+  #toc-toggle { display: block; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--bg-card); border: 1px solid var(--border); padding: 0.5rem 0.75rem; border-radius: var(--radius); cursor: pointer; font-size: 1.25rem; box-shadow: var(--shadow); }
+  main { padding: 1.5rem; }
+}
+.reading-time { color: var(--text-muted); font-size: 0.85rem; }
+.toc-link { display: block; }
+.toc-chapter { cursor: pointer; }
+.toc-section { display: none; }
+.toc-chapter.open + .toc-section { display: block; }
+
+/* ---- Cover page ---- */
+.cover {
+  position: relative;
+  background: linear-gradient(155deg, #e8f1ff 0%, #ffffff 46%, #f4f8ff 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.4rem 2.6rem 1.8rem;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+[data-theme="dark"] .cover {
+  background: linear-gradient(155deg, #172554 0%, #0f172a 55%, #1e293b 100%);
+}
+.cover-accent {
+  position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+  background: linear-gradient(90deg, #2563eb, #60a5fa 55%, #93c5fd);
+}
+.cover-kicker {
+  text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.78rem; font-weight: 700;
+  color: var(--primary); margin: 0 0 0.9rem;
+}
+.cover-title { font-size: 2.6rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+.cover-sub { font-size: 1.25rem; color: var(--text-muted); margin: 0.6rem 0 0; max-width: 46rem; }
+.cover-lede { margin: 1.2rem 0 0; max-width: 50rem; }
+.cover-facts {
+  list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem;
+  padding: 0; margin: 1.4rem 0 0;
+}
+.cover-facts li { margin: 0; font-size: 0.92rem; color: var(--text-muted); }
+.cover-facts b { color: var(--text); font-weight: 600; }
+.cover-included { margin: 1.5rem 0 0; }
+.cover-included h4 {
+  font-size: 0.85rem; margin: 0 0 0.55rem; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text-muted);
+}
+.cover-included ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0; margin: 0; }
+.cover-included li { margin: 0; }
+.chip {
+  display: inline-block; border: 1px solid var(--border); background: var(--bg-card);
+  border-radius: 999px; padding: 0.26rem 0.8rem; font-size: 0.85rem; color: var(--text);
+}
+.cover-foot {
+  margin: 1.8rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.85rem; color: var(--text-muted);
+}
+.cover-foot code { font-size: 0.9em; }
+
+/* ---- Printed table of contents ---- */
+.contents { margin-bottom: 0.5rem; }
+.contents-note { font-size: 0.92rem; color: var(--text-muted); margin: 0.1rem 0 1.1rem; }
+.contents-list { list-style: none; padding: 0; margin: 0; }
+.contents-list li { margin: 0; }
+.toc-line {
+  display: flex; align-items: baseline; text-decoration: none; color: var(--text);
+  padding: 0.34rem 0; border-bottom: 1px solid var(--border);
+}
+.toc-line:last-child { border-bottom: none; }
+.toc-line:hover { color: var(--primary); }
+.toc-label { flex: 0 1 auto; }
+.toc-dots { flex: 1 1 auto; border-bottom: 2px dotted var(--border); transform: translateY(-4px); min-width: 1.2rem; }
+.toc-page { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 0.92rem; padding-left: 0.6rem; }
+</style>
+</head>
+<body>
+<a href="#content" class="skip-link">Skip to main content</a>
+<button id="toc-toggle" aria-label="Toggle table of contents">☰</button>
+<nav id="toc" aria-label="Table of contents">
+  <div id="toc-header">
+    <span id="toc-title">Deep-Dive Guide</span>
+    <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+  </div>
+  <ul id="toc-list"></ul>
+</nav>
+<div class="progress-bar" id="progress-bar" aria-hidden="true"></div>
+<div class="search-modal" id="search-modal" role="dialog" aria-label="Search">
+  <div class="search-box">
+    <input type="search" id="search-input" placeholder="Search (Ctrl+K)..." autocomplete="off" aria-label="Search content">
+    <div class="search-results" id="search-results"></div>
+  </div>
+</div>
+<main id="content">
+  <section class="cover">
+    <div class="cover-accent"></div>
+    <p class="cover-kicker">Multi-Tenant AI Chatbot SaaS · Technical Reference</p>
+    <h1 class="cover-title">Build Your Own AI Chatbot SaaS</h1>
+    <p class="cover-sub">Deep-Dive Technical Guide — every file, endpoint, query, and prompt explained</p>
+    <p class="cover-lede">A $0-infrastructure, multi-tenant AI chatbot platform with RAG knowledge bases, appointment booking, and an embeddable widget. This guide walks the actual code: 24 API routes, 7 tables plus a vector index, 4 deploy workflows, 11 secrets, every LLM prompt — with known gaps and one-line fixes called out honestly.</p>
+    <ul class="cover-facts">
+      <li><b>Audience</b> — developers &amp; curious operators</li>
+      <li><b>Version</b> — v1.0.0</li>
+      <li><b>Date</b> — September 2026</li>
+      <li><b>Reading time</b> — ~90 min</li>
+    </ul>
+    <div class="cover-included">
+      <h4>What's inside</h4>
+      <ul>
+        <li><span class="chip">System architecture &amp; data flow</span></li>
+        <li><span class="chip">Cloudflare Worker (new) · reference FastAPI</span></li>
+        <li><span class="chip">Database &amp; sqlite-vec</span></li>
+        <li><span class="chip">All 24 endpoints</span></li>
+        <li><span class="chip">Prompt engineering &amp; RAG</span></li>
+        <li><span class="chip">Appointment engine</span></li>
+        <li><span class="chip">Widget &amp; Shadow DOM</span></li>
+        <li><span class="chip">Admin &amp; Clerk auth</span></li>
+        <li><span class="chip">CLI scripts</span></li>
+        <li><span class="chip">Monitoring &amp; ops</span></li>
+        <li><span class="chip">Troubleshooting encyclopedia</span></li>
+        <li><span class="chip">Scaling &amp; cost</span></li>
+      </ul>
+    </div>
+    <p class="cover-foot">Project: <code>chatbot-saas/</code> · Free stack: Cloudflare · Google Gemini · Turso · Clerk · Google Apps Script — <b>$0/month, no credit card required</b></p>
+  </section>
+
+  <section class="contents" id="print-contents">
+    <h2>Contents</h2>
+    <p class="contents-note">All 13 chapters. Every entry is a link — click to jump, in the PDF or in your browser. Page numbers are the printed page numbers.</p>
+    <ul class="contents-list">
+      <li><a class="toc-line" href="#ch1-system-architecture"><span class="toc-label">1. System Architecture</span><span class="toc-dots"></span><span class="toc-page" data-for="ch1-system-architecture"></span></a></li>
+      <li><a class="toc-line" href="#ch2-infrastructure"><span class="toc-label">2. Infrastructure &amp; Deployment</span><span class="toc-dots"></span><span class="toc-page" data-for="ch2-infrastructure"></span></a></li>
+      <li><a class="toc-line" href="#ch3-database"><span class="toc-label">3. Database Design</span><span class="toc-dots"></span><span class="toc-page" data-for="ch3-database"></span></a></li>
+      <li><a class="toc-line" href="#ch4-fastapi"><span class="toc-label">4. FastAPI Application</span><span class="toc-dots"></span><span class="toc-page" data-for="ch4-fastapi"></span></a></li>
+      <li><a class="toc-line" href="#ch5-ai-pipeline"><span class="toc-label">5. AI Pipeline Internals</span><span class="toc-dots"></span><span class="toc-page" data-for="ch5-ai-pipeline"></span></a></li>
+      <li><a class="toc-line" href="#ch6-appointments"><span class="toc-label">6. Appointment Engine</span><span class="toc-dots"></span><span class="toc-page" data-for="ch6-appointments"></span></a></li>
+      <li><a class="toc-line" href="#ch7-email"><span class="toc-label">7. Email System</span><span class="toc-dots"></span><span class="toc-page" data-for="ch7-email"></span></a></li>
+      <li><a class="toc-line" href="#ch8-widget"><span class="toc-label">8. Widget (React + Shadow DOM)</span><span class="toc-dots"></span><span class="toc-page" data-for="ch8-widget"></span></a></li>
+      <li><a class="toc-line" href="#ch9-admin"><span class="toc-label">9. Admin Dashboard (React + Clerk)</span><span class="toc-dots"></span><span class="toc-page" data-for="ch9-admin"></span></a></li>
+      <li><a class="toc-line" href="#ch10-cli"><span class="toc-label">10. CLI Scripts</span><span class="toc-dots"></span><span class="toc-page" data-for="ch10-cli"></span></a></li>
+      <li><a class="toc-line" href="#ch11-monitoring"><span class="toc-label">11. Monitoring &amp; Operations</span><span class="toc-dots"></span><span class="toc-page" data-for="ch11-monitoring"></span></a></li>
+      <li><a class="toc-line" href="#ch12-troubleshooting"><span class="toc-label">12. Troubleshooting Encyclopedia</span><span class="toc-dots"></span><span class="toc-page" data-for="ch12-troubleshooting"></span></a></li>
+      <li><a class="toc-line" href="#ch13-scaling"><span class="toc-label">13. Scaling &amp; Cost Optimization</span><span class="toc-dots"></span><span class="toc-page" data-for="ch13-scaling"></span></a></li>
+    </ul>
+  </section>
+  <article id="article">
+
+  <div class="callout warning">
+    <strong>⚠ Stack update (September 2026) — how this guide maps to the current code.</strong> This guide documents the <em>original</em> system, whose backend ran as a <strong>Docker Space on Hugging Face</strong> (FastAPI + Ollama + nginx under supervisord). Hugging Face moved Docker/Gradio Spaces behind PRO in July 2026, so the production backend is being ported to a <strong>Cloudflare Worker</strong> (<code>worker/</code>, TypeScript) that calls the <strong>Google Gemini</strong> API — see <code>hf-docker-exit-spec.md</code> and the Appendix “Migration Roadmap” at the end of this guide. Chapters 3–13 still describe the <em>reference implementation</em> in <code>backend/</code> (kept in the repo while the port proceeds), so their API/prompt/database detail remains accurate for the code you'll read — but any hosting/deploy claim about HF Spaces, Ollama, nginx, supervisord, or keep-alive is <strong>historical</strong>. The live deployment steps live in <code>DEPLOY.md</code>; where this guide's diagrams still show the old container, read “Cloudflare Worker + Gemini” instead of “HF Space + Ollama”.
+  </div>
+
+
+  <section class="chapter" id="ch1-system-architecture">
+    <h2>1. System Architecture</h2>
+
+    <p>This project is a <strong>multi-tenant AI chatbot platform</strong> that runs on <strong>$0 of infrastructure cost</strong>. A single operator (you) runs one backend, one database, and one widget build, and sells chatbot "seats" to many client businesses. Each client is a <em>tenant</em> — their own little slice of the platform with their own name, colors, knowledge base, business hours, and appointments.</p>
+
+    <p>The whole system is built from six free services connected by plain HTTP and SQL. Nothing about it is exotic: one TypeScript API Worker on Cloudflare, one SQLite-compatible remote database, one hosted LLM API (Google Gemini — the original local Ollama runtime was replaced when Docker hosting on Hugging Face became paid), one Gmail-based email shim, and two static React front-ends. The pre-migration Python implementation remains in <code>backend/</code> as the reference for the port (see the stack-update note above).</p>
+
+    <h3>1.1 The six components</h3>
+    <table>
+      <tr><th>#</th><th>Component</th><th>What it runs</th><th>Hosted where</th><th>Cost</th></tr>
+      <tr><td>1</td><td><strong>Widget</strong></td><td>React 18 chat UI compiled to a single <code>widget.js</code> (IIFE) mounted inside a Shadow DOM</td><td>Cloudflare Pages (static file)</td><td>Free</td></tr>
+      <tr><td>2</td><td><strong>Backend API</strong></td><td>Cloudflare Worker (<code>worker/</code>, TypeScript): widget config, chat (SSE), RAG retrieval, knowledge ingest, Clerk JWKS auth — ported 1:1 from the FastAPI app in <code>backend/app</code> (24 endpoints)</td><td>Cloudflare Workers (<code>chatbot-api</code>)</td><td>Free (100k req/day)</td></tr>
+      <tr><td>3</td><td><strong>AI runtime</strong></td><td>Google Gemini API: flash-class chat model (<code>CHAT_MODEL</code>) + <code>gemini-embedding-001</code> @768-dim embeddings (was Ollama <code>phi3:mini</code> / <code>nomic-embed-text</code>)</td><td>Google (API key; called from the Worker)</td><td>Free tier (volatile — see spec §5.5)</td></tr>
+      <tr><td>4</td><td><strong>Database</strong></td><td>Turso (libSQL) with the <code>sqlite-vec</code> extension for vector search; 7 tables + 1 virtual table</td><td>Turso cloud</td><td>Free (9 GB, 1 B reads/mo)</td></tr>
+      <tr><td>5</td><td><strong>Email</strong></td><td>Google Apps Script web app (<code>Code.gs</code>) that calls <code>MailApp.sendEmail()</code></td><td>Google's servers</td><td>Free (100 emails/day)</td></tr>
+      <tr><td>6</td><td><strong>Admin dashboard</strong></td><td>React 18 SPA with Clerk authentication; manages tenants, knowledge, analytics</td><td>Cloudflare Pages (static file)</td><td>Free</td></tr>
+    </table>
+
+    <div class="callout note">
+      <strong>Cloudflare Workers AND Pages — updated.</strong> In the current stack Cloudflare plays both roles: <strong>Workers</strong> runs the backend API (<code>worker/</code> → <code>chatbot-api</code>), and <strong>Pages</strong> serves the static <code>widget.js</code> + admin SPA. CORS and the widget <code>/widget/*</code> routes are handled in the Worker itself (no nginx). The widget's <code>wrangler.toml</code> (Pages output) is separate from the API Worker's config. Rate limiting in the old design lived in nginx inside the HF Space; in the Worker it's per-tenant self-throttling (spec §5.7).
+    </div>
+
+    <h3>1.2 Architecture diagram</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+    subgraph ClientSide["Client's Website"]
+        V["👤 Visitor"]
+        W["💬 Chat Widget<br/>(React + Shadow DOM)<br/>widget.js on Cloudflare Pages"]
+    end
+
+    subgraph CF["Cloudflare Worker — chatbot-api"]
+        API["⚡ Worker (TypeScript)<br/>config · chat SSE · RAG · ingest<br/>(ported from FastAPI)"]
+        GEN["✨ Gemini API<br/>chat (flash) · embeddings @768"]
+    end
+
+    DB[("🗄️ Turso libSQL<br/>7 tables + sqlite-vec<br/>vectors in knowledge_vec")]
+    GAS["📧 Google Apps Script<br/>MailApp.sendEmail()"]
+    ADM["🖥️ Admin dashboard<br/>(React + Clerk)<br/>Cloudflare Pages"]
+
+    V --> W
+    W -- "POST /widget/chat/:slug (SSE)" --> API
+    API -- "Gemini REST (API key)" --> GEN
+    API -- "libsql over HTTPS" --> DB
+    API -- "POST /exec (JSON)" --> GAS
+    ADM -- "GET /admin/* (JWT)" --> API
+    ADM -- "Clerk JWKS check" --> API
+      </pre>
+    </div>
+
+    <h3>1.3 Component responsibilities</h3>
+    <table>
+      <tr><th>Component</th><th>Responsibilities</th><th>Key files</th></tr>
+      <tr><td>Widget</td><td>Reads <code>data-tenant</code> from its <code>&lt;script&gt;</code> tag, fetches per-tenant config (colors, greeting, bot name, business hours), streams chat via SSE, renders clickable appointment slots, persists session + conversation IDs in <code>localStorage</code></td><td><code>widget/src/main.tsx</code>, <code>ChatWidget.tsx</code>, <code>hooks/*</code>, <code>components/*</code></td></tr>
+      <tr><td>Worker (was nginx + FastAPI)</td><td>CORS, routing, per-tenant self-throttling, tenant resolution, intent classification, RAG retrieval, chat SSE, email dispatch via GAS, Clerk JWKS verification for admin routes; the same responsibilities lived in nginx+FastAPI in the old stack</td><td><code>worker/src/**</code> (reference: <code>backend/app/**</code>)</td></tr>
+      <tr><td>Gemini (was Ollama)</td><td>Flash-class chat model for classification/extraction/synthesis and <code>gemini-embedding-001</code> @768-dim embeddings for RAG; free-tier daily caps handled gracefully (spec §5.7)</td><td><code>worker/src/llm.ts</code> (reference: <code>backend/app/services/llm.py</code>)</td></tr>
+      <tr><td>Turso</td><td>Stores tenants, users, conversations, messages, appointments, knowledge chunks (+ vector index), usage logs; executes vector similarity search via <code>vec_distance_cosine</code></td><td><code>database.py</code>, <code>migrations/001_initial_schema.sql</code></td></tr>
+      <tr><td>Apps Script</td><td>Receives <code>{to, subject, html}</code> JSON, sends via Gmail, returns <code>{success: true}</code>; run-as-me authorization means emails come from your Gmail address</td><td><code>gas-email/Code.gs</code></td></tr>
+      <tr><td>Admin dashboard</td><td>Clerk sign-in, tenant CRUD, knowledge upload (PDF/TXT/FAQ), conversation and appointment tables, business-hours editor, analytics cards</td><td><code>admin-dashboard/src/**</code></td></tr>
+      <tr><td>GitHub Actions</td><td>Deploys the Worker (<code>deploy-worker.yml</code>: typecheck → <code>wrangler deploy</code> → secrets) and widget + admin to Cloudflare Pages; no keep-alive needed (Workers don't sleep)</td><td><code>.github/workflows/*.yml</code></td></tr>
+    </table>
+
+    <h3>1.4 One message, end to end</h3>
+    <p>The single most important path in the system. A visitor types <em>"Book Tuesday at 2pm"</em> and this is everything that happens:</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant V as Visitor
+    participant W as Widget (pages.dev)
+    participant NG as nginx (Space)
+    participant API as FastAPI
+    participant LLM as Ollama
+    participant DB as Turso libSQL
+    participant GAS as Apps Script
+
+    V->>W: types "Book Tuesday at 2pm"
+    W->>NG: POST /widget/chat/weblyft-design (SSE)
+    NG->>NG: rate limit check (30 req/s)
+    NG->>API: proxy, buffering off
+    API->>DB: SELECT tenant by slug
+    API->>DB: INSERT user message
+    API->>LLM: classify intent (few-shot prompt, temp 0.1)
+    LLM-->>API: "book_appointment"
+    API->>LLM: extract booking details (JSON prompt)
+    LLM-->>API: {"preferred_date": "2026-09-08", "preferred_time": "14:00"}
+    API->>DB: load business hours + existing appointments
+    API->>API: generate slots, check 14:00 free (buffer 15)
+    API->>DB: INSERT appointment (status confirmed)
+    API->>GAS: POST {to, subject, html} confirmation email
+    GAS-->>API: {success: true}
+    API-->>W: SSE data: {type: content, ...}
+    API-->>W: SSE data: {type: done, conversation_id, intent}
+    W-->>V: renders message + bubbles
+      </pre>
+    </div>
+
+    <p>Because the chat endpoint streams with <strong>Server-Sent Events</strong> (SSE), the visitor sees the bot's answer being typed out token by token, exactly like ChatGPT. The <code>done</code> event carries the <code>conversation_id</code> so the widget can continue the same thread (Chapter 8).</p>
+
+    <h3>1.5 Tech stack rationale — and what was rejected</h3>
+    <table>
+      <tr><th>Layer</th><th>Chosen</th><th>Why</th><th>Alternatives considered</th><th>Why not</th></tr>
+      <tr><td>API framework</td><td>FastAPI (Python)</td><td>Async <code>await db.execute()</code> fits remote-latency libSQL calls; Pydantic gives free request validation; SSE via <code>StreamingResponse</code> is one function; huge ML ecosystem (fitz, ollama) in the same language as the AI stack</td><td>Express (Node), Django, Next.js API routes</td><td>Node would force a second language for AI/PDF work; Django is sync-first and heavier; Next.js pulls in a full React app where we only need an API</td></tr>
+      <tr><td>Database</td><td>Turso (libSQL = SQLite fork)</td><td>SQLite semantics (JSON-in-TEXT, unix timestamps) keep the schema trivial; the <code>sqlite-vec</code> extension gives vector search without a separate vector database; generous free tier (9 GB, 1 B reads/mo); zero-ops</td><td>Postgres + pgvector (Supabase/Neon), PlanetScale, MongoDB</td><td>pgvector needs a managed Postgres (heavier free tier, more moving parts); a document DB loses joins for conversations/messages/appointments</td></tr>
+      <tr><td>LLM</td><td>Ollama, <code>phi3:mini</code> + <code>nomic-embed-text</code></td><td>Runs <em>inside</em> the free HF Space — no per-token API cost, no API key, private data stays local; 3.8B model fits in 16 GB RAM and answers fast enough on CPU</td><td>OpenAI API, Anthropic, Gemini</td><td>Per-token cost breaks the "$0 forever" premise; data would leave the platform; needs a credit card</td></tr>
+      <tr><td>Hosting</td><td>Cloudflare Worker (<code>worker/</code>) + Cloudflare Pages</td><td>Worker = the ported backend as TypeScript (never sleeps, 100k req/day free); Pages = free static hosting with unlimited bandwidth for the two front-ends; all three auto-deploy from GitHub Actions. (The original Docker-on-HF hosting is gone — HF made Docker Spaces paid in July 2026.)</td><td>Vercel, Netlify, Railway, Fly.io</td><td>Vercel/Netlify have no always-free compute backend; Railway/Fly have free tiers but with sleep/wake and credit-card walls; Workers + Pages keeps <em>everything</em> free in one account — with Gemini for the LLM instead of a self-hosted container</td></tr>
+      <tr><td>Auth</td><td>Clerk</td><td>Hosted sign-in UI (email + password), JWT sessions, React SDK (<code>&lt;SignedIn&gt;</code>) and a server-side verify path via <code>python-jose</code> against Clerk's JWKS public keys</td><td>Auth0, Firebase Auth, roll-your-own JWT</td><td>Auth0's free tier is stingier; Firebase pulls in Google Cloud; hand-rolled auth is the #1 security mistake — Clerk's 10k MAU free tier covers a solo operator forever</td></tr>
+      <tr><td>Email</td><td>Google Apps Script + Gmail</td><td>Zero setup cost, zero API keys; the "web app" is a real HTTPS endpoint that FastAPI POSTs JSON to; Gmail's 100/day free quota is plenty for a booking business</td><td>SendGrid, Resend, Postmark, SES</td><td>All need a credit card and a verified sending domain; transactional providers charge per email at this scale; Gmail is already universal</td></tr>
+      <tr><td>Widget distribution</td><td>Single IIFE file on Cloudflare Pages</td><td>Clients add one <code>&lt;script&gt;</code> tag; the widget is self-contained (React bundled in), styles isolated by Shadow DOM, so it can't clash with the client's CSS</td><td>npm package, iframe embed, Web Component</td><td>npm install is unrealistic for non-technical clients; iframes are ugly and block modals; a raw Web Component is basically what Shadow DOM gives us anyway</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <strong>Why this architecture wins at $0.</strong> The key move is <em>concentration</em>: one free Docker container holds the API, the web server, and the AI. The only remote dependency is Turso, which speaks SQL over HTTPS — no VPC, no private networking, no NAT. Every component can be torn down and rebuilt from GitHub in minutes.
+    </div>
+
+    <h3>1.6 Multi-tenancy model</h3>
+    <p>Tenancy is the <em>raison d'être</em> of the schema. Each client business is a row in <code>tenants</code>, identified by a human-readable <code>slug</code> (e.g. <code>weblyft-design</code>). Three layers key off the slug:</p>
+    <ul>
+      <li><strong>Widget layer:</strong> the embed tag carries <code>data-tenant="weblyft-design"</code>; every API call includes the slug in the URL path (<code>/widget/chat/weblyft-design</code>).</li>
+      <li><strong>Middleware layer:</strong> <code>TenantMiddleware</code> extracts the slug from the path, the <code>X-Tenant-Slug</code> header, or a subdomain, then loads the tenant row into <code>request.state</code> (Chapter 4.2).</li>
+      <li><strong>Data layer:</strong> every data table (<code>end_users</code>, <code>conversations</code>, <code>appointments</code>, <code>knowledge_chunks</code>, <code>usage_logs</code>) carries a <code>tenant_id</code> foreign key — <code>messages</code> is the one exception, reaching its tenant only through the owning <code>conversations</code> row — and every query filters on it, a hard isolation boundary that prevents client A's chat history from leaking into client B's dashboard (Chapter 3).</li>
+    </ul>
+    <p>Isolation is enforced in <em>every</em> query, not just at the edge. For example, conversation reads verify <code>WHERE id = ? AND tenant_id = ?</code>; vector search embeds <code>WHERE kc.tenant_id = ?</code> into the similarity query itself. This is the pattern to preserve if the platform grows.</p>
+  </section>
+
+  <section class="chapter" id="ch2-infrastructure">
+    <h2>2. Infrastructure &amp; Deployment</h2>
+
+    <p><strong>Updated:</strong> everything now ships as a <strong>Cloudflare Worker</strong> (<code>worker/</code>, deployed by <code>deploy-worker.yml</code>) plus two static builds on Cloudflare Pages. The content below documents the <em>original</em> Docker deployment (Dockerfile, nginx, supervisord, HF registry workflows) — kept as history since those files were removed and the old pipeline no longer exists. For the current deploy pipeline, read <code>DEPLOY.md</code> and <code>worker/wrangler.toml</code>; this chapter is the “how it used to be” reference.</p>
+
+    <h3>2.1 Dockerfile — line by line</h3>
+    <pre><code>FROM python:3.11-slim                       # 1. ~120 MB base image, Debian bookworm, no build tools
+
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \\
+    curl \\                                  # 2. needed for the Ollama installer and health checks
+    ca-certificates \\                       # 3. TLS trust so pip / ollama / libsql can reach the internet
+    supervisor \\                            # 4. process manager (runs ollama + fastapi + nginx)
+    nginx \\                                 # 5. reverse proxy / rate limiter / SSE enabler
+    &amp;&amp; rm -rf /var/lib/apt/lists/*          # 6. shrink image: drop apt metadata
+
+RUN curl -fsSL https://ollama.com/install.sh | sh   # 7. installs ollama CLI + server binary
+
+WORKDIR /app                                  # 8. everything below is relative to /app
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt   # 9. Python deps (fastapi, libsql-client, ollama, fitz...)
+
+COPY backend/app ./app                        # 10. the FastAPI package
+COPY backend/alembic.ini .
+COPY backend/migrations ./migrations          # 11. SQL migration files
+
+COPY nginx.conf /etc/nginx/nginx.conf         # 12. replace default nginx config entirely
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf  # 13. our 3-program supervisor config
+
+RUN mkdir -p /var/log/supervisor /var/run/ollama /root/.ollama   # 14. dirs supervisord/ollama expect
+
+EXPOSE 80 443 8000 11434                      # 15. documents ports; actual mapping done by the platform
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \\
+    CMD curl -f http://localhost:8000/health || exit 1   # 16. Docker-level liveness probe
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]  # 17. PID 1
+</code></pre>
+
+    <table>
+      <tr><th>Line</th><th>Why it matters</th></tr>
+      <tr><td>1</td><td><code>python:3.11-slim</code> keeps the image small; 3.11 is old enough to be battle-tested with all pinned deps (see <code>requirements.txt</code> pins like <code>fastapi==0.109.0</code>).</td></tr>
+      <tr><td>2–6</td><td>Installing <code>nginx</code> and <code>supervisor</code> from apt is the fastest way to get both into the image. <code>--no-install-recommends</code> + cleanup keeps the final image lean.</td></tr>
+      <tr><td>7</td><td>The official Ollama installer puts <code>ollama</code> at <code>/usr/local/bin/ollama</code> (supervisord references this exact path).</td></tr>
+      <tr><td>9</td><td><code>pip install</code> happens at image-build time so the container <em>starts</em> fast — only the <strong>models</strong> (phi3:mini ≈ 2.2 GB, nomic-embed-text ≈ 274 MB) download at first boot, not the Python packages.</td></tr>
+      <tr><td>10–11</td><td>The image contains <code>app/</code>, <code>migrations/</code>, <code>alembic.ini</code>, and <code>run_migrations.py</code>. supervisord runs the migration script before uvicorn (2.2), so a fresh database is migrated automatically on first boot.</td></tr>
+      <tr><td>16</td><td>Docker-level liveness probe. FastAPI serves <code>GET /health</code> directly (main.py), so this works as configured.</td></tr>
+      <tr><td>17</td><td>supervisord as PID 1 is what keeps three processes alive and restarts them on crash — a bare <code>CMD uvicorn</code> would die the moment Ollama or nginx exits.</td></tr>
+    </table>
+
+    <div class="callout note">
+      <strong>Health endpoints.</strong> FastAPI serves both <code>GET /health</code> (an alias in <code>main.py</code>) and <code>GET /widget/health</code> (widget router). The Docker <code>HEALTHCHECK</code>, the nginx <code>/health</code> block (2.3), and the keep-alive workflow (2.6) all work as written.
+    </div>
+
+    <h3>2.2 supervisord.conf — the process trio</h3>
+    <pre><code>[supervisord]
+nodaemon=true                            # run in foreground (Docker requires PID 1 to stay alive)
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+childlogdir=/var/log/supervisor
+
+[program:ollama]
+command=/usr/local/bin/ollama serve     # starts the HTTP server on 0.0.0.0:11434
+environment=OLLAMA_HOST=0.0.0.0:11434,OLLAMA_MODELS=/root/.ollama
+autorestart=true
+stdout_logfile=/var/log/supervisor/ollama.log        # per-program logs
+stderr_logfile=/var/log/supervisor/ollama_err.log    # (Chapter 11.5 shows which to tail)
+priority=10                             # starts FIRST (models must be ready before API calls)
+
+[program:fastapi]
+command=uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+directory=/app
+autorestart=true
+stdout_logfile=/var/log/supervisor/fastapi.log
+stderr_logfile=/var/log/supervisor/fastapi_err.log
+priority=20                             # second
+
+[program:nginx]
+command=nginx -g "daemon off;"          # "daemon off" keeps nginx in the foreground for supervisord
+autorestart=true
+stdout_logfile=/var/log/supervisor/nginx.log
+stderr_logfile=/var/log/supervisor/nginx_err.log
+priority=30                             # last (proxies to fastapi, so it must exist first)
+</code></pre>
+
+    <div class="callout note">
+      <strong>Why <code>--workers 1</code>?</strong> Free Spaces get 2 vCPUs, but the AI calls are synchronous and CPU-bound inside Ollama — more uvicorn workers would contend for the same cores, and each worker would hold its own async libSQL connection. One worker also keeps SSE event ordering trivially correct. (See Chapter 13 for the multi-worker upgrade path.)
+    </div>
+
+    <h3>2.3 nginx.conf — the front door</h3>
+    <p>nginx is the only process exposed to the internet. It does five jobs: <strong>rate limiting</strong>, <strong>security headers</strong>, <strong>proxying</strong>, <strong>SSE friendliness</strong>, and <strong>gzip</strong>.</p>
+
+    <h4>Rate limiting zones</h4>
+    <pre><code># $binary_remote_addr = the visitor's IP, in compact binary form (4 bytes for IPv4)
+limit_req_zone $binary_remote_addr zone=widget_limit:10m rate=30r/s;   # chat &amp; widget traffic
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=60r/s;      # admin &amp; tenant API
+</code></pre>
+    <p>Each zone is a shared 10 MB in-memory table of IP→counter. <code>30r/s</code> means a sustained 30 requests per second; bursts up to the <code>burst</code> parameter are queued.</p>
+
+    <table>
+      <tr><th>Location</th><th>Rate limit</th><th>Special config</th></tr>
+      <tr><td><code>/health</code></td><td>none</td><td>no access log — but FastAPI serves health at <code>/widget/health</code> (see the warning in 2.1); this block currently forwards plain <code>/health</code> to a 404</td></tr>
+      <tr><td><code>~ ^/widget/config/</code></td><td><code>widget_limit burst=10 nodelay</code></td><td>standard proxy headers</td></tr>
+      <tr><td><code>~ ^/widget/chat/</code></td><td><code>widget_limit burst=5 nodelay</code></td><td><strong>SSE block:</strong> <code>proxy_http_version 1.1</code>, <code>Connection ""</code>, <code>proxy_buffering off</code>, <code>proxy_cache off</code>, read/send timeouts 300 s</td></tr>
+      <tr><td><code>~ ^/widget/</code></td><td><code>widget_limit burst=10 nodelay</code></td><td>availability + appointment booking</td></tr>
+      <tr><td><code>~ ^/admin/</code></td><td><code>api_limit burst=20 nodelay</code></td><td>—</td></tr>
+      <tr><td><code>~ ^/api/</code></td><td><code>api_limit burst=20 nodelay</code></td><td>tenant dashboard routes</td></tr>
+      <tr><td><code>/ollama/</code></td><td>none</td><td>internal debugging passthrough to <code>127.0.0.1:11434</code></td></tr>
+      <tr><td><code>/</code></td><td>none</td><td>catch-all → FastAPI root</td></tr>
+    </table>
+
+    <div class="callout warning">
+      <strong>Why <code>proxy_buffering off</code> on the chat route is non-negotiable.</strong> SSE is a long-lived stream: FastAPI sends <code>data: {...}\n\n</code> chunks over minutes. If nginx buffers, tokens pile up server-side and the visitor sees nothing until the stream ends — destroying the streaming UX. Disabling buffering + <code>Connection ""</code> (HTTP/1.1 keep-alive upstream) + a 300 s timeout keeps each token flowing through immediately.
+    </div>
+
+    <p>Security headers applied globally (<code>add_header ... always</code>): <code>X-Frame-Options: SAMEORIGIN</code> (blocks clickjacking of the API), <code>X-Content-Type-Options: nosniff</code>, <code>X-XSS-Protection</code>, and <code>Referrer-Policy: strict-origin-when-cross-origin</code>. Upstream keep-alive pools (<code>keepalive 32</code> / <code>16</code>) reuse TCP connections to FastAPI and Ollama, which matters for chat latency.</p>
+
+    <h3>2.4 Hugging Face Spaces internals</h3>
+    <ul>
+      <li><strong>Docker SDK Spaces</strong> build your image from the repo's <code>Dockerfile</code> on every push (or on demand). The Space's public URL — <code>https://USERNAME-SPACENAME.hf.space</code> — terminates TLS and routes to the container's exposed ports; external traffic arrives on port 80 (nginx).</li>
+      <li><strong>Env vars:</strong> set once in Space settings → Repository secrets; the same 11 names used by GitHub Actions (the app reads them via <code>pydantic-settings</code>, Chapter 4.1).</li>
+      <li><strong>Free hardware:</strong> 16 GB RAM / 2 vCPU, CPU-only. Phi-3-mini comfortably fits with nomic-embed-text alongside FastAPI + nginx.</li>
+      <li><strong>First boot:</strong> the models are <em>not</em> in the image — a small entry script (or a manual <code>ollama pull</code> in the Space terminal) downloads them once. Budget 5–10 minutes of boot time on first deploy; subsequent cold starts are faster because Ollama caches models in <code>/root/.ollama</code>.</li>
+      <li><strong>Sleep behavior (free tier):</strong> after ~48 h of no traffic the Space suspends; the first request then takes ~30 s to wake. The keep-alive workflow (2.7) prevents this in practice.</li>
+      <li><strong>Terminal:</strong> Settings → Open in terminal gives a shell <em>inside the running container</em> — good for <code>ollama pull</code>, log inspection, and (once the image note in 2.1 is applied) the CLI scripts and migrations.</li>
+    </ul>
+
+    <h3>2.5 Cloudflare Pages config</h3>
+    <pre><code># widget/wrangler.toml (and admin-dashboard/wrangler.toml, same shape)
+name = "chatbot-widget"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"     # Cloudflare serves the contents of dist/
+
+[build]
+command = "npm run build"           # run by Pages on every deploy
+</code></pre>
+    <p>Both front-ends are pure static builds served from a <code>dist/</code> folder: <code>widget/dist/</code> (one IIFE bundle — see 8.6 for the real output file names and the one-time build fixes) and <code>admin-dashboard/dist/</code> (index.html + hashed assets). No server-side logic runs at the edge. Deployment happens two ways: the GitHub Action <code>cloudflare/pages-action@v1</code> (2.6), or a direct Pages git integration (an alternative documented in DEPLOY.md — if you use both, pick one to avoid double deploys).</p>
+
+    <div class="callout note">
+      <strong>One integration detail worth knowing.</strong> The widget calls <em>relative</em> URLs (<code>/widget/chat/{slug}</code>), so in production the built widget must be served from the same origin as the API — either by proxying <code>/widget/*</code> on the widget's pages.dev host to <code>*.hf.space</code> (a Pages Function or a proxy rule), or by serving the file from the Space itself. Chapter 12 covers the symptom (<em>"widget says failed to fetch"</em>) and the fix.
+    </div>
+
+    <h3>2.6 GitHub Actions — the four workflows</h3>
+
+    <h4>deploy-hf.yml — backend to HF Spaces (Docker push)</h4>
+    <pre><code>on:
+  push:
+    branches: [main]
+    paths: ['backend/**', 'Dockerfile', 'supervisord.conf', 'nginx.conf', '.github/workflows/deploy-hf.yml']
+  workflow_dispatch:                      # manual "Run workflow" button
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4         # get the repo
+      - uses: docker/setup-buildx-action@v3   # enable BuildKit (multi-stage caching)
+      - uses: docker/login-action@v3
+        with:
+          registry: registry.hf.space
+          username: ${{ secrets.HF_USERNAME }}
+          password: ${{ secrets.HF_TOKEN }}   # HF write token acts as the registry password
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: registry.hf.space/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}:latest
+          cache-from: type=registry,ref=.../buildcache     # pull layer cache
+          cache-to: type=registry,ref=.../buildcache,mode=max  # push cache → fast rebuilds
+      - run: |
+          curl -X POST "https://huggingface.co/api/spaces/.../restart" \\
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}"   # force the Space to pick up the new image
+</code></pre>
+    <p>Key points: the <code>paths</code> filter means a widget-only commit doesn't rebuild the 2 GB image; registry caching turns repeat deploys into minutes instead of tens of minutes; the final <code>restart</code> API call is what actually swaps the running Space to the new image.</p>
+
+    <h4>deploy-widget.yml / deploy-admin.yml — static sites</h4>
+    <pre><code>on:
+  push:
+    branches: [main]
+    paths: ['widget/**', '.github/workflows/deploy-widget.yml']   # or 'admin-dashboard/**'
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-node@v4
+    with: { node-version: '20' }
+  - run: cd widget &amp;&amp; npm install       # no lockfile in the repo, so npm ci would fail
+  - run: cd widget &amp;&amp; npm run build    # → widget/dist/widget.js (see 8.6)
+  - uses: cloudflare/pages-action@v1
+    with:
+      apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      projectName: chatbot-widget      # must match a Pages project you created
+      directory: widget/dist
+      branch: main
+</code></pre>
+
+    <h4>keep-alive.yml — free-tier life support</h4>
+    <pre><code>on:
+  schedule:
+    - cron: '*/30 * * * *'   # every 30 minutes, UTC
+jobs:
+  keep-alive:
+    steps:
+      - run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \\
+            https://${{ secrets.HF_USERNAME }}-${{ secrets.HF_SPACE_NAME }}.hf.space/health \\
+            || echo "Space might be sleeping, that's OK"
+</code></pre>
+    <p>Free Spaces sleep after ~48 h idle. A ping every 30 min resets that clock, so the bot is effectively always awake. The ping URL (<code>/health</code>) is served by FastAPI (2.1), so each ping both wakes the Space and gets a real 200. One caveat: <code>-f</code> fails on HTTP errors but the <code>|| echo</code> swallows it, so the workflow never shows red for a cold start.</p>
+
+    <h3>2.7 The 11 GitHub secrets</h3>
+    <table>
+      <tr><th>Secret</th><th>Used by</th><th>From</th></tr>
+      <tr><td><code>TURSO_DATABASE_URL</code></td><td>backend (<code>libsql://...</code>)</td><td>Turso → database → connection details</td></tr>
+      <tr><td><code>TURSO_AUTH_TOKEN</code></td><td>backend + scripts</td><td>Turso</td></tr>
+      <tr><td><code>CLERK_PUBLISHABLE_KEY</code></td><td>admin SPA + backend JWT audience</td><td>Clerk → API keys</td></tr>
+      <tr><td><code>CLERK_SECRET_KEY</code></td><td>backend <code>verify_admin</code></td><td>Clerk</td></tr>
+      <tr><td><code>GAS_WEBAPP_URL</code></td><td>backend <code>email.py</code></td><td>Apps Script deploy URL (…/exec)</td></tr>
+      <tr><td><code>HF_TOKEN</code></td><td>deploy-hf.yml (registry login + restart)</td><td>HF → settings → access tokens</td></tr>
+      <tr><td><code>HF_USERNAME</code></td><td>deploy-hf.yml + keep-alive URL</td><td>HF profile</td></tr>
+      <tr><td><code>HF_SPACE_NAME</code></td><td>deploy-hf.yml + keep-alive URL</td><td>the Space you created</td></tr>
+      <tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>deploy-widget/admin</td><td>Cloudflare → API tokens (Pages:Edit)</td></tr>
+      <tr><td><code>CLOUDFLARE_ACCOUNT_ID</code></td><td>deploy-widget/admin</td><td>Cloudflare dashboard sidebar</td></tr>
+      <tr><td><code>ADMIN_EMAIL</code></td><td>backend admin authorization</td><td>your email (must be in Clerk allowlist)</td></tr>
+    </table>
+
+    <h3>2.8 docker-compose.yml — local development</h3>
+    <p>The compose file runs a standalone <code>ollama/ollama</code> container plus the backend image for local testing. The backend talks to <strong>Turso</strong> over HTTPS — there is no local Postgres (an earlier compose draft spun up <code>pgvector/pgvector:pg16</code>, which was removed because the app is Turso/libSQL-only; <code>database.py</code> imports <code>libsql_client</code> and there is no SQLAlchemy Postgres engine anywhere). Set <code>TURSO_DATABASE_URL</code>/<code>TURSO_AUTH_TOKEN</code> to a real Turso database before <code>docker compose up</code>; the backend command runs <code>python run_migrations.py</code> first, then starts uvicorn with live reload.</p>
+  </section>
+
+  <section class="chapter" id="ch3-database">
+    <h2>3. Database Design</h2>
+
+    <p>Storage is a <strong>Turso database</strong> — a hosted, replicated fork of SQLite called <em>libSQL</em> — reached over HTTPS by <code>libsql-client</code>. It is augmented by the <code>sqlite-vec</code> extension, which adds a real vector index so we can do semantic (meaning-based) search over knowledge-base chunks.</p>
+
+    <h3>3.1 Entity-relationship diagram</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+erDiagram
+    TENANTS ||--o{ END_USERS : "has"
+    TENANTS ||--o{ CONVERSATIONS : "owns"
+    TENANTS ||--o{ APPOINTMENTS : "owns"
+    TENANTS ||--o{ KNOWLEDGE_CHUNKS : "owns"
+    TENANTS ||--o{ USAGE_LOGS : "logs"
+    END_USERS ||--o{ CONVERSATIONS : "starts"
+    END_USERS ||--o{ APPOINTMENTS : "books"
+    CONVERSATIONS ||--o{ MESSAGES : "contains"
+    CONVERSATIONS ||--o{ APPOINTMENTS : "resulted in"
+    KNOWLEDGE_CHUNKS ||--|| KNOWLEDGE_VEC : "indexed by"
+
+    TENANTS {
+        text id PK
+        text slug UK "weblyft-design"
+        text name
+        text plan "free | deleted"
+        text settings "JSON string"
+        text business_hours "JSON string"
+        text timezone "America/New_York"
+        int slot_duration "30"
+        int buffer_minutes "15"
+        int created_at "unix ts"
+        int updated_at
+    }
+    END_USERS {
+        text id PK
+        text tenant_id FK
+        text clerk_user_id UK
+        text email
+        text name
+        int created_at
+    }
+    CONVERSATIONS {
+        text id PK
+        text tenant_id FK
+        text end_user_id FK
+        text status "active"
+        int created_at
+        int updated_at
+    }
+    MESSAGES {
+        text id PK
+        text conversation_id FK
+        text role "user|assistant"
+        text content
+        text intent
+        int tokens_used
+        int created_at
+    }
+    APPOINTMENTS {
+        text id PK
+        text tenant_id FK
+        text conversation_id FK
+        text end_user_id FK
+        int start_time
+        int end_time
+        text status "confirmed|cancelled"
+        text title
+        text notes
+        int created_at
+    }
+    KNOWLEDGE_CHUNKS {
+        text id PK
+        text tenant_id FK
+        text source_id "faq.pdf"
+        text source_type "pdf|txt|faq"
+        text content
+        blob embedding "3072 bytes"
+        int created_at
+    }
+    KNOWLEDGE_VEC {
+        float embedding[768]
+        text chunk_id
+    }
+    USAGE_LOGS {
+        text id PK
+        text tenant_id FK
+        text event_type "message"
+        text metadata "{intent: ...}"
+        int created_at
+    }
+      </pre>
+    </div>
+
+    <h3>3.2 Table-by-table reference</h3>
+    <p>All primary keys are client-generated UUID strings (no autoincrement), all timestamps are Unix seconds as integers (no timezone ambiguity — UTC epoch), and all flexible/JSON data rides in TEXT columns. That trio — <em>UUID text PKs, integer epoch timestamps, JSON-in-TEXT</em> — is the whole schema philosophy.</p>
+
+    <table>
+      <tr><th>Table</th><th>Columns</th><th>Notes</th></tr>
+      <tr><td><code>tenants</code></td><td><code>id</code> (PK), <code>slug</code> (UNIQUE), <code>name</code>, <code>domain</code>, <code>plan</code> (default <code>'free'</code>), <code>settings</code> (JSON: bot_name, greeting, colors, logo, show_branding, notification_email), <code>business_hours</code> (JSON: per-day open/close + timezone), <code>timezone</code>, <code>slot_duration</code> (30), <code>buffer_minutes</code> (15), <code>created_at</code>, <code>updated_at</code></td><td>The center of the universe. <code>plan='deleted'</code> is a soft delete — rows stay for audit but every query filters <code>plan != 'deleted'</code>.</td></tr>
+      <tr><td><code>end_users</code></td><td><code>id</code>, <code>tenant_id</code> FK, <code>clerk_user_id</code> (UNIQUE, nullable), <code>email</code>, <code>name</code>, <code>metadata</code>, <code>created_at</code></td><td>Website visitors / customers. In the current widget flow, bookings create users with email+name; chat-only sessions fall back to the session id string in <code>end_user_id</code>.</td></tr>
+      <tr><td><code>conversations</code></td><td><code>id</code>, <code>tenant_id</code> FK, <code>end_user_id</code> FK, <code>status</code> ('active'), <code>metadata</code>, <code>created_at</code>, <code>updated_at</code></td><td>One row per chat thread. <code>updated_at</code> is bumped after every exchange — that's the sort key for the dashboard's conversation list.</td></tr>
+      <tr><td><code>messages</code></td><td><code>id</code>, <code>conversation_id</code> FK, <code>role</code> ('user'|'assistant'|'system'|'tool'), <code>content</code>, <code>intent</code>, <code>tool_calls</code>, <code>tokens_used</code>, <code>created_at</code></td><td>Immutable chat log. <code>intent</code> stores the classification result on assistant messages — cheap analytics later.</td></tr>
+      <tr><td><code>appointments</code></td><td><code>id</code>, <code>tenant_id</code> FK, <code>conversation_id</code> FK, <code>end_user_id</code> FK, <code>start_time</code> (int), <code>end_time</code> (int), <code>status</code> ('pending'|'confirmed'|'cancelled'|'completed'), <code>title</code>, <code>notes</code>, <code>metadata</code>, <code>created_at</code>, <code>updated_at</code></td><td>Bookings are pure Unix timestamps — all timezone math happens in Python with <code>pytz</code> (Chapter 6), never in SQL.</td></tr>
+      <tr><td><code>knowledge_chunks</code></td><td><code>id</code>, <code>tenant_id</code> FK, <code>source_id</code> (file name, e.g. <code>faq_pdf</code>), <code>source_type</code> ('pdf'|'txt'|'md'|'url'|'faq'), <code>content</code>, <code>embedding</code> (BLOB), <code>metadata</code>, <code>created_at</code></td><td>Each chunk = one ~500-word slice of the client's knowledge. The embedding column is the float vector serialized to 3072 raw bytes.</td></tr>
+      <tr><td><code>knowledge_vec</code></td><td>virtual table: <code>embedding FLOAT[768]</code>, <code>chunk_id</code> TEXT</td><td>The <code>sqlite-vec</code> vector index. Both tables are written together and deleted together (<code>delete_chunks</code>).</td></tr>
+      <tr><td><code>usage_logs</code></td><td><code>id</code>, <code>tenant_id</code> FK, <code>event_type</code>, <code>metadata</code>, <code>created_at</code></td><td>Append-only event stream; powers the "active tenants" metric and future billing.</td></tr>
+    </table>
+
+    <h3>3.3 Indexes</h3>
+    <table>
+      <tr><th>Index</th><th>Table</th><th>Speeds up</th></tr>
+      <tr><td><code>idx_conv_tenant</code></td><td>conversations(tenant_id)</td><td>dashboard conversation list per tenant</td></tr>
+      <tr><td><code>idx_conv_user</code></td><td>conversations(end_user_id)</td><td>"this visitor's threads" lookups</td></tr>
+      <tr><td><code>idx_msg_conv</code></td><td>messages(conversation_id)</td><td>thread history reads</td></tr>
+      <tr><td><code>idx_appt_tenant_time</code></td><td>appointments(tenant_id, start_time)</td><td>availability queries — the hot path (composite index on tenant + start time)</td></tr>
+      <tr><td><code>idx_appt_user</code></td><td>appointments(end_user_id)</td><td>"my appointments"</td></tr>
+      <tr><td><code>idx_knowledge_tenant</code></td><td>knowledge_chunks(tenant_id)</td><td>RAG tenant filter + chunk delete</td></tr>
+      <tr><td><code>idx_usage_tenant_date</code></td><td>usage_logs(tenant_id, created_at)</td><td>usage analytics window queries</td></tr>
+      <tr><td><code>idx_tenant_slug</code></td><td>tenants(slug)</td><td>every widget request resolves slug→tenant; the <code>UNIQUE</code> constraint already creates an index — this is a defensive duplicate</td></tr>
+      <tr><td><code>idx_enduser_tenant</code></td><td>end_users(tenant_id)</td><td>"users of tenant X"</td></tr>
+    </table>
+
+    <h3>3.4 sqlite-vec internals</h3>
+    <p><code>sqlite-vec</code> (v0.1.6 in requirements) is a loadable SQLite extension that adds virtual tables and scalar functions for vector math. Two moving parts matter here:</p>
+
+    <ol>
+      <li><strong>Loading the extension</strong> — <code>database.py</code> runs, on every connect:
+        <pre><code>PRAGMA enable_load_extension = true;
+SELECT vec_version();          -- if the extension is already linked in, this succeeds
+-- fallback if not:
+SELECT load_extension('vec0');
+</code></pre>
+      The graceful try/except means the app still boots (and degrades to non-vector behavior) if the extension is unavailable in some environment.
+      </li>
+      <li><strong>The virtual table</strong> — declared in the migration as:
+        <pre><code>CREATE VIRTUAL TABLE knowledge_vec USING vec0(embedding FLOAT[768], chunk_id TEXT);
+</code></pre>
+      Every chunk's embedding (768 floats for nomic-embed-text) is a row here. The dimension is fixed at table-creation time — changing embedding models later requires rebuilding this table (Chapter 13).
+      </li>
+    </ol>
+
+    <h4>How vectors are serialized</h4>
+    <p><code>RAGService</code> packs 768 Python floats into 3072 raw bytes with <code>struct</code> — the exact byte layout libSQL needs for the vector column:</p>
+    <pre><code>def _serialize_vector(self, vector):
+    return struct.pack(f'{len(vector)}f', *vector)   # 768 'f' (4-byte floats) → 3072 bytes
+
+def _deserialize_vector(self, data):
+    count = len(data) // 4
+    return list(struct.unpack(f'{count}f', data))
+</code></pre>
+
+    <h4>The similarity query</h4>
+    <pre><code>SELECT kc.id, kc.content, kc.metadata,
+       vec_distance_cosine(kc.embedding, ?) AS distance
+FROM knowledge_chunks kc
+JOIN knowledge_vec kv ON kc.id = kv.chunk_id
+WHERE kc.tenant_id = ?
+ORDER BY distance ASC
+LIMIT ?;</code></pre>
+    <p><code>vec_distance_cosine(a, b)</code> returns <strong>cosine distance</strong> — a number in [0, 2] where 0 means identical direction. The app converts to similarity with <code>similarity = 1 - distance</code>, keeps only chunks above the 0.7 threshold, and caps results at <code>top_k = 5</code> (Chapter 5.4 walks the full pipeline).</p>
+
+    <h3>3.5 Migration SQL walkthrough</h3>
+    <p>The whole schema lives in one idempotent file, <code>backend/migrations/versions/001_initial_schema.sql</code>. Every statement is wrapped in <code>CREATE TABLE IF NOT EXISTS</code> / <code>CREATE INDEX IF NOT EXISTS</code>, so re-running it is safe — which is exactly what <code>run_migrations.py</code> does: it splits the file on <code>;</code> and executes each statement through the sync libSQL client, printing a truncated copy of each one so you can watch progress. (The SQL <em>is</em> copied into the image as <code>/app/migrations</code>; only the <code>backend/run_migrations.py</code> runner isn't — see 2.1 for where to run it.)</p>
+
+    <div class="callout tip">
+      <strong>Why raw SQL instead of Alembic autogenerate?</strong> The models (<code>SQLModel</code>) exist mostly for documentation; the real DDL is hand-written because the vector virtual table can't be represented by an ORM, and libSQL's <code>CREATE VIRTUAL TABLE ... USING vec0(...)</code> is not SQLAlchemy-friendly. Alembic is configured (<code>alembic.ini</code>, <code>migrations/env.py</code>) but <code>env.py</code> explicitly notes "actual migrations run via scripts" — the pragmatic route.
+    </div>
+
+    <h3>3.6 Turso / libSQL specifics</h3>
+    <ul>
+      <li><strong>Two clients, one database:</strong> <code>database.py</code> exposes an <em>async</em> client (<code>libsql_client.create_client</code>) for FastAPI request paths and a <em>sync</em> client (<code>create_client_sync</code>) for scripts and migrations. Both connect over HTTPS using <code>TURSO_DATABASE_URL</code> + <code>TURSO_AUTH_TOKEN</code>.</li>
+      <li><strong>Query style:</strong> raw SQL with positional <code>?</code> parameters (<code>db.execute(sql, [params])</code>), returning a <code>ResultSet</code> with <code>.columns</code> and <code>.rows</code>. The app constantly converts rows to dicts with the neat idiom <code>dict(zip(result.columns, row))</code>.</li>
+      <li><strong>JSON manipulation:</strong> the tenant PATCH endpoints use SQLite's <code>json_set(settings, '$.primary_color', ?)</code> to update a single key inside the JSON string without reading-modifying-writing the whole blob — a genuinely elegant use of SQLite's JSON1 functions.</li>
+      <li><strong>Scale ceiling:</strong> the free tier is 9 GB storage / 1 B row-reads per month. At ~100 bytes per message and sub-KB per chunk, that supports millions of messages and hundreds of clients — the binding constraint is reads, not bytes.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="ch4-fastapi">
+    <h2>4. FastAPI Application</h2>
+
+    <p>The backend is a single FastAPI app (<code>backend/app/main.py</code>) that wires together configuration, a database lifecycle, two middleware layers, and three routers — <code>widget</code> (public chat/config), <code>api/tenants</code> (tenant dashboard), and <code>admin</code> (operator-only).</p>
+
+    <h3>4.1 Configuration — <code>app/config.py</code></h3>
+    <p>Settings are loaded by <code>pydantic-settings</code>, which reads environment variables and validates them at import time. Missing required vars raise immediately — a fail-fast design that catches misconfigured deployments at boot instead of mid-request.</p>
+    <table>
+      <tr><th>Setting</th><th>Env var (alias)</th><th>Default</th><th>Purpose</th></tr>
+      <tr><td><code>turso_database_url</code></td><td><code>TURSO_DATABASE_URL</code></td><td>— (required)</td><td>libSQL endpoint</td></tr>
+      <tr><td><code>turso_auth_token</code></td><td><code>TURSO_AUTH_TOKEN</code></td><td>— (required)</td><td>DB auth</td></tr>
+      <tr><td><code>clerk_publishable_key</code></td><td><code>CLERK_PUBLISHABLE_KEY</code></td><td>—</td><td>JWT audience for admin verify</td></tr>
+      <tr><td><code>clerk_secret_key</code></td><td><code>CLERK_SECRET_KEY</code></td><td>—</td><td>JWT signature verification</td></tr>
+      <tr><td><code>admin_email</code></td><td><code>ADMIN_EMAIL</code></td><td>—</td><td>the only allowed admin identity</td></tr>
+      <tr><td><code>gas_webapp_url</code></td><td><code>GAS_WEBAPP_URL</code></td><td>—</td><td>email endpoint</td></tr>
+      <tr><td><code>ollama_host</code></td><td><code>OLLAMA_HOST</code></td><td><code>http://localhost:11434</code></td><td>local model server</td></tr>
+      <tr><td><code>ollama_chat_model</code></td><td><code>OLLAMA_CHAT_MODEL</code></td><td><code>phi3:mini</code></td><td>chat model</td></tr>
+      <tr><td><code>ollama_embed_model</code></td><td><code>OLLAMA_EMBED_MODEL</code></td><td><code>nomic-embed-text</code></td><td>embedding model</td></tr>
+      <tr><td><code>environment</code> / <code>log_level</code></td><td><code>ENVIRONMENT</code> / <code>LOG_LEVEL</code></td><td><code>production</code> / <code>INFO</code></td><td>logging</td></tr>
+      <tr><td><code>widget_cors_origins</code></td><td><code>WIDGET_CORS_ORIGINS</code></td><td><code>*</code></td><td>CORS allowlist (comma-separated)</td></tr>
+      <tr><td><code>widget_rate_limit</code> / <code>api_rate_limit</code></td><td><code>WIDGET_RATE_LIMIT</code> / <code>API_RATE_LIMIT</code></td><td>30 / 60</td><td>documented knobs (enforced by nginx, Chapter 2.3)</td></tr>
+    </table>
+    <p>Note the pattern: <code>Field(..., alias="TURSO_DATABASE_URL")</code> makes the env var name the canonical alias, and <code>extra = "ignore"</code> tolerates stray env vars. For fields without an explicit alias, pydantic-settings still reads the matching UPPERCASE env var automatically (<code>OLLAMA_CHAT_MODEL</code>, <code>ENVIRONMENT</code>, …). A local <code>.env</code> file is supported for development.</p>
+
+    <h3>4.2 Lifecycle and middleware stack</h3>
+    <p><code>main.py</code> composes the app in this order:</p>
+    <pre><code>app = FastAPI(title="Multi-Tenant AI Chatbot API", version="1.0.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, ...)   # outermost
+app.add_middleware(TenantMiddleware)      # inner: runs after CORS, before routes
+app.include_router(widget.router)
+app.include_router(tenant.router)
+app.include_router(admin.router)
+</code></pre>
+    <p>The <code>lifespan</code> comes from <code>database.py</code>: on startup it opens the async libSQL connection and probes the vec extension; on shutdown it closes both clients. Because startup is async, the first request never races a half-open pool — FastAPI awaits lifespan completion before serving traffic.</p>
+
+    <h4>TenantMiddleware — how a slug becomes a tenant</h4>
+    <pre><code>def _extract_tenant_slug(self, request):
+    path = request.url.path
+    # 1. Widget endpoints: /widget/{endpoint}/{tenant_slug}
+    m = re.match(r'^/widget/[^/]+/([^/]+)', path)
+    if m: return m.group(1)
+    # 2. API/admin endpoints: X-Tenant-Slug header
+    if path.startswith('/api/') or path.startswith('/admin/'):
+        h = request.headers.get('X-Tenant-Slug')
+        if h: return h
+        # 3. Subdomain: tenant.yourdomain.com (ignoring reserved names)
+        host = request.headers.get('host', '')
+        if '.' in host:
+            sub = host.split('.')[0]
+            if sub not in ['www', 'admin', 'api', 'widget', 'localhost']:
+                return sub
+    return None
+</code></pre>
+    <p>If a slug is found, the middleware loads the tenant row into <code>request.state.tenant</code>. Two dependency functions then hand it to route handlers:</p>
+    <ul>
+      <li><code>get_current_tenant</code> → 404 if absent (used by all <code>/api/tenants/me/*</code> routes).</li>
+      <li><code>get_tenant_slug</code> → 400 if absent.</li>
+    </ul>
+    <p>This is the dependency-injection pattern throughout: routes declare <code>tenant: dict = Depends(get_current_tenant)</code> and FastAPI resolves it before the handler runs.</p>
+
+    <h3>4.3 CORS</h3>
+    <p><code>CORSMiddleware</code> allows origins from <code>widget_cors_origins</code> (default <code>*</code>), all methods and headers. <code>allow_credentials</code> is only enabled when explicit origins are configured — browsers reject the wildcard + credentials combination, and none of the APIs use cookies anyway (auth is a bearer token, 4.6). The widget's fetch calls are cross-origin by design (pages.dev → hf.space); the real abuse protection is nginx rate limiting plus the fact that chat endpoints are public. Admin and tenant APIs require a signed Clerk JWT, so permissive CORS doesn't weaken them.</p>
+
+    <h3>4.4 Endpoint catalog (30 routes)</h3>
+    <table>
+      <tr><th>Method</th><th>Path</th><th>Router</th><th>Auth</th><th>Purpose</th></tr>
+      <tr><td>GET</td><td><code>/</code></td><td>root</td><td>—</td><td>API name/version banner</td></tr>
+      <tr><td>GET</td><td><code>/health</code></td><td>root</td><td>—</td><td>liveness probe alias (Docker/nginx/keep-alive)</td></tr>
+      <tr><td>GET</td><td><code>/widget/config/{slug}</code></td><td>widget</td><td>—</td><td>colors, greeting, bot name, business hours for the widget</td></tr>
+      <tr><td>POST</td><td><code>/widget/chat/{slug}</code></td><td>widget</td><td>—</td><td>streaming chat (SSE)</td></tr>
+      <tr><td>GET</td><td><code>/widget/availability/{slug}</code></td><td>widget</td><td>—</td><td>available slots for a date range</td></tr>
+      <tr><td>POST</td><td><code>/widget/appointments/{slug}</code></td><td>widget</td><td>—</td><td>direct booking with email + conflict check</td></tr>
+      <tr><td>GET</td><td><code>/widget/health</code></td><td>widget</td><td>—</td><td>liveness probe (same payload as <code>/health</code>)</td></tr>
+      <tr><td>GET</td><td><code>/widget/history/{slug}</code></td><td>widget</td><td>—</td><td>message history for a conversation (verifies the conversation belongs to the tenant)</td></tr>
+      <tr><td>GET</td><td><code>/api/tenants/me</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>own tenant profile</td></tr>
+      <tr><td>PATCH</td><td><code>/api/tenants/me</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>update name/colors/greeting/hours/slot config</td></tr>
+      <tr><td>POST</td><td><code>/api/tenants/me/knowledge</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>upload PDF/TXT/MD (multipart)</td></tr>
+      <tr><td>POST</td><td><code>/api/tenants/me/knowledge/text</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>upload raw text or FAQ JSON</td></tr>
+      <tr><td>GET</td><td><code>/api/tenants/me/knowledge</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>list sources + chunk counts</td></tr>
+      <tr><td>DELETE</td><td><code>/api/tenants/me/knowledge/{source_id}</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>delete a source's chunks (+ vector rows)</td></tr>
+      <tr><td>GET</td><td><code>/api/tenants/me/conversations</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>list with message_count + last_message</td></tr>
+      <tr><td>GET</td><td><code>/api/tenants/me/conversations/{id}</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>full thread (verifies ownership!)</td></tr>
+      <tr><td>GET</td><td><code>/api/tenants/me/appointments</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>list, optional status filter</td></tr>
+      <tr><td>GET</td><td><code>/api/tenants/me/analytics</code></td><td>tenant</td><td>admin JWT + tenant ctx</td><td>counts + resolution rate</td></tr>
+      <tr><td>GET</td><td><code>/admin/tenants</code></td><td>admin</td><td>Clerk JWT</td><td>paginated tenant list with search/plan filter</td></tr>
+      <tr><td>POST</td><td><code>/admin/tenants</code></td><td>admin</td><td>Clerk JWT</td><td>create tenant (slug uniqueness enforced)</td></tr>
+      <tr><td>GET</td><td><code>/admin/tenants/{id}</code></td><td>admin</td><td>Clerk JWT</td><td>tenant detail</td></tr>
+      <tr><td>PATCH</td><td><code>/admin/tenants/{id}</code></td><td>admin</td><td>Clerk JWT</td><td>update (same fields as tenant /me)</td></tr>
+      <tr><td>DELETE</td><td><code>/admin/tenants/{id}</code></td><td>admin</td><td>Clerk JWT</td><td>soft delete (<code>plan='deleted'</code>)</td></tr>
+      <tr><td>POST</td><td><code>/admin/tenants/{id}/impersonate</code></td><td>admin</td><td>Clerk JWT</td><td>returns slug for the frontend to "log in as"</td></tr>
+      <tr><td>GET</td><td><code>/admin/tenants/{id}/conversations</code></td><td>admin</td><td>Clerk JWT</td><td>conversations for a tenant (message count + last message + user email)</td></tr>
+      <tr><td>GET</td><td><code>/admin/tenants/{id}/appointments</code></td><td>admin</td><td>Clerk JWT</td><td>appointments for a tenant (optional status filter, user email joined)</td></tr>
+      <tr><td>POST</td><td><code>/admin/tenants/{id}/knowledge</code></td><td>admin</td><td>Clerk JWT</td><td>upload knowledge file for a tenant (multipart)</td></tr>
+      <tr><td>POST</td><td><code>/admin/tenants/{id}/knowledge/text</code></td><td>admin</td><td>Clerk JWT</td><td>upload text/FAQ for a tenant</td></tr>
+      <tr><td>GET</td><td><code>/admin/tenants/{id}/knowledge</code></td><td>admin</td><td>Clerk JWT</td><td>list knowledge sources for a tenant</td></tr>
+      <tr><td>DELETE</td><td><code>/admin/tenants/{id}/knowledge/{source_id}</code></td><td>admin</td><td>Clerk JWT</td><td>delete a tenant's knowledge source</td></tr>
+      <tr><td>GET</td><td><code>/admin/analytics</code></td><td>admin</td><td>Clerk JWT</td><td>platform-wide counts + top tenants</td></tr>
+      <tr><td>GET</td><td><code>/admin/usage</code></td><td>admin</td><td>Clerk JWT</td><td>raw usage_logs with filters</td></tr>
+    </table>
+
+    <h3>4.5 The chat endpoint, dissected</h3>
+    <p>This is the heart of the product. <code>POST /widget/chat/{slug}</code>:</p>
+    <ol>
+      <li><strong>Resolve tenant</strong> by slug (<code>plan != 'deleted'</code>), 404 otherwise.</li>
+      <li><strong>Get-or-create conversation:</strong> if the widget didn't send <code>conversation_id</code>, generate one and insert a <code>conversations</code> row with <code>end_user_id = session_id</code>.</li>
+      <li><strong>Persist the user message</strong> immediately (role <code>'user'</code>) — so a crash mid-stream never loses the visitor's question.</li>
+      <li><strong>Classify intent</strong> via <code>intent_service.classify()</code> (Chapter 5.2) and log a <code>usage_logs</code> row with the intent.</li>
+      <li><strong>Branch on intent</strong> inside an async generator that yields SSE frames:</li>
+    </ol>
+    <pre><code>if intent == 'general_query':
+    chunks = await rag_service.search(tenant_id, message)
+    if chunks:
+        async for piece in llm_service.synthesize_answer(message, [c['content'] for c in chunks]):
+            yield f"data: {json.dumps({'type': 'content', 'content': piece})}\n\n"
+    else:
+        no_info = "I don't have that information in my knowledge base..."
+        yield f"data: {json.dumps({'type': 'content', 'content': no_info})}\n\n"
+
+elif intent == 'book_appointment':
+    details = await intent_service.extract_booking_details(message)
+    if details.get('preferred_date') and details.get('preferred_time'):
+        # build naive dt, localize with pytz, convert to epoch
+        slots = await appointment_service.get_availability(tenant_id, date, date, tz)
+        if any(s['start_time'] == start_ts and s['available'] for s in slots):
+            appt = await appointment_service.book_appointment(...)   # conflict check inside
+            await email_service.send_appointment_confirmation(...)
+            yield content event "Great! I've booked..."
+        else:
+            yield content event + yield slots event   # show alternatives
+    else:
+        yield content event "What date and time would you prefer?"
+</code></pre>
+    <p>Frames are JSON objects with a <code>type</code> field: <code>content</code> (a text token), <code>slots</code> (clickable times for the widget), or <code>done</code> (final metadata + conversation_id). After the branch, the full assistant response is persisted with the <code>intent</code> attached, the conversation's <code>updated_at</code> bumps, and the generator yields <code>done</code>.</p>
+
+    <div class="callout note">
+      <strong>Import note.</strong> <code>widget.py</code> imports <code>intent_service</code>/<code>appointment_service</code> from <code>app.services.appointments</code>. (An earlier revision imported them from a nonexistent <code>app.services.intent</code> module, which crashed the app at startup with <code>ModuleNotFoundError</code> — that line is fixed.)
+    </div>
+
+    <h3>4.6 Admin auth — Clerk JWT verification</h3>
+    <pre><code>async def verify_admin(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    header = jwt.get_unverified_header(credentials.credentials)
+    key = next(k for k in _get_jwks() if k['kid'] == header['kid'])   # Clerk's JWKS public keys
+    payload = jwt.decode(credentials.credentials, jwk.construct(key),
+                         algorithms=["RS256"], options={"verify_aud": False})
+    email = payload.get('email') or payload.get('email_address')
+    if email != settings.admin_email:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return email
+</code></pre>
+    <p>The security model is deliberately single-operator: the browser gets a Clerk JWT after signing in; every <code>/admin/*</code> route depends on <code>verify_admin</code>. The token must (a) verify against Clerk's <strong>JWKS public keys</strong> (fetched from <code>https://&lt;frontend-api&gt;/.well-known/jwks.json</code>, derived from the publishable key; override the URL with <code>CLERK_JWKS_URL</code>), (b) be RS256, and (c) carry <em>your</em> email. 401 for bad/absent tokens, 403 for a valid token from the wrong account.</p>
+
+    <div class="callout note">
+      <strong>Security posture.</strong> (1) The tenant-management routes (<code>/api/tenants/me/*</code>) require a verified admin JWT <em>and</em> select the tenant via the <code>X-Tenant-Slug</code> header/subdomain — the earlier header-only "authentication" (anyone could spoof a slug) is closed. (2) The chat/widget routes are public by design and rely on nginx rate limiting — fine for a public bot. (3) nginx no longer exposes an <code>/ollama/</code> proxy — Ollama is only reachable inside the container. (4) The Apps Script web app is deployed as "Anyone" — its <code>/exec</code> URL is the only secret; don't publish it, because anyone with the URL can send email as you (up to the 100/day quota).
+    </div>
+
+    <h3>4.7 Validation, error handling, and response shapes</h3>
+    <ul>
+      <li><strong>Pydantic schemas</strong> (<code>schemas.py</code>) enforce contracts at the boundary: <code>ChatMessageRequest.message</code> must be 1–4000 chars; <code>TenantCreate.slug</code> must match <code>^[a-z0-9-]+$</code>; <code>primary_color</code> must match <code>^#[0-9A-Fa-f]{6}$</code>; <code>BookAppointmentRequest.email</code> is an <code>EmailStr</code> validated by email-validator. Invalid input → automatic 422 with a structured error body — no manual checks needed.</li>
+      <li><strong>HTTPException</strong> for expected failures: 404 (tenant/conversation not found), 400 (duplicate slug, unsupported file type, invalid FAQ JSON), 403/401 (admin auth).</li>
+      <li><strong>LLM resilience:</strong> <code>LLMService</code> catches Ollama errors and returns an error string (streaming path yields it as a frame); <code>embed()</code> falls back to a zero vector on failure; <code>extract_booking_details</code> returns a safe all-null dict if JSON parsing fails.</li>
+      <li><strong>Response models:</strong> most routes declare <code>response_model=...</code>, so FastAPI validates outgoing payloads too — a field rename in the schema fails loudly instead of silently breaking the widget.</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="ch5-ai-pipeline">
+    <h2>5. AI Pipeline Internals</h2>
+
+    <p>The "brain" is Ollama serving two models inside the Space: <code>phi3:mini</code> (a 3.8B-parameter instruction-tuned model from Microsoft, ~2.2 GB) for all text generation, and <code>nomic-embed-text</code> (a 137M-parameter embedding model, 768 dimensions) for vector search. <code>llm.py</code> wraps both behind an <code>LLMService</code> singleton that every other service imports.</p>
+
+    <h3>5.1 The Ollama client</h3>
+    <pre><code>class LLMService:
+    def __init__(self):
+        self.client = ollama.AsyncClient(host=settings.ollama_host)   # http://localhost:11434
+        self.chat_model = settings.ollama_chat_model                  # phi3:mini
+        self.embed_model = settings.ollama_embed_model                # nomic-embed-text
+</code></pre>
+    <p>Three primitives are used everywhere:</p>
+    <ul>
+      <li><code>chat(messages, stream=True|False, temperature, max_tokens)</code> — the generator wrapper. In streaming mode it yields <code>message.content</code> pieces as they arrive; in non-streaming mode it returns the full string. Temperature and <code>num_predict</code> are passed through as Ollama <code>options</code>.</li>
+      <li><code>embed(texts)</code> — loop over a list, call <code>client.embeddings()</code>, collect vectors; on failure, append a 768-float zero vector so the pipeline never crashes on one bad chunk.</li>
+      <li><code>embed_single(text)</code> — one query embedding for RAG.</li>
+    </ul>
+    <p>The error contract: <code>chat()</code> catches exceptions and returns <code>"LLM error: ..."</code> as the response (streaming or not) rather than raising. Downstream services therefore always get a string; the user-facing side effect is a slightly robotic answer, never a 500.</p>
+
+    <h3>5.2 Intent classification — the router</h3>
+    <p>Every incoming message is first classified into one of six buckets. The prompt is a <strong>few-shot classifier</strong>: the model sees labeled examples and must output exactly one label. Temperature 0.1 makes it deterministic.</p>
+    <pre><code>Classify the user's intent into ONE category:
+- book_appointment: Wants to schedule a meeting
+- cancel_appointment: Wants to cancel or reschedule
+- check_availability: Asks about open slots
+- general_query: Information question
+- transfer_human: Explicitly asks for human
+- unclear: Ambiguous or off-topic
+
+Examples:
+User: "Book a meeting for Tuesday 2pm" -> book_appointment
+User: "Cancel my appointment" -> cancel_appointment
+User: "What times are open Friday?" -> check_availability
+User: "What's your refund policy?" -> general_query
+User: "Talk to a person" -> transfer_human
+User: "Hello" -> unclear
+
+User: "{text}"
+Intent:</code></pre>
+    <p>The response is matched leniently — <code>if valid in intent: return valid</code> — so <code>"book_appointment"</code>, <code>"book_appointment."</code>, or even a wrapped answer still lands in the right bucket. Anything unmatched falls through to <code>unclear</code>, which the widget answers with a polite re-prompt.</p>
+
+    <table>
+      <tr><th>Intent</th><th>Example user messages</th><th>Backend behavior</th></tr>
+      <tr><td><code>book_appointment</code></td><td>"Book Tuesday at 2pm", "I need a consultation"</td><td>Extract details → check slot → book → email</td></tr>
+      <tr><td><code>cancel_appointment</code></td><td>"Cancel my appointment"</td><td>Ask for details (full cancel flow is not wired to the widget yet)</td></tr>
+      <tr><td><code>check_availability</code></td><td>"What times are open Friday?"</td><td>Generate slots (default: next 7 days) and stream them as a clickable picker</td></tr>
+      <tr><td><code>general_query</code></td><td>"Do you offer refunds?"</td><td>RAG search + grounded synthesis</td></tr>
+      <tr><td><code>transfer_human</code></td><td>"Talk to a person"</td><td>Friendly handoff message (no real queue yet)</td></tr>
+      <tr><td><code>unclear</code></td><td>"asdf", "hello"</td><td>Re-prompt listing capabilities</td></tr>
+    </table>
+
+    <h3>5.3 Structured extraction — booking details as JSON</h3>
+    <p>Booking needs machine-readable facts, not prose. A second prompt coerces the model into emitting JSON only:</p>
+    <pre><code>Extract booking details from user message. Return JSON only.
+
+User: "{text}"
+
+Return format:
+{
+  "preferred_date": "YYYY-MM-DD or null",
+  "preferred_time": "HH:MM or null",
+  "duration_minutes": 30,
+  "title": "Appointment title or null",
+  "notes": "Any notes or null"
+}
+
+If date/time not specified, use null.</code></pre>
+    <p>The response is parsed with <code>json.loads</code>; on failure the service returns a safe all-null dict (falling back to the "ask for date/time" UX branch). The same pattern extracts cancellation details and business hours (Chapter 5.6).</p>
+
+    <h3>5.4 The RAG pipeline — from PDF to grounded answers</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+    PDF["📄 client FAQ.pdf"] --> EXTRACT["PyMuPDF (fitz)<br/>page.get_text() + page markers"]
+    EXTRACT --> CHUNK["chunk_text()<br/>500-word windows, 50-word overlap"]
+    CHUNK --> EMBED["nomic-embed-text<br/>768-dim float vectors"]
+    EMBED --> PACK["struct.pack → 3072 bytes"]
+    PACK --> DB[("Turso<br/>knowledge_chunks + knowledge_vec")]
+
+    Q["💬 visitor question"] --> QEMBED["embed_single(query)"]
+    QEMBED --> SEARCH["vec_distance_cosine<br/>ORDER BY distance ASC LIMIT 10"]
+    SEARCH --> FILTER["similarity = 1 − distance<br/>keep ≥ 0.7, take top 5"]
+    DB --> SEARCH
+    FILTER --> SYNTH["phi3:mini synthesis<br/>answer ONLY from context"]
+    SYNTH --> OUT["streamed answer"]
+      </pre>
+    </div>
+
+    <ol>
+      <li><strong>Extract</strong> (<code>knowledge.py → process_pdf</code>): PyMuPDF opens the bytes, iterates pages, appends <code>\n--- Page {n} ---\n</code> + extracted text. The page marker survives chunking, so answers can carry approximate page metadata (<code>{'page': i // 5 + 1}</code> — a rough heuristic, one page per ~5 chunks).</li>
+      <li><strong>Chunk</strong> (<code>chunk_text</code>): split on whitespace, slide a 500-word window with a 50-word overlap — step size 450. Overlap prevents a sentence from being cut in half at a boundary and losing meaning.</li>
+      <li><strong>Embed</strong>: all chunks are embedded in one batch (<code>llm_service.embed(texts)</code>) — on CPU this is the slowest step of onboarding (a 20-page PDF ≈ tens of seconds).</li>
+      <li><strong>Store</strong>: each chunk row + its packed vector row, keyed <code>chunk_id</code> (source_id + index). <code>INSERT OR REPLACE</code> makes re-uploads idempotent.</li>
+      <li><strong>Search</strong>: query embedding → <code>vec_distance_cosine</code> → order ascending → <code>LIMIT top_k * 2</code> (fetch 10, filter to 5). The extra fetch matters because the threshold filter can discard results.</li>
+      <li><strong>Filter</strong>: <code>similarity = 1 - distance</code>; drop below 0.7 — the trust floor that stops the bot from answering from irrelevant chunks. (If nothing passes, the widget gets the honest "I don't have that information" line.)</li>
+      <li><strong>Synthesize</strong>: top-5 contexts go into the grounding prompt (5.5) and the answer streams back.</li>
+    </ol>
+
+    <h3>5.5 The grounding prompt</h3>
+    <pre><code>Answer the user's question using ONLY the provided context.
+If the answer isn't in the context, say "I don't have that information in my knowledge base."
+
+Context:
+Source 1: {chunk}
+Source 2: {chunk}
+...
+
+Question: {query}
+
+Answer:</code></pre>
+    <p>Two design choices matter: <em>grounding</em> (answer only from context — reduces hallucination) and <em>honest refusal</em> (the model is told to say it doesn't know rather than invent). Temperature 0.2 keeps answers consistent; <code>max_tokens=800</code> bounds latency on CPU.</p>
+
+    <h3>5.6 Business-hours extraction</h3>
+    <p>Onboarding asks the AI to read the client's PDF and emit a structured week:</p>
+    <pre><code>Extract business hours from the following text. Return JSON only.
+Text: {text[:3000]}   # first 3000 chars — enough for a typical hours block
+
+Return format:
+{"monday": {"open": "09:00", "close": "17:00"}, ...,
+ "saturday": {"open": null, "close": null}, ...
+ "timezone": "America/New_York"}
+
+If a day is closed, use null. If not mentioned, use null.
+If timezone not mentioned, use "UTC".</code></pre>
+    <p>Note the explicit instruction to use <code>null</code> for unknowns — the schema (Chapter 3) and slot generator (Chapter 6) both treat null as "closed", so a garbage-guessing model would silently produce phantom slots. The 3000-char cap also keeps the prompt cheap and fast.</p>
+
+    <h3>5.7 Context window &amp; token budget management</h3>
+    <table>
+      <tr><th>Task</th><th>temperature</th><th>max_tokens</th><th>Notes</th></tr>
+      <tr><td>Intent classification</td><td>0.1</td><td>20</td><td>just a label; 20 tokens is plenty and fast</td></tr>
+      <tr><td>Booking/cancel extraction</td><td>0.1</td><td>150–200</td><td>JSON only</td></tr>
+      <tr><td>Business-hours extraction</td><td>0.1</td><td>300</td><td>text capped at 3000 chars</td></tr>
+      <tr><td>RAG synthesis</td><td>0.2</td><td>800</td><td>5 chunks ≈ 2500 tokens of context; 800 output tokens ≈ a solid paragraph</td></tr>
+      <tr><td>Default chat</td><td>0.3</td><td>1000</td><td>the generic <code>chat()</code> default</td></tr>
+    </table>
+    <p>Phi-3-mini's context window is 4K tokens. With ~2.5K tokens of RAG context + 800 output tokens + prompt overhead, a single synthesis call sits near but under the limit. This is deliberate: chunk size 500 words (~650 tokens) × 5 chunks stays within budget. If <code>top_k</code> or chunk size grows, watch for context overflow (Ollama errors) — the Chapter 13 scaling notes cover the fix (smaller chunks or a larger model).</p>
+  </section>
+
+  <section class="chapter" id="ch6-appointments">
+    <h2>6. Appointment Engine</h2>
+
+    <p>The appointment engine (<code>app/services/appointments.py</code>) turns three tenant settings — <code>business_hours</code> (JSON), <code>slot_duration</code> (default 30 min), <code>buffer_minutes</code> (default 15) — plus a timezone into a list of bookable Unix-timestamp ranges. It is deliberately pure Python with <code>pytz</code>: no SQL date functions, no tz magic in the database.</p>
+
+    <h3>6.1 The availability algorithm</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart TD
+    A["get_availability(tenant_id, start_date, end_date, tz)"] --> B["load tenant row<br/>business_hours, slot_duration, buffer"]
+    B --> C["load appointments in range<br/>status IN pending,confirmed"]
+    C --> D["for each day from start to end:"]
+    D --> E{"day in business_hours?<br/>open &amp; close set?"}
+    E -- no --> D
+    E -- yes --> F["build tz-aware open &amp; close datetimes"]
+    F --> G["convert existing appts to local time,<br/>keep only ones on this date → busy_ranges"]
+    G --> H["current = open"]
+    H --> I{"current + slot_duration ≤ close?"}
+    I -- no --> D
+    I -- yes --> J["slot_end = current + slot_duration"]
+    J --> K["conflict = any overlap with busy ranges<br/>expanded by buffer on both sides"]
+    K -- conflict --> M["current += slot_duration + buffer"]
+    K -- free --> L["emit slot {start, end, available: true}"]
+    L --> M
+    M --> H
+    D --> N["return all slots"]
+      </pre>
+    </div>
+
+    <p>In pseudocode, the core day-generation loop:</p>
+    <pre><code>for each day in [start_date, end_date):
+    hours = business_hours[day_name]           # e.g. {"open": "09:00", "close": "17:00"}
+    if not hours or not hours.open or not hours.close: skip  # closed day → no slots
+
+    open_dt  = localize(date, hours.open)      # tz-aware
+    close_dt = localize(date, hours.close)
+
+    busy = [(a.start, a.end) for a in appointments if a is on this day]  # in local tz
+
+    current = open_dt
+    while current + slot_duration &lt;= close_dt:
+        slot_end = current + slot_duration
+        if no overlap(current, slot_end, busy, buffer):
+            emit {start: current.ts, end: slot_end.ts, available: true}
+        current += slot_duration + buffer       # step INCLUDES the buffer gap
+</code></pre>
+
+    <h4>Buffer and overlap math — a worked example</h4>
+    <p>Suppose <code>slot_duration = 30</code>, <code>buffer = 15</code>, and there's an existing booking 13:00–13:30 (local). Its <em>protected range</em> is 12:45–13:45 once the buffer pads both sides:</p>
+    <pre><code>busy_start - buffer         busy_start  busy_end      busy_end + buffer
+     12:45                     13:00       13:30            13:45
+       |-------------------------|-----------|----------------|
+                                ▲ protected zone ▲
+
+conflict if:  current &lt; busy_end + buffer   AND   slot_end &gt; busy_start - buffer
+            (12:45,13:45)  vs  any candidate slot overlapping that window
+</code></pre>
+    <p>Because every candidate step is <code>slot_duration + buffer</code> (45 minutes from 09:00), the actual candidate starts in the example are 12:00, 12:45, 13:30, 14:15, … — not every 30 minutes. Walk them through the conflict rule:</p>
+    <pre><code>12:00–12:30  free   (slot ends 12:30, before the protected zone starts)
+12:45–13:15  busy   (overlaps 12:45–13:45 — ends 13:15 &gt; 12:45)
+13:30–14:00  busy   (starts inside the protected zone)
+14:15–14:45  free   (starts after 13:45 — the first slot after the booking)
+</code></pre>
+    <p>So the first bookable slot after the 13:00–13:30 booking is <strong>14:15–14:45</strong>. The 45-minute step is why the generator never even <em>considers</em> a 13:00 or 13:15 start — buffer spacing is baked into the grid, not checked after the fact.</p>
+
+    <h4>Conflict detection at booking time</h4>
+    <p>Slot generation is advisory; the authoritative check happens in <code>book_appointment()</code>, which re-queries the database atomically enough for this scale:</p>
+    <pre><code>SELECT id FROM appointments
+WHERE tenant_id = ? AND status IN ('pending','confirmed')
+  AND start_time &lt; ? AND end_time &gt; ?     -- (end_time, start_time) of the new booking
+</code></pre>
+    <p>If any row matches, the overlap is real (not buffer-adjusted — the slot generator already enforced buffers, so the booking check is the hard no-overlap guarantee) and the booking raises <code>ValueError</code>, which the chat endpoint catches and converts into the "that time slot is no longer available" message.</p>
+
+    <h3>6.2 Timezone handling with pytz</h3>
+    <ul>
+      <li><strong>Storage:</strong> <code>appointments.start_time/end_time</code> are epoch seconds (UTC) — unambiguous, sortable, timezone-free.</li>
+      <li><strong>Day boundaries:</strong> <code>get_availability</code> localizes the <code>YYYY-MM-DD</code> strings into the tenant's tz (<code>tz.localize(datetime.strptime(...))</code>) and adds 1 day for the exclusive end — so a request for 2026-09-08 in <code>America/New_York</code> correctly spans 04:00 UTC Sep 8 → 04:00 UTC Sep 9.</li>
+      <li><strong>Busy-range comparison:</strong> existing appointment epochs are converted to the same local tz (<code>datetime.fromtimestamp(ts, tz=utc).astimezone(tz)</code>) and filtered by calendar date, so appointments from other days never interfere.</li>
+      <li><strong>DST:</strong> using <code>pytz.timezone().localize()</code> (not <code>replace(tzinfo=)</code>) applies DST rules correctly — a 09:00 open on a DST-transition day still maps to the right UTC instant.</li>
+    </ul>
+
+    <h3>6.3 Defaults and edge cases</h3>
+    <table>
+      <tr><th>Case</th><th>Behavior</th></tr>
+      <tr><td>No <code>business_hours</code> set</td><td>Fallback default: Mon–Fri 09:00–17:00, weekend closed (<code>get_business_hours</code>)</td></tr>
+      <tr><td>Day missing from JSON / null open</td><td>Treated as closed → zero slots that day</td></tr>
+      <tr><td>Existing appointments <em>anywhere</em> in range</td><td>Loaded once (status pending/confirmed) and converted per-day — one DB query for the whole window</td></tr>
+      <tr><td>Booked slot when free at generation but taken at booking</td><td>Second visitor's booking conflicts → friendly fallback message + fresh slot list</td></tr>
+      <tr><td>End-of-day slot</td><td>Loop condition <code>current + duration &lt;= close</code> — a 17:00–17:30 slot needs 17:30 ≤ 17:00 to be true, so it's correctly excluded</td></tr>
+    </table>
+
+    <div class="callout note">
+      <strong>Recurrence.</strong> The engine has <em>no recurrence patterns</em> — every appointment is a one-off. "Every Monday at 9am" style rules would need a new <code>recurrence</code> column + expansion logic; the Chapter 13 roadmap lists it as the natural next feature for clinics and tutors.
+    </div>
+
+    <h3>6.4 Booking flow (direct endpoint + chat)</h3>
+    <ol>
+      <li>Widget/chat extracts or receives <code>start_time</code> + <code>end_time</code> (epoch).</li>
+      <li><code>book_appointment()</code>: conflict query → insert with status <code>'confirmed'</code> → return dict.</li>
+      <li>Widget endpoint also creates/updates an <code>end_users</code> row (email + name) and a <code>conversations</code> row, then sends the customer confirmation email <em>and</em> (if <code>notification_email</code> is in tenant settings) the business notification.</li>
+      <li>The chat path emails <code>customer@example.com</code> — a placeholder (Chapter 12 flags this); the direct booking endpoint uses the visitor's real email from the request body.</li>
+    </ol>
+  </section>
+
+  <section class="chapter" id="ch7-email">
+    <h2>7. Email System</h2>
+
+    <p>Email is outsourced to a <strong>Google Apps Script web app</strong> — a single file (<code>gas-email/Code.gs</code>, ~60 lines of code plus setup comments) deployed as "Web App, anyone can access, run as me". FastAPI POSTs JSON to its <code>/exec</code> URL; Apps Script turns it into a Gmail send; the response is a tiny JSON document. No SMTP, no send-grid, no keys beyond the URL itself.</p>
+
+    <h3>7.1 The Apps Script endpoint</h3>
+    <pre><code>function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const { to, subject, html } = data;
+    if (!to || !subject || !html) {
+      return ContentService.createTextOutput(JSON.stringify({ error: 'Missing required fields' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    MailApp.sendEmail({ to, subject, htmlBody: html, name: 'Chatbot Appointments' });
+    return ContentService.createTextOutput(JSON.stringify({ success: true, messageId: 'sent' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</code></pre>
+    <p>Three contract details:</p>
+    <ul>
+      <li><strong>Input</strong>: <code>{to, subject, html}</code> — validated server-side (a bare 400-style error JSON is returned, no email sent).</li>
+      <li><strong>Output</strong>: always JSON with <code>success</code> or <code>error</code> — <code>email.py</code> reads <code>result.get('success', False)</code>, so a malformed reply is treated as failure, never as success.</li>
+      <li><strong>Run-as-me authorization</strong>: emails are sent from <em>your</em> Gmail account and land in your Sent folder; the first call (running <code>testEmail()</code> in the editor) triggers Google's OAuth consent, which is why the setup checklist always includes "run testEmail once".</li>
+    </ul>
+
+    <h3>7.2 CORS and callers</h3>
+    <p>Apps Script web apps have <em>no CORS headers</em> — a browser calling the <code>/exec</code> URL directly gets blocked. That's fine and intended: the only caller is <code>email_service.send_email()</code> in FastAPI, which uses <code>httpx.AsyncClient(timeout=10.0)</code> server-to-server. Keeping email dispatch server-side also hides the endpoint from the public widget and keeps the abuse surface (spam through your Gmail) closed.</p>
+
+    <h3>7.3 HTML email templates</h3>
+    <p><code>email.py</code> builds two templates with inline styles (required for Gmail — it strips <code>&lt;style&gt;</code> blocks):</p>
+    <ul>
+      <li><strong>Customer confirmation/reminder</strong> (<code>send_appointment_confirmation</code>): a card with the business name, greeting, and a blue-bordered details block (Date / Time / Service / Notes). <code>is_reminder=True</code> swaps the subject to "Reminder: ... tomorrow" — the hook for a reminder scheduler that isn't wired up yet.</li>
+      <li><strong>Business notification</strong> (<code>send_business_notification</code>): "New Appointment Booked" with customer name, email, date, time — sent when the tenant's <code>settings.notification_email</code> is set.</li>
+    </ul>
+    <p>Layout is deliberately retro-safe: <code>max-width: 600px</code>, <code>margin: 0 auto</code>, flat backgrounds, <code>border-left: 4px solid #3b82f6</code> accent — renders identically in Gmail, Apple Mail, and Outlook.</p>
+
+    <h3>7.4 Quotas</h3>
+    <table>
+      <tr><th>Account type</th><th>Daily send limit</th><th>Note</th></tr>
+      <tr><td>Personal Gmail (via GAS)</td><td>100 emails/day</td><td>the default; ~15/day is realistic for a pilot client</td></tr>
+      <tr><td>Google Workspace</td><td>1,500 emails/day</td><td>$6/user/mo upgrade path</td></tr>
+    </table>
+    <p><code>Code.gs</code> ships a <code>checkQuota()</code> helper (<code>MailApp.getRemainingDailyQuota()</code>) for monitoring. When the daily cap is hit, MailApp throws — the try/catch returns an error JSON, <code>send_email</code> logs "Email send error" and returns False, and the booking still succeeds (the email is a notification, not a transaction).</p>
+
+    <h3>7.5 Reliability notes</h3>
+    <ul>
+      <li><strong>No retry logic today:</strong> one POST, 10 s timeout, boolean result. For a booking business, a dropped confirmation is annoying but not fatal (the chat confirms in-line first). The obvious hardening — a 3-attempt backoff or a queue table — is listed in Chapter 13.</li>
+      <li><strong>Failure is silent at the UI:</strong> the chat booking branch doesn't check the email result, so a Gmail quota failure won't break the conversation — a deliberate resilience choice.</li>
+      <li><strong>Test path:</strong> <code>scripts/test_gas_email.py --to you@example.com</code> POSTs a canned HTML message and asserts <code>success</code> — the standard first thing to run when "no emails" is reported (Chapter 12).</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="ch8-widget">
+    <h2>8. Widget (React + Shadow DOM)</h2>
+
+    <p>The widget is a React 18 app compiled by Vite into one <strong>IIFE file</strong>, <code>widget.js</code>, that any website can load with a single <code>&lt;script&gt;</code> tag. It renders its own floating chat button, panel, and slot picker in a <strong>Shadow DOM</strong> so it can't collide with the host site's CSS. ⚠ As shipped, the build needs three one-line fixes before it actually produces that file — 8.6 verifies each one against the real Vite output.</p>
+
+    <h3>8.1 Bootstrapping — <code>main.tsx</code></h3>
+    <pre><code>const scriptTag = document.currentScript as HTMLScriptElement
+const tenantSlug = scriptTag?.dataset?.tenant || 'demo'   // data-tenant="weblyft-design"
+
+const host = document.createElement('div')
+host.id = 'chatbot-widget-host'
+document.body.appendChild(host)
+
+const shadowRoot = host.attachShadow({ mode: 'open' })    // style isolation boundary
+const styleSheet = document.createElement('style')
+styleSheet.textContent = `/* styles injected by Vite */`
+shadowRoot.appendChild(styleSheet)
+
+const mountPoint = document.createElement('div')
+mountPoint.id = 'chatbot-widget-root'
+shadowRoot.appendChild(mountPoint)
+
+const root = createRoot(mountPoint)
+root.render(&lt;ChatWidget tenantSlug={tenantSlug} /&gt;)
+</code></pre>
+    <p>Everything the widget draws lives inside <code>shadowRoot</code>: its <code>&lt;style&gt;</code> rules (scoped by the shadow boundary) and the React tree. The host page's CSS simply cannot see in — <code>.chatbot-button</code> on the client's site can't restyle our button, and our <code>div</code>s can't inherit their ugly theme. (Mode <code>'open'</code> means devtools can still inspect it.)</p>
+    <p>Note that the <code>&lt;style&gt;</code> element is created empty — its text is supposed to come from <code>styles.css</code>. In a Vite <em>library</em> build, CSS imported normally is emitted as a separate <code>style.css</code> asset instead of being inlined, which would leave the widget unstyled. The fix in 8.6 imports the CSS as a string (<code>?inline</code>) so the bundle is genuinely self-contained.</p>
+
+    <div class="callout warning">
+      <strong>Shadow DOM caveats.</strong> (1) Fonts don't inherit through the shadow boundary — the widget uses system font stacks, which is why it looks consistent everywhere. (2) <code>z-index</code> is relative to the shadow tree; if a client's site has aggressive stacking contexts, the button can still end up underneath a sticky header. (3) If the host site sends a strict <code>Content-Security-Policy</code> without allowing <code>connect-src</code> to the Space origin, every fetch fails silently (Chapter 12 has the client-side checklist).
+    </div>
+
+    <h3>8.2 The three hooks</h3>
+    <p><code>ChatWidget.tsx</code> composes three custom hooks:</p>
+    <table>
+      <tr><th>Hook</th><th>State</th><th>Behavior</th></tr>
+      <tr><td><code>useConfig(tenantSlug)</code></td><td><code>data | loading | error</code></td><td>Fetches <code>/widget/config/{slug}</code> on mount; until it resolves, the widget renders <code>null</code> (nothing visible) so the button always appears with correct colors/greeting</td></tr>
+      <tr><td><code>useSession(tenantSlug)</code></td><td><code>sessionId</code> (stable), <code>conversationId</code></td><td>Creates a persistent <code>session_{timestamp}_{random}</code> in <code>localStorage</code> (key per tenant). It exposes <code>saveConversationId</code>/<code>clearSession</code> for the conversation key — but nothing in <code>ChatWidget</code> calls them yet, so a returning visitor only resumes a thread once that wiring lands (8.4, 12.1)</td></tr>
+      <tr><td><code>useChat(tenantSlug, conversationId)</code></td><td><code>messages, isLoading, slots, pendingAction</code></td><td>The SSE engine (8.3) plus optimistic user bubbles, error bubbles, slot state, and history loading</td></tr>
+    </table>
+
+    <h3>8.3 SSE streaming — the fetch-reader loop</h3>
+    <p>SSE over <code>fetch()</code> + <code>ReadableStream</code> (not <code>EventSource</code>) is used deliberately: <code>EventSource</code> only supports GET, but chat needs POST with a JSON body.</p>
+    <pre><code>const response = await fetch(`/widget/chat/${tenantSlug}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message, conversation_id, session_id })
+})
+
+const reader = response.body?.getReader()
+const decoder = new TextDecoder()
+let buffer = ''
+
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+  buffer += decoder.decode(value, { stream: true })   // decode + KEEP partial trailing bytes
+  const lines = buffer.split('\n')
+  buffer = lines.pop() || ''                           // last line may be incomplete — hold it
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      handleStreamData(JSON.parse(line.slice(6)))       // {type: content|slots|done, ...}
+    }
+  }
+}</code></pre>
+    <p>The buffer dance is the classic SSE gotcha: a chunk can split a <code>data:</code> line in half, so the reader keeps the trailing fragment until the next chunk completes it. <code>handleStreamData</code> then switches on <code>type</code>:</p>
+    <ul>
+      <li><code>content</code> → append to the last assistant bubble (or create one) — this is what types the answer out live.</li>
+      <li><code>slots</code> → stash slots, set <code>pendingAction = 'pick_slot'</code> → the panel renders the <code>SlotPicker</code>.</li>
+      <li><code>done</code> → persist <code>conversation_id</code>, mark the last message read (clears the unread badge logic), clear pending action.</li>
+    </ul>
+
+    <h3>8.4 Booking state machine</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+stateDiagram-v2
+    [*] --> Loading: script tag parsed
+    Loading --> Closed: config fetched
+    Closed --> Open: click button
+    Open --> Chatting: user sends message
+    Chatting --> Chatting: SSE content frames
+    Chatting --> PickingSlot: slots event
+    PickingSlot --> Chatting: slot clicked → sendMessage("Book ...")
+    PickingSlot --> Chatting: user types instead
+    Chatting --> Booked: done event + booking text
+    Chatting --> Open: close panel
+    Booked --> Chatting: next message
+      </pre>
+    </div>
+    <p>Key detail: clicking a slot doesn't call a booking API — it synthesizes the message <code>"Book {date} at {time}"</code> and sends it through the same chat pipeline. Intent classification recognizes it, re-validates the slot, and books. One code path for everything is why the widget stays tiny.</p>
+    <div class="callout warning">
+      <strong>Wiring caveat — the picker below is described as designed.</strong> In <code>ChatWidget.tsx</code> as shipped, the <code>slots</code>, <code>pendingAction</code>, and <code>selectSlot</code> values from <code>useChat</code> are never passed into <code>ChatPanel</code>, so <code>SlotPicker</code> never actually renders and clicking a slot is unreachable. Combined with the build fixes in 8.6, wiring those three props is the remaining step to make the booking UX work end to end (Chapter 12 catalogs it).
+    </div>
+
+    <h3>8.5 Components</h3>
+    <table>
+      <tr><th>Component</th><th>Job</th></tr>
+      <tr><td><code>ChatButton</code></td><td>Floating action button (bottom-right), brand color via CSS var, unread badge capped at "9+"</td></tr>
+      <tr><td><code>ChatPanel</code></td><td>The window: header (logo, bot name, "Online now", close), message area, slot picker, input, "Powered by AI Chatbot" branding (configurable via <code>show_branding</code>)</td></tr>
+      <tr><td><code>MessageList</code> / <code>MessageBubble</code></td><td>Rendering; welcome state shows the greeting from config; typing indicator (3 bouncing dots) while streaming</td></tr>
+      <tr><td><code>InputBar</code></td><td>Auto-resizing textarea (capped 120 px), disabled while streaming, Enter-to-send</td></tr>
+      <tr><td><code>SlotPicker</code></td><td>Groups slots by date (<code>toLocaleDateString</code>), renders each as a clickable time chip, disables unavailable ones</td></tr>
+    </table>
+    <p>Styling uses CSS custom properties threaded from config: <code>--primary-color</code> and <code>--secondary-color</code> are set as inline styles on the panel/button, so each tenant's colors flow without touching component logic.</p>
+
+    <h3>8.6 Vite lib-mode build</h3>
+    <pre><code>build: {
+  lib: {
+    entry: 'src/main.tsx',
+    name: 'ChatbotWidget',
+    fileName: 'widget',
+    formats: ['iife']          // one self-executing file, no imports
+  },
+  outDir: 'dist',
+  minify: 'esbuild',
+  target: 'es2020',
+  define: { 'process.env': {} }   // stub for any lib that sniffs NODE_ENV
+}</code></pre>
+    <p>IIFE means React, ReactDOM, and all components are bundled <em>into</em> one file — that's the whole point of the widget: a single <code>&lt;script&gt;</code> tag, no other dependencies.</p>
+
+    <div class="callout note">
+      <strong>Build note — fixed in the current repo.</strong> Earlier revisions had three issues that stopped the widget from building: (1) <code>main.tsx</code> imported a <em>default</em> export while <code>ChatWidget.tsx</code> only exports a <em>named</em> one; (2) Vite library builds emit CSS separately, so the shadow-root style element stayed empty; (3) the output was <code>dist/widget.iife.js</code>, not <code>widget.js</code>. All three are fixed: <code>main.tsx</code> uses <code>import { ChatWidget }</code>, inlines the styles via <code>import styles from './styles.css?inline'</code> + <code>styleSheet.textContent = styles</code>, and <code>vite.config.ts</code> forces the exact filename with <code>fileName: () =&gt; 'widget.js'</code>. <code>npm run build</code> now produces one self-contained <code>dist/widget.js</code> (≈ 489 KB raw, ≈ 151 KB gzipped), and every URL in this guide and the practical guide works as written.
+    </div>
+
+    <h3>8.7 CSP considerations</h3>
+    <ul>
+      <li><strong>Host-site CSP:</strong> <code>script-src</code> must allow the pages.dev origin; <code>connect-src</code> must allow the HF Space origin (for fetch/SSE); <code>style-src</code> may need <code>'unsafe-inline'</code> because the shadow root injects a <code>&lt;style&gt;</code> element.</li>
+      <li><strong>Same-origin nuance:</strong> because the widget fetches relative paths, serving <code>widget.js</code> from the same origin as the API (via proxy or directly from the Space) sidesteps CSP and CORS entirely — the cleanest production setup (Chapter 2.5).</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="ch9-admin">
+    <h2>9. Admin Dashboard (React + Clerk)</h2>
+
+    <p>The dashboard is a React 18 SPA (Vite) on Cloudflare Pages, protected by <strong>Clerk</strong>. It's the operator's control room: tenants, per-tenant data, knowledge uploads, and platform analytics.</p>
+
+    <h3>9.1 Clerk auth flow</h3>
+    <p><strong>Client side:</strong> <code>main.tsx</code> wraps the app in <code>&lt;ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}&gt;</code>. <code>App.tsx</code> gates rendering with <code>&lt;SignedIn&gt; / &lt;SignedOut&gt;</code> — signed-out users see the hosted <code>&lt;SignIn /&gt;</code> screen; signed-in users get the full app. <code>useAuth()</code> exposes <code>isLoaded</code>/<code>isSignedIn</code> so the router doesn't flash protected pages before Clerk hydrates. (That publishable key is baked in at <em>build time</em>: set <code>VITE_CLERK_PUBLISHABLE_KEY</code> as a build-time environment variable in Cloudflare Pages — or in the workflow's <code>npm run build</code> step — or the key is empty and the sign-in screen can't render.)</p>
+    <p><strong>Server side:</strong> every <code>/admin/*</code> call carries the Clerk JWT in <code>Authorization: Bearer ...</code>. The backend's <code>verify_admin</code> dependency (Chapter 4.6) verifies the signature against Clerk's JWKS public keys (RS256), then — the critical gate — compares the token's email to <code>ADMIN_EMAIL</code>. A valid Clerk session from anyone else gets 403.</p>
+    <div class="callout note">
+      <strong>Who attaches the token?</strong> The Clerk React SDK does not inject the session token into arbitrary <code>fetch</code> calls, so the dashboard wraps requests in <code>api.ts</code> (<code>apiFetch</code>): <code>App.tsx</code> registers a token getter from <code>useAuth().getToken()</code> once signed in, and <code>apiFetch</code> adds <code>Authorization: Bearer &lt;token&gt;</code> to every admin/tenant call. Tenant detail views also use admin-scoped endpoints (<code>/admin/tenants/{id}/conversations|appointments|knowledge</code>) so no <code>X-Tenant-Slug</code> header is needed.
+    </div>
+
+    <h3>9.2 Routing — React Router v6</h3>
+    <pre><code>&lt;Layout&gt;                                        // sidebar + header + &lt;Outlet /&gt;
+  &lt;Routes&gt;
+    &lt;Route path="/" element={&lt;Navigate to="/tenants" replace /&gt;} /&gt;
+    &lt;Route path="/tenants" element={&lt;Tenants /&gt;} /&gt;
+    &lt;Route path="/tenants/:tenantId" element={&lt;TenantDetail /&gt;} /&gt;
+    &lt;Route path="/analytics" element={&lt;Analytics /&gt;} /&gt;
+    &lt;Route path="/settings" element={&lt;Settings /&gt;} /&gt;
+  &lt;/Routes&gt;
+&lt;/Layout&gt;
+</code></pre>
+    <p>Patterns worth noting: the catch-all <code>Navigate replace</code> keeps the URL canonical; <code>Layout</code> uses <code>&lt;Outlet /&gt;</code> (v6 nested-route rendering) with <code>useLocation()</code> to highlight the active nav link; <code>TenantDetail</code> reads <code>useParams().tenantId</code> for its data fetch.</p>
+
+    <h3>9.3 Page-by-page</h3>
+    <table>
+      <tr><th>Page</th><th>What it does</th><th>API calls</th></tr>
+      <tr><td><code>Tenants</code></td><td>Card grid of clients (avatar with first letter, slug, plan badge, created date); "Add Tenant" modal (name, slug sanitized to <code>[a-z0-9-]</code>, color picker)</td><td><code>GET /admin/tenants</code>, <code>POST /admin/tenants</code></td></tr>
+      <tr><td><code>TenantDetail</code></td><td>5 tabs: Overview (stat cards: conversations, appointments, confirmed, pending), Conversations (table with message count + last message), Appointments (date/time/title/status/customer), Knowledge (<code>FileUploader</code>), Settings (<code>BusinessHoursEditor</code>)</td><td><code>GET /admin/tenants/{id}</code>, plus tenant-scoped endpoints</td></tr>
+      <tr><td><code>Analytics</code></td><td>6 stat cards (tenants, active 30d, conversations, appointments, messages 7d, appointments 7d) + "Top Tenants by Conversations" table</td><td><code>GET /admin/analytics</code></td></tr>
+      <tr><td><code>Settings</code></td><td>placeholder card ("coming soon")</td><td>—</td></tr>
+    </table>
+
+    <h3>9.4 File upload with progress</h3>
+    <p><code>FileUploader</code> supports three source types:</p>
+    <ul>
+      <li><strong>PDF / TXT / MD:</strong> one <code>FormData</code> per file (<code>file</code>, <code>source_id</code> = filename minus extension, <code>source_type</code>), POSTed to <code>/api/tenants/me/knowledge</code>. Multiple files upload sequentially, each reporting <code>✓ name uploaded</code> / <code>✗ name failed</code>.</li>
+      <li><strong>FAQ:</strong> a JSON array of <code>{question, answer}</code> typed into a textarea, POSTed to <code>/api/tenants/me/knowledge/text</code> with <code>source_type: 'faq'</code>; the backend parses and stores each Q/A as its own chunk.</li>
+    </ul>
+    <p>There's a <code>uploading</code> state (button shows "Uploading...") but no per-file progress bar — the honest improvement is a <code>XMLHttpRequest</code> <code>upload.onprogress</code> or a chunk-count callback, since PDF processing can take tens of seconds on CPU.</p>
+
+    <h3>9.5 Business hours editor</h3>
+    <p><code>BusinessHoursEditor</code> manages local state: a <code>DAYS</code> array drives rows; each row has an open checkbox + two <code>&lt;input type="time"&gt;</code> fields; empty open/close = day closed; plus selects for timezone (9 common zones), slot duration (15/30/45/60), and buffer (0–30). <code>handleSave</code> packages everything into <code>{business_hours, timezone, slot_duration, buffer_minutes}</code> and calls <code>onSave</code> — which in the current <code>TenantDetail</code> is a <code>// TODO</code> that only <code>console.log</code>s. Wiring it to <code>PATCH /api/tenants/me</code> is on the roadmap (Chapter 12/13).</p>
+
+    <h3>9.6 Analytics queries</h3>
+    <p><code>get_platform_analytics</code> runs six cheap aggregate queries:</p>
+    <pre><code>SELECT COUNT(*) FROM tenants WHERE plan != 'deleted';                       -- total tenants
+SELECT COUNT(DISTINCT tenant_id) FROM usage_logs WHERE created_at &gt; ?;      -- active 30d
+SELECT COUNT(*) FROM conversations;                                         -- total threads
+SELECT COUNT(*) FROM appointments;                                          -- total bookings
+SELECT COUNT(*) FROM messages WHERE created_at &gt; ?;                         -- msgs last 7d
+-- top tenants by conversation volume:
+SELECT t.name, t.slug, COUNT(c.id) AS conv_count
+FROM conversations c JOIN tenants t ON c.tenant_id = t.id
+GROUP BY t.id ORDER BY conv_count DESC LIMIT 10;
+</code></pre>
+    <p>The "active tenants" metric leans on <code>usage_logs</code> (written on every chat message) — a nice illustration of why the log table exists. All queries are tenant-id-agnostic platform rollups, safe to run at this scale.</p>
+  </section>
+
+  <section class="chapter" id="ch10-cli">
+    <h2>10. CLI Scripts</h2>
+
+    <p>Five Python scripts in <code>scripts/</code> handle everything the dashboard doesn't (yet): onboarding clients, uploading knowledge, extracting hours, testing email, and seeding a demo. They all share the same bootstrap pattern:</p>
+
+    <div class="callout note">
+      <strong>Where do these scripts run?</strong> <code>run_migrations.py</code> <em>is</em> copied into the image and runs automatically on boot (supervisord). The <code>scripts/</code> folder is <em>not</em> copied into the Docker image, so to run <code>create_tenant.py</code> / <code>upload_knowledge.py</code> from the Space terminal, either add <code>COPY scripts ./scripts</code> (and <code>COPY backend ./backend</code>, since the scripts import <code>backend.app.*</code>) to the Dockerfile and redeploy, or run them from your own machine — the database is remote, so location doesn't matter. <code>create_tenant.py</code> and <code>test_gas_email.py</code> (no AI needed) run anywhere with <code>pip install -r backend/requirements.txt</code> and a <code>.env</code> containing the Turso credentials (<code>GAS_WEBAPP_URL</code> for the email test). The embedding-heavy scripts (<code>upload_knowledge.py</code>, <code>extract_business_hours.py</code>) call Ollama at <code>localhost:11434</code>, which only exists inside the Space — run those there (after the COPY) or tunnel Ollama's port locally.
+    </div>
+    <pre><code>sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# makes `backend.app.*` importable when run from anywhere:
+#   python scripts/create_tenant.py  →  repo root goes on sys.path
+
+from backend.app.database import Database
+from backend.app.config import settings
+
+db = Database()
+sync_db = db.sync_connect()      # sync libSQL client — no asyncio needed for one-shot commands
+</code></pre>
+
+    <h3>10.1 create_tenant.py</h3>
+    <p><code>argparse</code> with <code>--name</code> (required), <code>--slug</code> (required), <code>--color</code> (default <code>#3B82F6</code>), <code>--greeting</code>. Flow: validate slug against <code>^[a-z0-9-]+$</code> → connect → reject duplicate slug (exit 1) → insert tenant with a UUID + default settings JSON → print the id/name/slug plus the ready-to-paste embed code. This mirrors <code>POST /admin/tenants</code> exactly, so scripts and API never drift.</p>
+
+    <h3>10.2 upload_knowledge.py</h3>
+    <p>Args: <code>--tenant</code>, <code>--file</code>, <code>--source-type</code> (pdf|txt|md, default pdf). Steps: look up tenant by slug (exit 1 if missing) → read file bytes → derive <code>source_id</code> by replacing dots in the filename (<code>faq.pdf</code> → <code>faq_pdf</code>) → call <code>knowledge_service.process_pdf</code> or <code>process_text</code> → print <code>chunks_created</code> and <code>total_chars</code>. Because embedding is async, the whole script is an <code>async def main()</code> run via <code>asyncio.run(main())</code> — the cleanest way to reuse the app's async services from a script.</p>
+
+    <h3>10.3 extract_business_hours.py</h3>
+    <p>Opens the PDF with PyMuPDF, concatenates per-page text (same page-marker format as the knowledge pipeline), hands the first ~3000 chars to <code>knowledge_service.extract_business_hours</code> (the LLM prompt from Chapter 5.6), then writes the result JSON into <code>tenants.business_hours</code>:</p>
+    <pre><code>sync_db.execute("UPDATE tenants SET business_hours = ?, updated_at = strftime('%s','now') WHERE id = ?",
+                [json.dumps(business_hours), tenant_id])
+</code></pre>
+    <p>Failure modes handled: missing tenant/file (exit 1), empty extraction (prints "No business hours found" and returns without touching the DB).</p>
+
+    <h3>10.4 test_gas_email.py</h3>
+    <p>Args <code>--to</code> (required), <code>--url</code> (optional override). POSTs a canned HTML test message to the Apps Script endpoint with a 15 s timeout, checks <code>success</code>, prints ✓/✗, exits 1 on failure. This is the smoke test for the entire email leg.</p>
+
+    <h3>10.5 seed_demo.py</h3>
+    <p>Idempotent demo bootstrap: creates the <code>demo</code> tenant (with realistic business hours and greeting) if it doesn't exist, then loads six sample FAQ pairs through <code>knowledge_service.process_faq</code> unless the <code>demo-faq</code> source already exists. Every statement is guarded, so re-running is always safe — the same <code>INSERT OR REPLACE</code>/existence-check philosophy as the migrations.</p>
+
+    <h3>10.6 Patterns worth copying</h3>
+    <ul>
+      <li><strong>Fail fast with exit codes:</strong> every pre-condition (tenant exists, file exists, slug valid) is checked before any write; errors go to <code>stderr</code>/exit 1 so CI or a human can rely on the status.</li>
+      <li><strong>Print the next action:</strong> each script ends by telling you exactly what to paste next (embed code, verification query) — onboarding by copy-paste.</li>
+      <li><strong>Sync client for scripts, async for API:</strong> one-shot commands don't need an event loop unless they call services that await (<code>asyncio.run</code> only where required).</li>
+    </ul>
+  </section>
+
+  <section class="chapter" id="ch11-monitoring">
+    <h2>11. Monitoring &amp; Operations</h2>
+
+    <p>With a $0 budget, monitoring is a patchwork of free tools plus deliberate logging. Here's the full picture.</p>
+
+    <h3>11.1 Uptime checks</h3>
+    <table>
+      <tr><th>Layer</th><th>Mechanism</th><th>Interval</th><th>What it catches</th></tr>
+      <tr><td>Docker HEALTHCHECK</td><td><code>curl /health</code> inside the container (served by FastAPI — 2.1)</td><td>every 30 s</td><td>FastAPI down / OOM inside the Space</td></tr>
+      <tr><td>GitHub Actions keep-alive</td><td>external curl from GitHub's runners to <code>https://USER-SPACE.hf.space/health</code> (returns 200 — 2.1)</td><td>every 30 min</td><td>Space sleeping; external reachability (DNS, TLS, HF routing)</td></tr>
+      <tr><td>Uptime Kuma</td><td>recommended self-hosted (or <a href="https://uptimekuma.com">cloud instance</a>) monitor on <code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code></td><td>every 60 s</td><td>real-user-path failures + notification via Telegram/email/webhook</td></tr>
+    </table>
+    <p>The three layers complement each other: HEALTHCHECK proves the process is alive <em>inside</em>, keep-alive keeps the free Space from sleeping, Kuma gives <em>you</em> the phone notification when the site's bot stops answering.</p>
+
+    <h3>11.2 HF Space sleep behavior</h3>
+    <p>Free Spaces suspend after ~48 h of zero traffic. The keep-alive ping resets the timer, so the bot is effectively always warm. If it <em>does</em> sleep (e.g. GitHub Actions was disabled), the first visitor request takes ~30 s while the container boots and Ollama reloads models into RAM. Symptoms in the widget: the button loads instantly (static file) but the first chat message spins for ~30 s before tokens appear. Fix: re-enable keep-alive, or accept the cold start.</p>
+
+    <h3>11.3 Turso usage &amp; alerts</h3>
+    <ul>
+      <li><strong>Dashboard:</strong> Turso's UI shows storage (9 GB free) and row reads (1 B/month free) live; watch the reads graph — RAG searches read many rows per message (10 candidate chunks × 2 tables + tenant rows).</li>
+      <li><strong>Alerts:</strong> Turso free tier sends no proactive alerts; add a manual monthly check (calendar reminder) or a cheap Grafana/healthcheck-style script that queries <code>SELECT COUNT(*) FROM messages</code> and pages you at a threshold.</li>
+      <li><strong>Degradation warning signs:</strong> chat latency creeping up (index scan growth), 429-ish read errors in <code>fastapi_err.log</code>, or Turso dashboard red bars near quota.</li>
+    </ul>
+
+    <h3>11.4 Gmail quota monitoring</h3>
+    <p>100 emails/day on personal Gmail. Monitor by running <code>checkQuota()</code> in the Apps Script editor, or add a scheduled trigger. Realistic usage (15 emails/day at pilot scale) leaves an 85% headroom buffer; hit 80 emails and it's time to talk Workspace ($6/user/mo, 1,500/day).</p>
+
+    <h3>11.5 Where the logs live</h3>
+    <table>
+      <tr><th>Log</th><th>Location</th><th>Useful for</th></tr>
+      <tr><td>supervisord master</td><td><code>/var/log/supervisor/supervisord.log</code></td><td>which child started/restarted and when</td></tr>
+      <tr><td>Ollama</td><td><code>/var/log/supervisor/ollama.log</code> (+ <code>_err</code>)</td><td>model load failures, OOM, connection refused</td></tr>
+      <tr><td>FastAPI stdout/stderr</td><td><code>/var/log/supervisor/fastapi.log</code> / <code>fastapi_err.log</code></td><td>the app's <code>print()</code> diagnostics: "LLM error", "Email send error", "Could not load vec extension"</td></tr>
+      <tr><td>nginx</td><td><code>/var/log/nginx/access.log</code> / <code>error.log</code></td><td>rate-limit rejections (503s), 404s, SSE disconnects</td></tr>
+    </table>
+    <p>All are reachable from the Space terminal (Settings → Open in terminal → <code>tail -f /var/log/supervisor/fastapi_err.log</code>).</p>
+
+    <h3>11.6 Cost tracking</h3>
+    <p>The platform costs $0/month in normal operation. The only variable inputs worth tracking in a spreadsheet: <strong>time</strong> (your hours × rate), <strong>Turso reads</strong> (usage grows with traffic), <strong>Gmail sends</strong>, and the <strong>first paid upgrade</strong> triggers (Chapter 13). A simple monthly ledger: revenue per client vs. hours spent per client — that's the signal for when to raise prices or hire a VA (see the practical guide, Chapter 8).</p>
+  </section>
+
+  <section class="chapter" id="ch12-troubleshooting">
+    <h2>12. Troubleshooting Encyclopedia</h2>
+
+    <p>This chapter is organized by component. For each issue: symptom → root cause → fix. A decision tree at the end routes you when you're not sure where to start.</p>
+
+    <h3>12.1 Widget</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>No floating button at all</td><td><code>data-tenant</code> misspelled / script URL wrong / JS error</td><td>Check console (F12): network tab shows the script request; verify slug matches exactly; verify the widget file URL resolves (the build emits <code>dist/widget.js</code> — see 8.6)</td></tr>
+      <tr><td>Widget deploy fails: <code>"default" is not exported by "src/ChatWidget.tsx"</code></td><td>named-vs-default export mismatch (fixed in the current repo — <code>main.tsx</code> uses the named import)</td><td>Rebuild and redeploy; if you're on an old revision, apply the 8.6 fixes</td></tr>
+      <tr><td>Widget loads but is completely unstyled</td><td>Vite library build emitted <code>style.css</code> separately; the shadow-root style element was empty (fixed in the current repo via <code>styles.css?inline</code>)</td><td>Rebuild and redeploy; if you're on an old revision, apply the 8.6 fixes</td></tr>
+      <tr><td>Button shows, chat panel never opens with correct colors</td><td><code>GET /widget/config/{slug}</code> fails (404 tenant, CORS, or network)</td><td>Curl the config URL; confirm tenant exists (<code>plan != 'deleted'</code>); check CORS on the Space</td></tr>
+      <tr><td>"Failed to fetch" on first message</td><td>Relative <code>/widget/chat/...</code> URL hitting the wrong origin; host-site CSP <code>connect-src</code> blocks the Space; CORS</td><td>Serve widget.js same-origin as API or add proxy; client adds Space origin to CSP; verify nginx rate-limit isn't 503-ing</td></tr>
+      <tr><td>Message sent, spinner forever, no text</td><td>SSE stream stalls — nginx buffering re-enabled, or 300 s timeout hit, or Ollama generating slowly on cold start</td><td>Check <code>proxy_buffering off</code> on <code>/widget/chat/</code>; check fastapi log for LLM errors; wait out cold start (~30 s)</td></tr>
+      <tr><td>Styles look broken / clash with site</td><td>Shadow DOM not applied (old cached build?)</td><td>Hard-refresh; re-deploy widget; verify <code>main.tsx</code> attachShadow path ran (console)</td></tr>
+      <tr><td>Conversation resets on refresh</td><td>localStorage key <code>chatbot_conversation_{slug}</code> missing/cleared (incognito, cleared storage)</td><td>The widget now persists the conversation id (<code>saveConversationId</code>) when the <code>done</code> frame arrives; a refresh resumes the same thread unless storage was cleared</td></tr>
+      <tr><td>Clicking ✕ on the slot picker errors</td><td>Close button called <code>onSelect(null)</code>, which crashed in <code>selectSlot</code> (fixed — <code>selectSlot(null)</code> now just dismisses the picker)</td><td>Rebuild and redeploy the widget; on an old revision, guard <code>selectSlot</code> against <code>null</code></td></tr>
+    </table>
+
+    <h3>12.2 Backend / Space</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>"Space healthy" URL returns 404 although the app runs</td><td>Container still booting (first deploy), or an old image without the <code>/health</code> alias</td><td>Wait for the deploy to finish; both <code>/health</code> and <code>/widget/health</code> are served by current code (2.1)</td></tr>
+      <tr><td>Space terminal: <code>python backend/run_migrations.py</code> → "can't open file"</td><td><code>scripts/</code> is not in the Docker image; <code>run_migrations.py</code> is copied to <code>/app</code> (2.1), so use <code>python run_migrations.py</code> from <code>/app</code></td><td>Run <code>python run_migrations.py</code> (or from your machine against the remote DB); migrations also auto-run on container boot</td></tr>
+      <tr><td>ImportError / ModuleNotFoundError on <code>app.services.intent</code></td><td>Old revision — <code>widget.py</code> imported from a nonexistent module (fixed; it now imports from <code>app.services.appointments</code>)</td><td>Pull the current code and redeploy</td></tr>
+      <tr><td>Ollama "connection refused" from FastAPI</td><td>Ollama not up when FastAPI started; model not pulled</td><td>supervisord should restart it; verify <code>ollama list</code> in terminal; <code>ollama pull phi3:mini nomic-embed-text</code></td></tr>
+      <tr><td>Requests rejected with 503 + "limit_req" in nginx log</td><td>Rate limit burst exceeded (30 r/s widget, 60 r/s API)</td><td>Legit traffic spike or a loop in the widget; raise burst/rate in nginx.conf and redeploy</td></tr>
+      <tr><td>All routes 500 immediately after deploy</td><td>Missing env var (pydantic-settings fails at import) or DB unreachable</td><td>Check Space secrets; <code>python -c "from app.config import settings"</code> in terminal; test <code>TURSO_DATABASE_URL</code> reachability</td></tr>
+      <tr><td>Email endpoint errors "Could not load vec extension"</td><td>sqlite-vec not loadable in this libSQL build</td><td>Non-fatal (warn-only) by design; ensure the migration ran against the same DB the app connects to</td></tr>
+    </table>
+
+    <h3>12.3 Database</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>"Tenant not found" for a tenant you just created</td><td>Slug mismatch (case/spacing) or row created with <code>plan='deleted'</code></td><td><code>SELECT slug, plan FROM tenants;</code> in Turso; re-run create script with exact slug</td></tr>
+      <tr><td>Tables missing (every query errors)</td><td>Migration never ran against <em>this</em> database (e.g. DB swapped after first boot)</td><td>The container auto-migrates on boot; to force it: <code>python run_migrations.py</code> — idempotent, safe to re-run (or run it on any machine with the Turso URL/token in <code>.env</code>, since the DB is remote)</td></tr>
+      <tr><td>Vector search returns nothing for obvious matches</td><td>Embeddings stored as zero-vectors (embed failure fallback) or similarity threshold 0.7 too strict for short queries</td><td>Re-upload knowledge after checking Ollama embed model is pulled; optionally lower threshold in <code>rag.py</code></td></tr>
+      <tr><td>Double bookings possible</td><td>Two requests racing between slot check and INSERT</td><td>Current code is best-effort at this scale; true fix: unique constraint on (tenant_id, start_time) or a transaction (Chapter 13)</td></tr>
+      <tr><td>Reads quota climbing fast</td><td>RAG searches ×2 tables ×10 candidates per message</td><td>Reduce <code>top_k*2</code> fetch, cache query embeddings, or paginate dashboards (all Chapter 13 options)</td></tr>
+    </table>
+
+    <h3>12.4 AI answers</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>Bot answers "I don't have that information" for known facts</td><td>Chunks below 0.7 similarity; content not uploaded; embedding mismatch</td><td>Re-upload; verify chunks exist (<code>SELECT COUNT(*) FROM knowledge_chunks WHERE tenant_id=...</code>); check the embedding model is nomic-embed-text everywhere</td></tr>
+      <tr><td>Answers are right but wordy/garbled</td><td>Temperature too high for the task</td><td>Synthesis is 0.2 by design; if still messy, tighten the grounding prompt or reduce context to 3 chunks</td></tr>
+      <tr><td>Wrong intent (e.g. "book" triggers general_query)</td><td>Classifier prompt edge case / ambiguous phrasing</td><td>Add the failing phrase as a few-shot example in <code>classify_intent</code> and redeploy</td></tr>
+      <tr><td>Slow first answer (~10–30 s)</td><td>CPU inference + cold model load</td><td>Normal for free tier; keep-alive prevents the 30 s wake; consider <code>num_predict</code> caps (already 800)</td></tr>
+      <tr><td>"LLM error: ..." text in chat</td><td>Ollama down / OOM / model missing</td><td>Check ollama.log; <code>ollama list</code>; restart Space from HF dashboard</td></tr>
+    </table>
+
+    <h3>12.5 Appointments</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>No slots shown at all</td><td>Business hours missing/null for the requested days; wrong timezone; existing appointments covering everything</td><td>Verify <code>business_hours</code> JSON; set the tenant timezone; check appointments table</td></tr>
+      <tr><td>Slots show but booking fails "no longer available"</td><td>Double-booking race or slot picked in the past</td><td>Regenerate slots; client refreshes the picker; the friendly fallback already handles it</td></tr>
+      <tr><td>Times are off by hours</td><td>Tenant <code>timezone</code> ≠ visitor's timezone; request passed <code>timezone=UTC</code> default</td><td>Set <code>timezone</code> per tenant (dashboard/settings); the widget passes no tz — align defaults</td></tr>
+      <tr><td>Buffer not applied</td><td><code>buffer_minutes</code> set to 0 or not saved</td><td>Check tenant row; editor defaults 15</td></tr>
+    </table>
+
+    <h3>12.6 Email</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>No emails arrive (booking succeeds)</td><td>GAS URL wrong/not deployed; Gmail quota hit; OAuth not authorized</td><td><code>python scripts/test_gas_email.py --to you@example.com</code>; re-run <code>testEmail()</code> in Apps Script; check sent folder + quota</td></tr>
+      <tr><td>Emails land in spam</td><td>Gmail sender + HTML formatting</td><td>Ask recipients to mark not-spam; keep templates small; Gmail-to-Gmail usually fine</td></tr>
+      <tr><td>"Email send error" in logs</td><td>GAS endpoint 5xx/network, or Apps Script quota exception</td><td>Curl the /exec URL; read the error JSON; confirm the deployment is "Anyone" + "Execute as Me"</td></tr>
+      <tr><td>No customer confirmation email from the chat flow</td><td>The chat flow has no email capture, so it no longer sends a hardcoded placeholder email — it only notifies the business if <code>notification_email</code> is set</td><td>For customer confirmations from chat, capture the visitor's email (widget form / extraction prompt) and pass it to <code>send_appointment_confirmation</code>; the <code>/widget/appointments/{slug}</code> endpoint (which takes an email) already emails both parties</td></tr>
+    </table>
+
+    <h3>12.7 Auth / Admin</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>Admin login loops / "Couldn't sign you in"</td><td>Clerk app not configured for the pages.dev domain</td><td>Add the admin URL to Clerk → Domains (and allowed redirect URLs)</td></tr>
+      <tr><td>Signs in but admin API returns 401/403</td><td>Email ≠ <code>ADMIN_EMAIL</code> secret, or an old dashboard build without the token wrapper</td><td>Verify the <code>ADMIN_EMAIL</code> secret matches the signed-in account; current code attaches the token automatically via <code>api.ts</code> (9.1)</td></tr>
+      <tr><td>403 for valid user</td><td><code>verify_aud: False</code> + audience mismatch</td><td>By design Clerk audience differs; keep the option off and rely on the email check</td></tr>
+      <tr><td>TenantDetail tabs empty (conversations/appointments)</td><td>Old revision — the page used tenant-scoped <code>/api/tenants/me/...</code> endpoints that needed an <code>X-Tenant-Slug</code> header the admin flow never sent</td><td>Current code uses admin-scoped endpoints (<code>/admin/tenants/{id}/conversations|appointments|knowledge</code>) with the token attached — rebuild and redeploy the admin dashboard</td></tr>
+      <tr><td>Brand color picked in "Add Tenant" never appears on the widget</td><td>Old revision — the front-end posted <code>color</code> but the API field is <code>primary_color</code>, and Pydantic silently dropped the unknown key</td><td>Current code sends <code>primary_color: newTenant.color</code> — rebuild and redeploy the admin dashboard</td></tr>
+      <tr><td>Dashboard Settings save does nothing</td><td>Old revision — <code>BusinessHoursEditor</code>'s <code>onSave</code> was a <code>// TODO: console.log</code></td><td>Current code PATCHes <code>/admin/tenants/{id}</code> with hours/timezone/slot/buffer — rebuild and redeploy the admin dashboard</td></tr>
+    </table>
+
+    <h3>12.8 Deployment / CI</h3>
+    <table>
+      <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+      <tr><td>deploy-hf fails at "Log in to Hugging Face"</td><td><code>HF_TOKEN</code> expired or lacks write scope</td><td>Regenerate token with Write access; update secret</td></tr>
+      <tr><td>Widget/admin deploy runs but pages.dev unchanged</td><td>Pages project name mismatch (<code>projectName:</code>) or branch mismatch</td><td>Match <code>projectName</code> to an existing Pages project; deploy branch <code>main</code></td></tr>
+      <tr><td>First deploy takes 10+ min</td><td>Base image + pip + no layer cache</td><td>Normal on cold cache; subsequent builds reuse the registry buildcache</td></tr>
+      <tr><td>Keep-alive workflow shows red</td><td>Space sleeping (cold start) — expected</td><td>The <code>|| echo</code> swallows it; verify manually via <code>/widget/health</code> in a browser</td></tr>
+    </table>
+
+    <h3>12.9 Decision tree — where do I start?</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart TD
+    A["Something is broken"] --> B{"Is the Space healthy?<br/>curl /widget/health"}
+    B -- no --> C["Check Space logs:<br/>supervisord → fastapi_err → ollama_err"]
+    B -- yes --> D{"Is it the chat?"}
+    D -- yes --> E{"Bot replies?"}
+    E -- no --> F["Check intent + LLM errors in fastapi log<br/>verify models pulled"]
+    E -- yes --> G{"Answers wrong?"}
+    G -- yes --> H["Re-upload knowledge, check chunks,<br/>lower threshold if needed"]
+    G -- no --> I{"Booking broken?"}
+    I -- yes --> J["Check business_hours JSON + timezone<br/>then appointments table"]
+    I -- no --> K["Check email: test_gas_email.py<br/>quota + GAS deployment"]
+    D -- no --> L{"Widget/admin UI?"}
+    L -- yes --> M["Browser console + network tab<br/>CSP, CORS, origin mismatch"]
+    L -- no --> N["Check Turso dashboard + usage logs"]
+      </pre>
+    </div>
+
+    <h3>12.10 Log analysis patterns</h3>
+    <pre><code># The five strings that explain most incidents:
+tail -f /var/log/supervisor/fastapi_err.log | grep -E "LLM error|Email send error|Traceback|ImportError"
+tail -f /var/log/nginx/error.log | grep "limit_req"          # rate-limit rejections
+tail -f /var/log/supervisor/ollama.log | grep -iE "error|out of memory"
+# In Turso (dashboard → SQL):
+SELECT event_type, COUNT(*) FROM usage_logs GROUP BY event_type;
+SELECT status, COUNT(*) FROM appointments GROUP BY status;
+SELECT source_id, COUNT(*) FROM knowledge_chunks GROUP BY source_id;
+</code></pre>
+  </section>
+
+  <section class="chapter" id="ch13-scaling">
+    <h2>13. Scaling &amp; Cost Optimization</h2>
+
+    <p>This chapter is a map, not a plan: here's where the free tier ends, what breaks first, and the cheapest ways to buy headroom.</p>
+
+    <h3>13.1 Free-tier limits — the hard ceilings</h3>
+    <table>
+      <tr><th>Service</th><th>Free limit</th><th>What you'll hit first</th></tr>
+      <tr><td>HF Spaces</td><td>16 GB RAM, 2 vCPU, sleeps after ~48 h idle</td><td>CPU latency as tenants multiply (all inference is serial per request)</td></tr>
+      <tr><td>Turso</td><td>9 GB storage, 1 B row reads/month</td><td>Reads: RAG searches + dashboard rollups dominate</td></tr>
+      <tr><td>Cloudflare Pages</td><td>Unlimited bandwidth (fair use), 100k requests/day on Workers functions</td><td>Practically never for static assets</td></tr>
+      <tr><td>Clerk</td><td>10k monthly active users</td><td>Never for a solo operator</td></tr>
+      <tr><td>Gmail via GAS</td><td>100 emails/day (personal)</td><td>Booking confirmations at ~100/day</td></tr>
+    </table>
+
+    <h3>13.2 Paid-upgrade triggers</h3>
+    <table>
+      <tr><th>Trigger</th><th>Upgrade</th><th>Cost</th></tr>
+      <tr><td>Chat response latency &gt; 5 s average or &gt; 3 concurrent chats</td><td>HF Space CPU upgrade, or move Ollama to a GPU instance</td><td>from ~$0.60/hr GPU</td></tr>
+      <tr><td>Turso reads &gt; 80% of 1 B/mo</td><td>Turso scale plan</td><td>$29/mo (100 GB)</td></tr>
+      <tr><td>Gmail &gt; 80 emails/day sustained</td><td>Google Workspace</td><td>$6/user/mo (1,500/day)</td></tr>
+      <tr><td>More than a handful of admins/agents</td><td>Clerk paid plan</td><td>$25/mo @ 10k+ MAU</td></tr>
+      <tr><td>You want HTTPS + custom domains per client</td><td>Cloudflare Pro (or keep free — Pages supports custom domains on free)</td><td>free, or $20/mo Pro for advanced rules</td></tr>
+    </table>
+
+    <h3>13.3 Architecture changes for scale</h3>
+    <ol>
+      <li><strong>More uvicorn workers.</strong> <code>--workers 1</code> is fine until concurrent chats queue on CPU. Bump to <code>--workers 2</code> (matches 2 vCPU) and ensure libSQL's async client tolerates multiple connections (it does). Ollama stays single-server — it serializes inference anyway.</li>
+      <li><strong>Larger/faster model.</strong> When answer quality matters more than cost, swap <code>phi3:mini</code> → <code>phi3:medium</code>/<code>llama3.1:8b</code> via <code>OLLAMA_CHAT_MODEL</code>… but mind the 4K context and RAM. The <code>max_tokens</code>/temperature table in Chapter 5 stays valid; only latency grows.</li>
+      <li><strong>Embedding model change</strong> requires rebuilding <code>knowledge_vec</code> (dimension is baked into the virtual table) — re-upload or re-embed all chunks.</li>
+      <li><strong>Cache hot paths.</strong> <code>/widget/config/{slug}</code> is immutable-ish and fetched on every page load — serve it with nginx <code>proxy_cache</code> or a TTL header. Chat history is read often — add the missing <code>/widget/history</code> endpoint (see below) with <code>LIMIT</code> + cursor pagination.</li>
+      <li><strong>Transactional booking.</strong> Wrap the conflict check + insert in a transaction (or add <code>UNIQUE(tenant_id, start_time)</code> and treat constraint violations as "taken") to close the double-booking race at scale.</li>
+      <li><strong>Email queue.</strong> Replace the fire-and-forget POST with a small <code>outbox</code> table + retry worker (3 attempts, exponential backoff) — this is the single highest-value reliability upgrade for a booking business.</li>
+      <li><strong>Intent/history gaps.</strong> The codebase has clear TODOs: the <code>/widget/history</code> route the widget already calls (<code>loadHistory</code>), the real email capture in chat bookings, and wiring the business-hours editor to the API. Land these before chasing performance.</li>
+    </ol>
+
+    <h3>13.4 Multi-region considerations</h3>
+    <ul>
+      <li><strong>Turso locations:</strong> create the database in the region closest to your clients (<code>turso db create --location</code>); reads/writes are single-region today — a latency of ~100–200 ms per query is fine for chat, noticeable for dashboards.</li>
+      <li><strong>HF Spaces region</strong> is fixed per Space; there's no multi-region for the container. The pragmatic multi-region story: keep the API in one region and let Cloudflare's edge cache the static widget; chat latency for distant clients is dominated by the single Ollama hop anyway.</li>
+      <li><strong>If you outgrow Spaces:</strong> the Docker image is portable — same image on Fly.io/Railway/Cloud Run with a real domain and autoscaling; nginx/supervisord/healthcheck configs port as-is.</li>
+    </ul>
+
+    <h3>13.5 Cost-optimization checklist (keep $0)</h3>
+    <ul>
+      <li>✅ Keep the Space awake with the keep-alive cron (avoids 30 s cold starts costing you nothing but user patience).</li>
+      <li>✅ Reuse the Docker buildcache (already configured) — rebuilds cost CI minutes, not money.</li>
+      <li>✅ Watch Turso reads monthly; add caching before paying for reads.</li>
+      <li>✅ Batch embeddings during onboarding (already one <code>embed(texts)</code> call) — never embed one chunk at a time.</li>
+      <li>✅ Deploy only on relevant paths (already in workflows) — a docs edit shouldn't trigger a 10-min image build.</li>
+      <li>✅ Use Cloudflare Pages custom domains (free) to give each client <code>chat.yourclient.com</code> — a $0 feature that looks expensive.</li>
+    </ul>
+
+    <div class="callout done">
+      <strong>Bottom line.</strong> The architecture's genius is that every scaling lever is a <em>config change or a small feature</em>, not a rewrite: workers, model name, threshold, cache headers, a unique constraint, an outbox table. The free tier buys you thousands of clients of runway; the paid triggers are clear and cheap when you cross them.
+    </div>
+  </section>
+
+  <section class="chapter" id="dd-appendix-phases">
+    <h2>Appendix — Migration Roadmap: Phases 1–4 in Detail</h2>
+
+    <p><strong>Why this appendix exists:</strong> the original system deployed its backend as a Docker Space on Hugging Face. In July 2026 Hugging Face moved Docker (and Gradio) Spaces behind a paid PRO subscription, leaving only Static Spaces free. The project was re-planned around a <strong>$0 Cloudflare stack</strong> and is being ported in phases (tracked in <code>hf-docker-exit-spec.md</code>). The chapters above describe the reference implementation; this appendix is the source of truth for what is live now and what ships next.</p>
+
+    <table>
+      <tr><th>Phase</th><th>What ships</th><th>Where (code)</th><th>Done when</th></tr>
+      <tr><td><strong>1 — Chat + RAG</strong> ✅ <em>implemented</em></td><td>Widget chat (SSE), RAG answers from per-tenant knowledge, conversation history, admin-lite tenant + knowledge ingest, GitHub Actions deploys</td><td><code>worker/</code> — <code>config.ts</code>, <code>db.ts</code>, <code>llm.ts</code>, <code>rag.ts</code>, <code>chat.ts</code>, <code>clerk.ts</code>, <code>admin.ts</code>, <code>index.ts</code>; schema in <code>worker/db/schema.sql</code></td><td>Widget on a test page answers from knowledge; <code>/health</code> green</td></tr>
+      <tr><td><strong>2 — Appointments + email</strong></td><td>Availability slots, booking/cancel in the chat, business-hours parsing, Google Apps Script email confirmations, <code>email_pending</code> retry UX on Gmail quota</td><td>Worker ports of <code>backend/app/services/appointments.py</code> + <code>email.py</code> (Chapter 6/7 detail); <code>gas-email/</code></td><td>“Book Tuesday 2pm” books + emails both sides</td></tr>
+      <tr><td><strong>3 — Full admin dashboard</strong></td><td>Tenant CRUD, analytics, conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction — the Worker can't spend CPU on PDFs), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code> (already supported in <code>api.ts</code>)</td><td>Admin UI matches the feature list in Chapter 9</td></tr>
+      <tr><td><strong>4 — Cleanup & docs</strong></td><td>Remaining docs/guides rewritten, legacy <code>scripts/</code> (Chapter 10) ported to Worker API calls, old FastAPI <code>backend/</code> removed once parity is proven</td><td>Repo root</td><td>Repo has no Hugging Face / Docker remnants</td></tr>
+    </table>
+
+    <h3>Key decisions locked in the spec (hf-docker-exit-spec.md)</h3>
+    <ul>
+      <li><strong>LLM:</strong> Gemini free tier — flash-class chat model via <code>CHAT_MODEL</code> (verify free RPD in AI Studio; limits are volatile and treated as config), embeddings via <code>gemini-embedding-001</code> @ 768 dims so the vec0 <code>FLOAT[768]</code> table and float32 blobs need no migration. Groq / Workers-AI are optional failover providers (<code>LLM_CHAT_PROVIDERS</code>). §5.3–5.5.</li>
+      <li><strong>Provider-mixing rule:</strong> never embed new chunks with a different model while existing vectors in the same table come from another — cross-model cosine distances are meaningless. Embeddings “failover” = full re-embed job or graceful degradation, never a silent switch. §5.3, §5.6.</li>
+      <li><strong>Database:</strong> Turso stays; sqlite-vec is built in server-side, so the Chapter 3 SQL works from the Worker via <code>@libsql/client</code>. Schema: <code>worker/db/schema.sql</code>.</li>
+      <li><strong>PDFs (§5.6):</strong> the Worker free plan caps CPU at 10 ms/request, so PDF text extraction happens outside it — in the admin browser (<code>pdfjs-dist</code>) or a local CLI — then POSTs text to <code>/knowledge/text</code>. <code>unpdf</code> is a possible future in-Worker path for small files.</li>
+      <li><strong>Auth (§5.4):</strong> Clerk JWKS verification in the Worker (WebCrypto); optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
+      <li><strong>Graceful limits (§5.7):</strong> self-throttle + daily caps; 429 → retry → failover → friendly “at my usage limit” message; embeddings quota surfaces as HTTP 429 <code>embed_quota</code> in the admin.</li>
+    </ul>
+
+    <h3>Mapping this guide's chapters to the new code</h3>
+    <p>Chapters 3–13 keep their value as the design + reference documentation for <code>backend/</code> (still in the repo). Quick map: Ch. 4 (FastAPI) → <code>worker/src/index.ts</code> + handlers; Ch. 5 (AI pipeline) → <code>worker/src/llm.ts</code> / <code>rag.ts</code> (Gemini instead of Ollama); Ch. 8 (widget) → unchanged plus the <code>data-api-url</code> attribute; Ch. 9 (admin/Clerk) → API arrives in Phase 3; Ch. 11–13 (monitoring/scaling) → replace HF-Space concerns with Workers/Gemini free-tier budget (§5.5). The live build steps always live in <code>DEPLOY.md</code>.</p>
+  </section>
+
+  </article>
+  <footer>
+    <p>Deep-Dive Technical Guide — Multi-Tenant AI Chatbot SaaS project | All tools free, no credit card required</p>
+  </footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+const THEME_KEY = 'guide-theme';
+const CONTENT = document.getElementById('content');
+const ARTICLE = document.getElementById('article');
+const TOC_LIST = document.getElementById('toc-list');
+const TOGGLE = document.getElementById('toc-toggle');
+const THEME_BTN = document.getElementById('theme-toggle');
+const PROGRESS = document.getElementById('progress-bar');
+const SEARCH_MODAL = document.getElementById('search-modal');
+const SEARCH_INPUT = document.getElementById('search-input');
+const SEARCH_RESULTS = document.getElementById('search-results');
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = saved ? saved === 'dark' : prefersDark;
+  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  THEME_BTN.textContent = isDark ? '☀️' : '🌙';
+}
+THEME_BTN.addEventListener('click', () => {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, isDark ? 'light' : 'dark');
+  THEME_BTN.textContent = isDark ? '🌙' : '☀️';
+});
+initTheme();
+
+function buildTOC() {
+  const headings = ARTICLE.querySelectorAll('h2, h3');
+  let chapterUl = null;
+  headings.forEach((h, i) => {
+    const id = h.id || `heading-${i}`;
+    h.id = id;
+    if (h.tagName === 'H2') {
+      const li = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = '#' + id;
+      link.className = 'toc-link toc-chapter';
+      link.textContent = h.textContent;
+      li.appendChild(link);
+      const sectionUl = document.createElement('ul');
+      sectionUl.className = 'toc-section';
+      li.appendChild(sectionUl);
+      TOC_LIST.appendChild(li);
+      chapterUl = sectionUl;
+    } else if (chapterUl) {
+      const li = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = '#' + id;
+      link.className = 'toc-link';
+      link.textContent = h.textContent;
+      li.appendChild(link);
+      chapterUl.appendChild(li);
+    }
+  });
+}
+buildTOC();
+
+if (window.innerWidth <= 1024) {
+  TOGGLE.addEventListener('click', () => document.getElementById('toc').classList.toggle('open'));
+}
+
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  PROGRESS.style.transform = `scaleX(${docHeight > 0 ? scrollTop / docHeight : 0})`;
+}
+window.addEventListener('scroll', updateProgress, { passive: true });
+
+const sections = [];
+ARTICLE.querySelectorAll('h2, h3').forEach(h => sections.push({ id: h.id, top: h.offsetTop }));
+function highlightTOC() {
+  const scrollY = window.scrollY + 120;
+  let current = null;
+  for (const s of sections) { if (s.top <= scrollY) current = s.id; else break; }
+  TOC_LIST.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+}
+window.addEventListener('scroll', highlightTOC, { passive: true });
+
+const searchIndex = [];
+ARTICLE.querySelectorAll('h2, h3, p, li, pre, .callout').forEach(el => {
+  const text = el.textContent.trim();
+  if (text.length > 20) searchIndex.push({ text: text.substring(0, 300), element: el });
+});
+function openSearch() { SEARCH_MODAL.classList.add('open'); SEARCH_INPUT.focus(); }
+function closeSearch() { SEARCH_MODAL.classList.remove('open'); SEARCH_INPUT.value = ''; SEARCH_RESULTS.innerHTML = ''; }
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+  if (e.key === 'Escape') closeSearch();
+});
+SEARCH_MODAL.addEventListener('click', (e) => { if (e.target === SEARCH_MODAL) closeSearch(); });
+SEARCH_INPUT.addEventListener('input', () => {
+  const q = SEARCH_INPUT.value.toLowerCase().trim();
+  SEARCH_RESULTS.innerHTML = '';
+  if (!q) return;
+  searchIndex.filter(item => item.text.toLowerCase().includes(q)).slice(0, 15).forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'search-result';
+    const heading = item.element.closest('section')?.querySelector('h2')?.textContent || 'Content';
+    div.innerHTML = `<div class="title">${heading}</div><div class="snippet">${item.text}</div>`;
+    div.addEventListener('click', () => { item.element.scrollIntoView({ behavior: 'smooth', block: 'center' }); closeSearch(); });
+    SEARCH_RESULTS.appendChild(div);
+  });
+});
+
+document.querySelectorAll('pre').forEach(pre => {
+  if (pre.classList.contains('mermaid')) return; // never touch mermaid source blocks
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(pre.querySelector('code').textContent);
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+  pre.appendChild(btn);
+});
+
+if (window.mermaid) {
+  // Render exactly ONCE after the DOM is ready. Re-running mermaid.run() on
+  // already-rendered elements throws and replaces diagrams with error icons,
+  // so no MutationObserver here.
+  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+  const render = () => mermaid.run();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+  else render();
+}
+
+console.log('Guide loaded:', document.title);
+</script>
+</body>
+</html>
