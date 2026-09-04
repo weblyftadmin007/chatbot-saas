@@ -22,6 +22,7 @@ import {
   authorize,
   createTenant,
   deleteKnowledge,
+  getAnalytics,
   getKnowledge,
   listTenants,
   uploadKnowledgeText,
@@ -64,6 +65,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       return null
     }
     case '/admin': {
+      if (tail.length === 1 && tail[0] === 'analytics') return { pattern: 'adminAnalytics', params: [] }
       if (tail.length === 1 && tail[0] === 'tenants') return { pattern: 'adminTenants', params: [] }
       if (tail.length === 3 && tail[0] === 'tenants' && tail[2] === 'knowledge')
         return { pattern: 'adminTenantKnowledge', params: [tail[1]!] }
@@ -151,6 +153,12 @@ export default {
             })),
           }),
         )
+      }
+      case 'adminAnalytics': {
+        const denied = await authorize(request, env)
+        if (denied) return withCors(denied)
+        if (request.method === 'GET') return withCors(await getAnalytics(db))
+        return withCors(methodNotAllowed())
       }
       case 'adminTenants': {
         const denied = await authorize(request, env)

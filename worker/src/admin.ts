@@ -198,3 +198,70 @@ export async function getKnowledge(db: Client, tenantId: string): Promise<Respon
   const sources = await listSources(db, tenantId)
   return json({ sources })
 }
+
+interface AnalyticsData {
+  total_tenants: number
+  active_tenants: number
+  total_conversations: number
+  total_appointments: number
+  total_messages: number
+  messages_last_7_days: number
+  appointments_last_7_days: number
+  top_tenants: Array<{ name: string; slug: string; conversations: number }>
+}
+
+/** Platform analytics for the admin dashboard (GET /admin/analytics). */
+export async function getAnalytics(db: Client): Promise<Response> {
+  const now = Math.floor(Date.now() / 1000)
+  const day = 24 * 60 * 60
+
+  const count = async (sql: string, args: (string | number)[] = []): Promise<number> => {
+    const r = await query(db, sql, args)
+    return Number(r.rows[0]?.['c'] ?? 0)
+  }
+
+  const total_tenants = await count("SELECT COUNT(*) AS c FROM tenants WHERE plan != 'deleted'")
+  const active_tenants = await count(
+    'SELECT COUNT(DISTINCT tenant_id) AS c FROM usage_logs WHERE created_at >= ?',
+    [now - 30 * day],
+  )
+  const total_conversations = await count('SELECT COUNT(*) AS c FROM conversations')
+  const total_appointments = await count('SELECT COUNT(*) AS c FROM appointments')
+  const total_messages = await count('SELECT COUNT(*) AS c FROM messages')
+  const messages_last_7_days = await count(
+    'SELECT COUNT(*) AS c FROM messages WHERE created_at >= ?',
+    [now - 7 * day],
+  )
+  const appointments_last_7_days = await count(
+    'SELECT COUNT(*) AS c FROM appointments WHERE created_at >= ?',
+    [now - 7 * day],
+  )
+
+  const top = await query(
+    db,
+    `SELECT t.name AS name, t.slug AS slug, COUNT(c.id) AS conversations
+     FROM tenants t
+     LEFT JOIN conversations c ON c.tenant_id = t.id
+     WHERE t.plan != 'deleted'
+     GROUP BY t.id, t.name, t.slug
+     ORDER BY conversations DESC
+     LIMIT 5`,
+  )
+  const top_tenants = top.rows.map((r) => ({
+    name: rowString(r, 'name'),
+    slug: rowString(r, 'slug'),
+    conversations: Number(r['conversations'] ?? 0),
+  }))
+
+  const data: AnalyticsData = {
+    total_tenants,
+    active_tenants,
+    total_conversations,
+    total_appointments,
+    total_messages,
+    messages_last_7_days,
+    appointments_last_7_days,
+    top_tenants,
+  }
+  return json(data)
+}
