@@ -15,6 +15,7 @@ export function Tenants() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [debug, setDebug] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [newTenant, setNewTenant] = useState({ name: '', slug: '', color: '#3B82F6' })
 
@@ -22,12 +23,18 @@ export function Tenants() {
     try {
       setLoading(true)
       setError(null)
+      setDebug(null)
       const response = await apiFetch('/admin/tenants')
+      const text = await response.text().catch(() => '')
+      setDebug(`Status ${response.status}: ${text.slice(0, 400)}`)
       if (response.ok) {
-        const data = await response.json()
-        setTenants(data.tenants)
+        try {
+          const data = JSON.parse(text)
+          setTenants(Array.isArray(data.tenants) ? data.tenants : [])
+        } catch {
+          setError('Response was not valid JSON')
+        }
       } else {
-        const text = await response.text().catch(() => '')
         setError(`Request failed (${response.status}): ${text}`)
       }
     } catch (e) {
@@ -105,6 +112,11 @@ export function Tenants() {
           {tenants.length === 0 && (
             <div className="empty-state">
               <p>No tenants yet. Click "Add Tenant" to create your first client.</p>
+              {debug && (
+                <p style={{ fontSize: 12, color: '#64748B', wordBreak: 'break-all' }}>
+                  API said: {debug}
+                </p>
+              )}
             </div>
           )}
         </div>
