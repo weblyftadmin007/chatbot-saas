@@ -1,7 +1,7 @@
 /**
  * Gemini API client (REST, no SDK). Chat + streaming use a flash-class model
  * (env CHAT_MODEL); embeddings use gemini-embedding-001 at 768 dims so stored
- * vectors stay compatible with the vec0 FLOAT[768] schema.
+ * vectors match the 768-dim float32 BLOBs in knowledge_chunks.embedding.
  *
  * Free-tier limits are volatile and only visible in AI Studio, so callers must
  * degrade gracefully (§5.7 of ../hf-docker-exit-spec.md): retry once on 429,

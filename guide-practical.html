@@ -536,10 +536,10 @@ flowchart LR
       <li><strong>Create the database</strong> (one time): <code>turso db create chatbot-db</code>.</li>
       <li><strong>Load the schema</strong> — the Worker needs the tables to exist before anything works (idempotent — safe to re-run):
         <pre><code>turso db shell chatbot-db &lt; worker/db/schema.sql</code></pre>
-        This creates all 8 tables including the vector table <code>knowledge_vec</code> (sqlite-vec is built into Turso). No model downloads — embeddings run on the Gemini API.</li>
+        This creates the 7 tables. Embeddings are stored in <code>knowledge_chunks</code> as float32 BLOBs and ranked inside the Worker (no DB vector extension needed). No model downloads — embeddings run on the Gemini API.</li>
       <li>Copy the connection URL + auth token (<code>turso db show chatbot-db</code>) into the GitHub secrets <code>TURSO_DATABASE_URL</code> / <code>TURSO_AUTH_TOKEN</code>, then re-run the Day 3 deploy workflow.</li>
     </ol>
-    <p><strong>How to know it worked:</strong> in Turso's dashboard → your database → <strong>Explore/SQL</strong>, run <code>SELECT name FROM sqlite_master WHERE type='table';</code> — you should see <code>tenants</code>, <code>conversations</code>, <code>messages</code>, <code>appointments</code>, <code>knowledge_chunks</code>, <code>knowledge_vec</code>, <code>usage_logs</code>, <code>end_users</code>.</p>
+    <p><strong>How to know it worked:</strong> in Turso's dashboard → your database → <strong>Explore/SQL</strong>, run <code>SELECT name FROM sqlite_master WHERE type='table';</code> — you should see 7 tables: <code>appointments</code>, <code>conversations</code>, <code>end_users</code>, <code>knowledge_chunks</code>, <code>messages</code>, <code>tenants</code>, <code>usage_logs</code>.</p>
 
     <h3>Day 5 — Deploy the widget and admin (25 min)</h3>
     <ol>
@@ -936,8 +936,8 @@ curl -N -X POST "$API/widget/chat/client-slug" -H "Content-Type: application/jso
 
     <h3>Key decisions locked in the spec</h3>
     <ul>
-      <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims so the vec0 <code>FLOAT[768]</code> vector table needs no migration). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
-      <li><strong>Database:</strong> Turso stays (sqlite-vec is built in). Schema: <code>worker/db/schema.sql</code>.</li>
+      <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims, matching the float32 BLOBs in <code>knowledge_chunks</code>). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
+      <li><strong>Database:</strong> Turso stays. Embeddings live in <code>knowledge_chunks</code> as float32 BLOBs and are ranked inside the Worker (Turso doesn't ship sqlite-vec). Schema: <code>worker/db/schema.sql</code>.</li>
       <li><strong>PDFs:</strong> not parsed in the Worker (free-plan CPU limit) — extracted in the browser or CLI, then uploaded as text (§5.6 of the spec).</li>
       <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>; optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
       <li><strong>Deploys:</strong> GitHub Actions → <code>deploy-worker.yml</code> (Worker) + Pages workflows (widget/admin).</li>

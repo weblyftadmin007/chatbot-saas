@@ -470,12 +470,12 @@ GAS_WEBAPP_URL          # needed in Phase 2</code></pre></li>
         <pre><code>turso db shell chatbot-db &lt; worker/db/schema.sql</code></pre>
         Then verify in the Turso dashboard → your database → Explore/SQL:
         <pre><code>SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;</code></pre>
-        You should see: <code>appointments</code>, <code>conversations</code>, <code>end_users</code>, <code>knowledge_chunks</code>, <code>knowledge_vec</code>, <code>messages</code>, <code>tenants</code>, <code>usage_logs</code>.</li>
+        You should see 7 tables: <code>appointments</code>, <code>conversations</code>, <code>end_users</code>, <code>knowledge_chunks</code>, <code>messages</code>, <code>tenants</code>, <code>usage_logs</code>.</li>
       <li><strong>Confirm your Gemini key works.</strong> No models to download — chat and embeddings run on the Gemini API. In Google AI Studio, confirm the key from Day 1 is valid and note your model's free daily quota (it varies — see the Appendix note on limits).</li>
     </ol>
 
     <div class="callout done">
-      <strong>How to know it worked:</strong> <code>/health</code> returns 200 with <code>healthy</code>; all 8 tables exist in Turso; no model downloads needed.
+      <strong>How to know it worked:</strong> <code>/health</code> returns 200 with <code>healthy</code>; all 7 tables exist in Turso; no model downloads needed.
     </div>
 
     <div class="callout warning">
@@ -1164,8 +1164,8 @@ tail -f /var/log/supervisor/fastapi_err.log</code></pre>
 
     <h3>Key decisions locked in the spec</h3>
     <ul>
-      <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims so the vec0 <code>FLOAT[768]</code> vector table needs no migration). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
-      <li><strong>Database:</strong> Turso stays (sqlite-vec is built in). Schema: <code>worker/db/schema.sql</code>.</li>
+      <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims, matching the float32 BLOBs in <code>knowledge_chunks</code>). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
+      <li><strong>Database:</strong> Turso stays. Embeddings live in <code>knowledge_chunks</code> as float32 BLOBs and are ranked inside the Worker (Turso doesn't ship sqlite-vec). Schema: <code>worker/db/schema.sql</code>.</li>
       <li><strong>PDFs:</strong> not parsed in the Worker (free-plan CPU limit) — extracted in the browser or CLI, then uploaded as text (§5.6 of the spec).</li>
       <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>; optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
       <li><strong>Deploys:</strong> GitHub Actions → <code>deploy-worker.yml</code> (Worker) + Pages workflows (widget/admin).</li>

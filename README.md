@@ -75,7 +75,7 @@ Roadmap (details in `DEPLOY.md` §0 and the PDF guides):
 chatbot-saas/
 ├── worker/                  # ★ New backend: Cloudflare Worker (TypeScript)
 │   ├── src/                 # config, db (Turso), llm (Gemini), rag, chat (SSE), clerk, admin
-│   └── db/schema.sql        # Turso schema (idempotent; vec0 FLOAT[768] vector table)
+│   └── db/schema.sql        # Turso schema (idempotent; 7 tables, embeddings as float32 BLOBs)
 ├── backend/                 # Old FastAPI backend — KEPT as reference for porting
 │   └── app/                 #   (routes/services match worker/ 1:1)
 ├── widget/                  # Embeddable React widget (Cloudflare Pages)
@@ -94,7 +94,7 @@ chatbot-saas/
 | Cloudflare Workers | 100k requests/day (CPU-limited — see spec §5.6) |
 | Cloudflare Pages | Unlimited static bandwidth (widget + admin) |
 | Google Gemini API | Free chat + embeddings quota (volatile — verify in AI Studio) |
-| Turso | 9GB, 1B reads/mo, sqlite-vec built in |
+| Turso | 9GB, 1B reads/mo (vectors ranked in the Worker) |
 | Clerk | 10k MAU |
 | Gmail (GAS) | 100 emails/day |
 

@@ -1,9 +1,11 @@
 /**
  * RAG service (port of backend/app/services/rag.py).
  *
- * - Vectors are stored twice, exactly like the FastAPI backend: a float32
- *   BLOB in knowledge_chunks.embedding (searched with vec_distance_cosine)
- *   and rows in the knowledge_vec vec0 virtual table.
+ * - Vectors live ONLY in knowledge_chunks.embedding as float32 BLOBs. Turso's
+ *   hosted database does not ship the sqlite-vec extension (vec0), so search
+ *   decodes blobs and ranks by cosine similarity inside the Worker — fine at
+ *   this product's scale (a business's FAQ/hours). If a tenant's chunk count
+ *   grows large, move retrieval to Turso's native FLOAT32 vector columns.
  * - Provider-mixing rule (§5.3 of ../hf-docker-exit-spec.md): never embed with
  *   a different model while existing rows use another — always
  *   gemini-embedding-001 @ 768 dims.
@@ -12,7 +14,7 @@ import type { Client } from '@libsql/client/web'
 import { query, rowString, type SqlRow } from './db'
 import { embedSingle, embedTexts, LLMError } from './llm'
 import { similarityThreshold, topK, type Env } from './config'
-import { vectorToBlob } from './vec'
+import { blobToVector, cosineSimilarity, vectorToBlob } from './vec'
 
 export interface KnowledgeChunk {
   id: string
@@ -50,10 +52,8 @@ export async function addChunks(
     const blob = vectorToBlob(embedding)
     const now = Math.floor(Date.now() / 1000)
 
-    // vec0 has no unique key on chunk_id, so remove any prior row for this
-    // chunk before inserting (mirrors the intent of INSERT OR REPLACE).
-    await query(db, 'DELETE FROM knowledge_vec WHERE chunk_id = ?', [chunkId])
-
+    // knowledge_chunks is the single source of truth (no vec0 table): the
+    // primary key (id) makes INSERT OR REPLACE idempotent on re-upload.
     await query(
       db,
       `INSERT OR REPLACE INTO knowledge_chunks
@@ -69,11 +69,6 @@ export async function addChunks(
         JSON.stringify(chunk.metadata || {}),
         now,
       ],
-    )
-    await query(
-      db,
-      'INSERT INTO knowledge_vec (embedding, chunk_id) VALUES (?, ?)',
-      [blob, chunkId],
     )
     ids.push(chunkId)
   }
@@ -96,32 +91,26 @@ export async function search(
     queryEmbedding = []
   }
   if (!queryEmbedding.length) return []
-  const blob = vectorToBlob(queryEmbedding)
 
-  let result
-  try {
-    result = await query(
-      db,
-      `SELECT
-         kc.id, kc.tenant_id, kc.source_id, kc.source_type, kc.content,
-         kc.metadata, kc.created_at,
-         vec_distance_cosine(kc.embedding, ?) AS distance
-       FROM knowledge_chunks kc
-       WHERE kc.tenant_id = ?
-       ORDER BY distance ASC
-       LIMIT ?`,
-      [blob, tenantId, k * 2],
-    )
-  } catch (e) {
-    console.warn('Vector search unavailable:', e)
-    return []
+  const result = await query(
+    db,
+    `SELECT id, tenant_id, source_id, source_type, content, metadata, created_at, embedding
+     FROM knowledge_chunks
+     WHERE tenant_id = ? AND embedding IS NOT NULL`,
+    [tenantId],
+  )
+
+  const scored: Array<{ row: SqlRow; similarity: number }> = []
+  for (const row of result.rows) {
+    const vec = blobToVector(row['embedding'])
+    if (!vec) continue
+    scored.push({ row, similarity: cosineSimilarity(queryEmbedding, vec) })
   }
+  scored.sort((a, b) => b.similarity - a.similarity)
 
   const hits: SearchHit[] = []
-  for (const row of result.rows) {
-    const distance = Number(row['distance'] ?? 1)
-    const similarity = 1 - distance
-    if (similarity < threshold) continue
+  for (const { row, similarity } of scored) {
+    if (similarity < threshold) break // sorted desc — nothing below will pass
     hits.push({
       id: rowString(row, 'id'),
       tenant_id: rowString(row, 'tenant_id'),
@@ -149,12 +138,6 @@ export async function deleteChunks(
   )
   const chunkIds = result.rows.map((r) => rowString(r, 'id'))
   if (!chunkIds.length) return 0
-  const placeholders = chunkIds.map(() => '?').join(',')
-  await query(
-    db,
-    `DELETE FROM knowledge_vec WHERE chunk_id IN (${placeholders})`,
-    chunkIds,
-  )
   await query(
     db,
     'DELETE FROM knowledge_chunks WHERE tenant_id = ? AND source_id = ?',

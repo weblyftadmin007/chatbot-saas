@@ -1,6 +1,8 @@
 -- Chatbot schema for Turso (Cloudflare Worker backend).
 -- Mirrors backend/migrations/versions/001_initial_schema.sql (idempotent).
--- Vector search (knowledge_vec) uses sqlite-vec, which is built into Turso.
+-- NOTE: Turso's hosted database does NOT ship sqlite-vec (vec0). Embeddings are
+-- stored as float32 BLOBs in knowledge_chunks.embedding and ranked by cosine
+-- similarity inside the Worker (src/rag.ts) — no DB vector extension needed.
 -- Initialize a fresh database with:
 --   turso db shell <DATABASE_NAME> < worker/db/schema.sql
 
@@ -74,13 +76,6 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
     embedding BLOB,
     metadata TEXT DEFAULT '{}',
     created_at INTEGER DEFAULT (strftime('%s','now'))
-);
-
--- Vector search virtual table (sqlite-vec, built into Turso). 768 dims
--- matches gemini-embedding-001 with outputDimensionality=768.
-CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_vec USING vec0(
-    embedding FLOAT[768],
-    chunk_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS usage_logs (

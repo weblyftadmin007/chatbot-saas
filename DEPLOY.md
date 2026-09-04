@@ -21,7 +21,7 @@ contain the full roadmap; here is the summary:
 - Cloudflare Worker backend: `GET /health`, `GET /widget/config/:slug`,
   `POST /widget/chat/:slug` (SSE stream), `GET /widget/history/:slug`.
 - RAG pipeline: knowledge chunks → Gemini `gemini-embedding-001` @768-dim →
-  Turso `knowledge_vec`/`knowledge_chunks` (sqlite-vec cosine search) → Gemini Flash answer.
+  Turso `knowledge_chunks` (float32 BLOBs, ranked by cosine in the Worker) → Gemini Flash answer.
 - Admin-lite ingest (Clerk JWT **or** bootstrap token): create tenant, upload
   text/markdown/FAQ knowledge, list/delete sources. No PDF upload (text is
   extracted in the browser/CLI — spec §5.6).
@@ -68,7 +68,11 @@ GitHub repository secrets (Settings → Secrets and variables → Actions):
 
 ## 2. Create the Turso database + schema
 
-The Worker talks to Turso over HTTP. sqlite-vec (vector search) is built in.
+The Worker talks to Turso over HTTP. Embeddings are stored as float32 BLOBs in
+`knowledge_chunks` and ranked by cosine similarity inside the Worker — Turso's
+hosted database does **not** ship the sqlite-vec extension (`CREATE VIRTUAL TABLE
+... USING vec0` fails with `no such module: vec0`), so the schema has **7 tables**,
+not 8.
 
 ```bash
 turso db create chatbot-db
