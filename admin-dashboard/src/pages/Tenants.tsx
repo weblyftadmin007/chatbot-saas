@@ -75,6 +75,13 @@ export function Tenants() {
 
   return (
     <div className="page">
+      <div style={{ background: '#FEF9C3', border: '1px solid #FDE047', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+        path: {window.location.pathname} | route: /tenants | loading: {String(loading)} | tenants: {tenants.length}
+        {debug && <div>api: {debug}</div>}
+        {error && <div style={{ color: '#B91C1C' }}>err: {error}</div>}
+        <button type="button" onClick={fetchTenants} style={{ marginTop: 4 }}>Retry</button>
+      </div>
+
       <div className="page-header">
         <h1>Tenants</h1>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
