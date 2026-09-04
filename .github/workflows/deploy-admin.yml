@@ -25,6 +25,11 @@ jobs:
 
       - name: Build admin
         run: cd admin-dashboard && npm run build
+        # VITE_API_URL is public (the Worker URL); it must be baked in so the
+        # admin app talks to the backend. VITE_CLERK_PUBLISHABLE_KEY is added
+        # in Phase 3 (Clerk) — the app builds without it, it just can't sign in.
+        env:
+          VITE_API_URL: https://chatbot-api.weblyftt.workers.dev
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
