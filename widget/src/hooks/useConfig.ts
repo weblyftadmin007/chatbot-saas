@@ -21,10 +21,10 @@ export function useConfig(tenantSlug: string, apiBase = '') {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetch = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch(apiUrl(apiBase, `/widget/config/${tenantSlug}`))
+      const response = await window.fetch(apiUrl(apiBase, `/widget/config/${tenantSlug}`))
       if (!response.ok) throw new Error('Failed to load config')
       const config = await response.json()
       setData(config)
@@ -35,5 +35,5 @@ export function useConfig(tenantSlug: string, apiBase = '') {
     }
   }, [tenantSlug, apiBase])
 
-  return { data, loading, error, fetch }
+  return { data, loading, error, load }
 }

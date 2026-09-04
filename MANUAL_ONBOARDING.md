@@ -69,7 +69,7 @@ curl -N -X POST "$API/widget/chat/weblyft-design" -H "Content-Type: application/
 ## 6. Embed on the client site
 
 ```html
-<script src="https://chatbot-widget.pages.dev/widget.js"
+<script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js"
         data-tenant="weblyft-design"
         data-api-url="$API"></script>
 ```

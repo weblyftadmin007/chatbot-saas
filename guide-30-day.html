@@ -494,11 +494,11 @@ GAS_WEBAPP_URL          # needed in Phase 2</code></pre></li>
       <li>Create the <strong>widget</strong> project: name <code>chatbot-widget</code>, production branch <code>main</code>, framework: None, build command <code>cd widget &amp;&amp; npm run build</code>, build output directory <code>widget/dist</code> → Save and Deploy. The build emits exactly <code>widget.js</code>.</li>
       <li>Create the <strong>admin</strong> project: name <code>chatbot-admin</code>, same branch, build command <code>cd admin-dashboard &amp;&amp; npm run build</code>, output <code>admin-dashboard/dist</code> → Save and Deploy.</li>
       <li><strong>Give the admin build your Clerk key.</strong> The admin app bakes the publishable key in at build time. In the <code>chatbot-admin</code> project: Settings → Environment variables → add <code>VITE_CLERK_PUBLISHABLE_KEY</code> = your <code>pk_test_…</code> value → Save → redeploy. Without it the page loads but the login screen never appears.</li>
-      <li><strong>Tell Clerk about the admin domain.</strong> Clerk dashboard → Domains → add <code>chatbot-admin.pages.dev</code> (and your custom domain later). Also add it under User &amp; Authentication → Email, Phone, Username → Allowed redirect URLs.</li>
+      <li><strong>Tell Clerk about the admin domain.</strong> Clerk dashboard → Domains → add <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> (and your custom domain later). Also add it under User &amp; Authentication → Email, Phone, Username → Allowed redirect URLs.</li>
       <li>Verify both URLs:
         <ul>
-          <li><code>https://chatbot-widget.pages.dev/widget.js</code> — downloads a JavaScript file.</li>
-          <li><code>https://chatbot-admin.pages.dev</code> — shows the Clerk sign-in screen.</li>
+          <li><code>https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code> — downloads a JavaScript file.</li>
+          <li><code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> — shows the Clerk sign-in screen.</li>
         </ul>
       </li>
     </ol>
@@ -576,7 +576,7 @@ cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pr
     <h3>Steps</h3>
     <ol>
       <li>Re-visit any day that wasn't fully green. Most common fixes: a secret typo, a deploy that needed a second run, or models still downloading.</li>
-      <li>Re-verify the three core URLs in a browser: <code>chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code>, <code>chatbot-widget.pages.dev/widget.js</code>, <code>chatbot-admin.pages.dev</code>.</li>
+      <li>Re-verify the three core URLs in a browser: <code>chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code>, <code>chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code>, <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code>.</li>
       <li>Write your <strong>Stack Card</strong> — one page with: each service, its URL, your login, what it's for, and its free quota. Include the Space terminal path (Settings → Open in terminal) and the two model-pull commands.</li>
     </ol>
 
@@ -595,7 +595,7 @@ cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pr
       <li>Open the admin dashboard and sign in. Click <strong>Add Tenant</strong> and fill in: Business name (e.g. <em>Weblyft Design</em>), Slug (lowercase letters, numbers, hyphens — e.g. <code>weblyft-design</code>), and a Primary Color (this now maps to the widget's <code>primary_color</code> correctly).</li>
       <li>Verify the backend knows the tenant: <pre><code>curl https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/config/weblyft-design</code></pre>
         You should get JSON with your name, colors, greeting, and bot name.</li>
-      <li>Create a test page: a plain HTML file on your computer (or a CodePen) containing the embed line before <code>&lt;/body&gt;</code>: <pre><code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="weblyft-design" data-api-url="https://chatbot-api.YOUR-SUBDOMAIN.workers.dev"&gt;&lt;/script&gt;</code></pre></li>
+      <li>Create a test page: a plain HTML file on your computer (or a CodePen) containing the embed line before <code>&lt;/body&gt;</code>: <pre><code>&lt;script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js" data-tenant="weblyft-design" data-api-url="https://chatbot-api.YOUR-SUBDOMAIN.workers.dev"&gt;&lt;/script&gt;</code></pre></li>
       <li>Open the test page: a floating button appears bottom-right in your client's color. Click it — the greeting message shows.</li>
     </ol>
 
@@ -1096,15 +1096,15 @@ tail -f /var/log/nginx/error.log              # rate-limit 503s, 404s</code></pr
     <table>
       <tr><th>What</th><th>URL</th></tr>
       <tr><td>Backend health</td><td><code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code></td></tr>
-      <tr><td>Widget file</td><td><code>https://chatbot-widget.pages.dev/widget.js</code></td></tr>
-      <tr><td>Admin dashboard</td><td><code>https://chatbot-admin.pages.dev</code></td></tr>
+      <tr><td>Widget file</td><td><code>https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code></td></tr>
+      <tr><td>Admin dashboard</td><td><code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code></td></tr>
       <tr><td>Tenant config</td><td><code>…/widget/config/{slug}</code></td></tr>
       <tr><td>Availability</td><td><code>…/widget/availability/{slug}?start_date=…&amp;end_date=…&amp;timezone=…</code></td></tr>
       <tr><td>History</td><td><code>…/widget/history/{slug}?conversation_id=…</code></td></tr>
     </table>
 
     <h3>Client embed line</h3>
-    <pre><code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="client-slug"&gt;&lt;/script&gt;</code></pre>
+    <pre><code>&lt;script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js" data-tenant="client-slug"&gt;&lt;/script&gt;</code></pre>
 
     <h3>Everyday commands (run from your machine with backend/.env present)</h3>
     <pre><code># Migrations (idempotent; the container also auto-runs this on boot)

@@ -64,7 +64,7 @@ Roadmap (details in `DEPLOY.md` §0 and the PDF guides):
    - Set the Pages build env var `VITE_CLERK_PUBLISHABLE_KEY` on the admin project.
 6. **Onboard your first tenant + knowledge** (`DEPLOY.md` §5), then embed on any site:
    ```html
-   <script src="https://chatbot-widget.pages.dev/widget.js"
+   <script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js"
            data-tenant="my-slug"
            data-api-url="https://chatbot-api.<your-subdomain>.workers.dev"></script>
    ```

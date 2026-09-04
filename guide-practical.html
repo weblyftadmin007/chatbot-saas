@@ -549,7 +549,7 @@ flowchart LR
       <li><strong>Give the admin build your Clerk key.</strong> The admin app bakes its Clerk publishable key in at <em>build time</em>. In the <code>chatbot-admin</code> Pages project go to <strong>Settings → Environment variables</strong> → add <code>VITE_CLERK_PUBLISHABLE_KEY</code> = the <code>pk_test_…</code> value from your notes → Save → redeploy. (If you deploy via GitHub Actions instead of the Pages git integration, add the same variable to the <code>npm run build</code> step of <code>.github/workflows/deploy-admin.yml</code>.) Without it the admin page loads but the login screen never appears.</li>
       <li>Then push to <code>main</code> (or trigger the workflows) to build them via GitHub Actions instead — pick one path (Pages git integration <em>or</em> Actions) to avoid double deploys.</li>
     </ol>
-    <p><strong>How to know it worked:</strong> visit <code>https://chatbot-widget.pages.dev/widget.js</code> — you should download a JS file (the build emits exactly this filename). Visit <code>https://chatbot-admin.pages.dev</code> — you should see a login screen (Clerk). The dashboard is fully wired once the key above is set: tenant CRUD, conversations, appointments, knowledge upload, and settings save all go through the admin API with your session token attached automatically.</p>
+    <p><strong>How to know it worked:</strong> visit <code>https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code> — you should download a JS file (the build emits exactly this filename). Visit <code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> — you should see a login screen (Clerk). The dashboard is fully wired once the key above is set: tenant CRUD, conversations, appointments, knowledge upload, and settings save all go through the admin API with your session token attached automatically.</p>
 
     <div class="callout done">
       <strong>Week 1 done = skeleton standing.</strong> You now have: a live AI brain with a database, a downloadable widget, and a login screen. Nothing is "yours" yet — Week 2 teaches the brain.
@@ -630,9 +630,9 @@ flowchart LR
 
     <h3>Day 3 — Build and deploy the widget (20 min)</h3>
     <p>If you set up Cloudflare Pages in Week 1, the widget is already deployed. Get your widget URL:</p>
-    <pre><code>https://chatbot-widget.pages.dev/widget.js</code></pre>
+    <pre><code>https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code></pre>
     <p>Test it on a scratch page — create any HTML file with this one line before <code>&lt;/body&gt;</code>:</p>
-    <pre><code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="weblyft-design"&gt;&lt;/script&gt;</code></pre>
+    <pre><code>&lt;script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js" data-tenant="weblyft-design"&gt;&lt;/script&gt;</code></pre>
     <p>Open the file in a browser. <strong>How to know it worked:</strong> a floating chat button appears bottom-right, in the client's color, and clicking it opens the chat with the greeting you set.</p>
 
     <h3>Day 4 — Install it on the client's site (15 min)</h3>
@@ -663,7 +663,7 @@ flowchart LR
     <p>This week you take the wheel: the admin dashboard, your first real client, monitoring, and the launch checklist. ~1.5 hours.</p>
 
     <h3>Day 1 — Log in and look around (20 min)</h3>
-    <p>Open <code>https://chatbot-admin.pages.dev</code> → sign in with Clerk (use the email you allowlisted — if you get "couldn't sign you in", add the admin URL to <strong>Clerk → Domains</strong> and allowed redirect URLs).</p>
+    <p>Open <code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> → sign in with Clerk (use the email you allowlisted — if you get "couldn't sign you in", add the admin URL to <strong>Clerk → Domains</strong> and allowed redirect URLs).</p>
     <p>Tour the screens:</p>
     <ul>
       <li><strong>Tenants</strong> — your client list. Click one to open its detail page.</li>
@@ -805,7 +805,7 @@ flowchart LR
 
     <table>
       <tr><th>#</th><th>If this happens…</th><th>…do this</th></tr>
-      <tr><td>1</td><td>Widget button doesn't appear on the client's site</td><td>Check the script tag is exactly <code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="their-slug"&gt;&lt;/script&gt;</code>, before <code>&lt;/body&gt;</code>. Open the site, press F12 → Console — any red errors point to the cause (CSP, wrong slug, blocked script).</td></tr>
+      <tr><td>1</td><td>Widget button doesn't appear on the client's site</td><td>Check the script tag is exactly <code>&lt;script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js" data-tenant="their-slug"&gt;&lt;/script&gt;</code>, before <code>&lt;/body&gt;</code>. Open the site, press F12 → Console — any red errors point to the cause (CSP, wrong slug, blocked script).</td></tr>
       <tr><td>2</td><td>Button appears, chat says "Failed to fetch"</td><td>The widget's server calls are being blocked — usually the site's security policy (CSP) or the Space is asleep. Wait 30 s and retry; check the site's CSP needs the Space origin allowed.</td></tr>
       <tr><td>3</td><td>First message takes 30+ seconds</td><td>The Space was asleep (free tier). It wakes itself. Tell clients this happens once after long quiet periods; the keep-alive pinger prevents it in practice.</td></tr>
       <tr><td>4</td><td>Bot gives wrong answers</td><td>It only knows what's in the PDF. Re-upload a better PDF (clearer, correct facts), then re-test. Wrong hours → re-run the hours extraction or fix them in Settings.</td></tr>
@@ -816,7 +816,7 @@ flowchart LR
       <tr><td>9</td><td>Booking succeeds but no email arrives</td><td>Check your Gmail Sent folder first (all sends go through your Gmail). Then run <code>python scripts/test_gas_email.py --to your@email.com</code> in the Space terminal. If that fails, re-deploy the Apps Script and run <code>testEmail()</code> to re-authorize. Remember the 100/day limit.</td></tr>
       <tr><td>10</td><td>Emails land in spam</td><td>Recipients click "not spam". Gmail→Gmail is usually fine. Keep email subject lines normal (no "FREE!!!").</td></tr>
       <tr><td>11</td><td>Client says chat history disappeared</td><td>A refresh with private/incognito browsing loses the session (localStorage). Normal — a new thread starts. Not a data loss bug.</td></tr>
-      <tr><td>12</td><td>Admin login loops</td><td>Clerk doesn't know your admin URL yet. Add <code>chatbot-admin.pages.dev</code> to Clerk → Domains and allowed redirect URLs. Also confirm your email is in the allowlist.</td></tr>
+      <tr><td>12</td><td>Admin login loops</td><td>Clerk doesn't know your admin URL yet. Add <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> to Clerk → Domains and allowed redirect URLs. Also confirm your email is in the allowlist.</td></tr>
       <tr><td>13</td><td>Logged in but dashboard errors / empty lists</td><td>Usually the admin page can't reach the backend (network) or the auth token isn't attached. Check the browser console for 401/403 and verify your email = <code>ADMIN_EMAIL</code> secret.</td></tr>
       <tr><td>14</td><td>"Tenant not found" when testing</td><td>Slug typo (case matters) or the tenant was created in a different database than the one the Space uses. Check Turso: <code>SELECT slug FROM tenants;</code>.</td></tr>
       <tr><td>15</td><td>Uploaded PDF does nothing</td><td>The script must print "Created N chunks". If it errors, the file path was wrong or the tenant slug was wrong. If it succeeds but the bot still doesn't know things, the PDF was scanned images (no text) — convert it to real text first.</td></tr>
@@ -870,9 +870,9 @@ curl -N -X POST "$API/widget/chat/client-slug" -H "Content-Type: application/jso
     <table>
       <tr><th>What</th><th>URL</th></tr>
       <tr><td>Backend health</td><td><code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code></td></tr>
-      <tr><td>Widget file</td><td><code>https://chatbot-widget.pages.dev/widget.js</code></td></tr>
-      <tr><td>Admin dashboard</td><td><code>https://chatbot-admin.pages.dev</code></td></tr>
-      <tr><td>Client install line</td><td><code>&lt;script src="https://chatbot-widget.pages.dev/widget.js" data-tenant="client-slug" data-api-url="https://chatbot-api.YOUR-SUBDOMAIN.workers.dev"&gt;&lt;/script&gt;</code></td></tr>
+      <tr><td>Widget file</td><td><code>https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code></td></tr>
+      <tr><td>Admin dashboard</td><td><code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code></td></tr>
+      <tr><td>Client install line</td><td><code>&lt;script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js" data-tenant="client-slug" data-api-url="https://chatbot-api.YOUR-SUBDOMAIN.workers.dev"&gt;&lt;/script&gt;</code></td></tr>
       <tr><td>Database (Turso)</td><td><code>https://turso.tech</code> → your DB</td></tr>
     </table>
 

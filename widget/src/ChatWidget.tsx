@@ -20,7 +20,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
 
   // Load config on mount
   useEffect(() => {
-    config.fetch()
+    config.load()
   }, [tenantSlug])
 
   // Handle new messages when closed

@@ -112,7 +112,7 @@ auto-deploy via the existing workflows.
 **Widget → `chatbot-widget`**
 - Build command: `cd widget && npm run build`
 - Output directory: `widget/dist`
-- Widget JS: `https://chatbot-widget.pages.dev/widget.js`
+- Widget JS: `https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js`
 
 **Admin → `chatbot-admin`**
 - Build command: `cd admin-dashboard && npm run build`
@@ -154,7 +154,7 @@ email in `ADMIN_EMAILS`) or — until the admin dashboard is wired up — the
 ## 6. Embed the widget on a client site
 
 ```html
-<script src="https://chatbot-widget.pages.dev/widget.js"
+<script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js"
         data-tenant="weblyft-design"
         data-api-url="https://chatbot-api.<your-subdomain>.workers.dev"></script>
 ```

@@ -100,10 +100,10 @@ curl -X POST "$API/admin/tenants/TENANT_ID/knowledge/text" \
 **Day 2** - Test booking (Phase 2 — availability/booking are being ported to the Worker)
 **Day 3** - Build widget:
 - Cloudflare Pages → Connect GitHub → Deploy
-- Get URL: `https://chatbot-widget.pages.dev/widget.js`
+- Get URL: `https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js`
 **Day 4** - Install on client site (add `data-api-url` so the widget finds the Worker):
 ```html
-<script src="https://chatbot-widget.pages.dev/widget.js"
+<script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js"
         data-tenant="weblyft-design"
         data-api-url="https://chatbot-api.<your-subdomain>.workers.dev"></script>
 ```
