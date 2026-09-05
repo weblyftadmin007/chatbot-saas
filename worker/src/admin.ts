@@ -135,6 +135,69 @@ export async function createTenant(db: Client, raw: string | null): Promise<Resp
   return json(tenantResponse(row.rows[0]!), 201)
 }
 
+interface UpdateTenantBody {
+  business_hours?: Record<string, { open: string; close: string }> | null
+  timezone?: string
+  slot_duration?: number
+  buffer_minutes?: number
+}
+
+export async function updateTenant(db: Client, tenantId: string, raw: string | null): Promise<Response> {
+  const tenant = await tenantById(db, tenantId)
+  if (!tenant) return json({ detail: 'Tenant not found' }, 404)
+  if (rowString(tenant, 'plan') === 'deleted') {
+    return json({ detail: 'Tenant is deleted' }, 409)
+  }
+
+  let body: UpdateTenantBody
+  try {
+    body = raw ? (JSON.parse(raw) as UpdateTenantBody) : {}
+  } catch {
+    return json({ detail: 'Invalid JSON body' }, 400)
+  }
+
+  const updates: string[] = []
+  const values: (string | number | null)[] = []
+
+  if (body.business_hours !== undefined) {
+    updates.push('business_hours = ?')
+    values.push(body.business_hours === null ? null : JSON.stringify(body.business_hours))
+  }
+  if (body.timezone !== undefined) {
+    if (typeof body.timezone !== 'string' || !body.timezone.trim()) {
+      return json({ detail: 'timezone must be a non-empty string' }, 400)
+    }
+    updates.push('timezone = ?')
+    values.push(body.timezone.trim())
+  }
+  if (body.slot_duration !== undefined) {
+    const n = Number(body.slot_duration)
+    if (!Number.isFinite(n) || n <= 0) {
+      return json({ detail: 'slot_duration must be a positive number' }, 400)
+    }
+    updates.push('slot_duration = ?')
+    values.push(Math.round(n))
+  }
+  if (body.buffer_minutes !== undefined) {
+    const n = Number(body.buffer_minutes)
+    if (!Number.isFinite(n) || n < 0) {
+      return json({ detail: 'buffer_minutes must be a non-negative number' }, 400)
+    }
+    updates.push('buffer_minutes = ?')
+    values.push(Math.round(n))
+  }
+
+  if (!updates.length) return json({ detail: 'No fields to update' }, 400)
+
+  updates.push('updated_at = ?')
+  values.push(Math.floor(Date.now() / 1000))
+  values.push(tenantId)
+
+  await query(db, `UPDATE tenants SET ${updates.join(', ')} WHERE id = ?`, values)
+  const row = await query(db, 'SELECT * FROM tenants WHERE id = ?', [tenantId])
+  return json(tenantResponse(row.rows[0]!))
+}
+
 interface KnowledgeTextBody {
   source_id?: string
   source_type?: 'txt' | 'md' | 'faq' | string

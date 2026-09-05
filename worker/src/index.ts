@@ -29,12 +29,13 @@ import {
   getKnowledge,
   getTenant,
   listTenants,
+  updateTenant,
   uploadKnowledgeText,
 } from './admin'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 }
@@ -182,6 +183,8 @@ export default {
         const [tenantId] = route.params
         if (request.method === 'GET') return withCors(await getTenant(db, tenantId!))
         if (request.method === 'DELETE') return withCors(await deleteTenant(db, tenantId!))
+        if (request.method === 'PATCH')
+          return withCors(await updateTenant(db, tenantId!, await request.text()))
         return withCors(methodNotAllowed())
       }
       case 'adminTenantKnowledge': {
