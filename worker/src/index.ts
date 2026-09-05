@@ -24,6 +24,7 @@ import type { Env } from './config'
 import { getDb, query, rowString } from './db'
 import { tenantBySlug, buildWidgetConfig } from './tenants'
 import { handleChat, json } from './chat'
+import { classifyIntent, generateText } from './llm'
 import {
   authorize,
   createTenant,
@@ -88,6 +89,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
     }
     case '/debug': {
       if (tail.length === 1 && tail[0] === 'db') return { pattern: 'debugDb', params: [] }
+      if (tail.length === 1 && tail[0] === 'classify') return { pattern: 'debugClassify', params: [] }
       return null
     }
     default:
@@ -130,6 +132,37 @@ export default {
             error: error || null,
             timestamp: Math.floor(Date.now() / 1000),
             note: 'No secrets returned. Error trimmed to 400 chars.',
+          }),
+        )
+      }
+
+      case 'debugClassify': {
+        if (request.method !== 'GET') return withCors(methodNotAllowed())
+        const text = (new URL(request.url).searchParams.get('text') || 'Hello').slice(0, 500)
+        let rawResponse = ''
+        let resolvedIntent = ''
+        try {
+          resolvedIntent = await classifyIntent(env, text)
+        } catch (e) {
+          resolvedIntent = (e instanceof Error ? e.message : 'unknown error').slice(0, 400)
+        }
+        try {
+          rawResponse = await generateText(env, {
+            messages: [{ role: 'user', text: `Classify the user's intent into ONE category:\n- book_appointment: Wants to schedule a meeting\n- cancel_appointment: Wants to cancel or reschedule\n- check_availability: Asks about open slots\n- general_query: Information question\n- transfer_human: Explicitly asks for human\n- unclear: Ambiguous or off-topic\n\nExamples:\nUser: "Book a meeting for Tuesday 2pm" -> book_appointment\nUser: "Cancel my appointment" -> cancel_appointment\nUser: "What times are open Friday?" -> check_availability\nUser: "What's your refund policy?" -> general_query\nUser: "Talk to a person" -> transfer_human\nUser: "Hello" -> unclear\n\nUser: "${text}"\nIntent:` }],
+            temperature: 0.1,
+            maxTokens: 20,
+          })
+        } catch (e) {
+          rawResponse = (e instanceof Error ? e.message : 'unknown error').slice(0, 400)
+        }
+        return withCors(
+          json({
+            ok: true,
+            input: text,
+            raw_response: rawResponse.slice(0, 300),
+            resolved_intent: resolvedIntent,
+            timestamp: Math.floor(Date.now() / 1000),
+            note: 'No secrets, no customer data. Just the classifyIntent test.',
           }),
         )
       }
