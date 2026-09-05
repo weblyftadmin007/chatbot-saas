@@ -119,7 +119,7 @@ export function FileUploader({ tenantId, onUpload }: FileUploaderProps) {
 
       {sourceType === 'faq' ? (
         <div className="faq-input">
-          <label>FAQ Data (JSON array of {question, answer} objects)</label>
+          <label>FAQ Data (JSON array of {'{question, answer}'} objects)</label>
           <textarea
             value={faqText}
             onChange={(e) => setFaqText(e.target.value)}
