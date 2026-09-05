@@ -16,7 +16,7 @@ CHAT_MODEL = "gemini-3.5-flash-lite"
 EMBED_MODEL = "gemini-embedding-001"
 EMBED_DIMENSIONS = "768"
 TOP_K = "5"
-SIMILARITY_THRESHOLD = "0.7"
+SIMILARITY_THRESHOLD = "0.55"
 CHUNK_SIZE = "500"
 CHUNK_OVERLAP = "50"
 # Optional self-throttle for chat LLM calls (requests/minute/tenant).
