@@ -15,6 +15,10 @@
  *   POST /admin/tenants/:id/knowledge/text  { source_id, source_type, content }
  *   GET  /admin/tenants/:id/knowledge
  *   DELETE /admin/tenants/:id/knowledge/:source_id
+ *
+ *   GET  /debug/db   (no auth) — reachability check for the Turso DB; returns
+ *                     only { ok, reachable, db_url_hint, error } with no secrets
+ *                     or customer data. Useful for diagnosing 1101/500 chat failures.
  */
 import type { Env } from './config'
 import { getDb, query, rowString } from './db'
@@ -82,6 +86,10 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
         return { pattern: 'adminTenantKnowledgeSource', params: [tail[1]!, tail[3]!] }
       return null
     }
+    case '/debug': {
+      if (tail.length === 1 && tail[0] === 'db') return { pattern: 'debugDb', params: [] }
+      return null
+    }
     default:
       return null
   }
@@ -101,6 +109,31 @@ export default {
     const db = getDb(env)
 
     switch (route.pattern) {
+      case 'debugDb': {
+        if (request.method !== 'GET') return withCors(methodNotAllowed())
+        let reachable = 'unknown'
+        let dbUrlHint = ''
+        let error = ''
+        try {
+          dbUrlHint = env.TURSO_DATABASE_URL ? env.TURSO_DATABASE_URL.replace(/\/.*$/, '/…') : ''
+          await db.execute({ sql: 'SELECT 1', args: [] })
+          reachable = 'yes'
+        } catch (e) {
+          reachable = 'no'
+          error = (e instanceof Error ? e.message : 'unknown error').slice(0, 400)
+        }
+        return withCors(
+          json({
+            ok: true,
+            reachable,
+            db_url_hint: dbUrlHint || null,
+            error: error || null,
+            timestamp: Math.floor(Date.now() / 1000),
+            note: 'No secrets returned. Error trimmed to 400 chars.',
+          }),
+        )
+      }
+
       case 'health': {
         if (request.method !== 'GET') return withCors(methodNotAllowed())
         return withCors(
