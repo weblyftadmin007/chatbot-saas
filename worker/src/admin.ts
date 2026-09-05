@@ -43,6 +43,10 @@ interface TenantBody {
   primary_color?: string
   greeting?: string
   bot_name?: string
+  gas_url?: string
+  notification_email?: string
+  spreadsheet_id?: string
+  quick_replies?: string[]
 }
 
 function tenantResponse(row: SqlRow) {
@@ -124,6 +128,17 @@ export async function createTenant(db: Client, raw: string | null): Promise<Resp
     primary_color: body.primary_color || '#3B82F6',
     secondary_color: '#1E40AF',
     show_branding: true,
+    gas_url: (body.gas_url || '').trim() || undefined,
+    notification_email: (body.notification_email || '').trim().toLowerCase() || undefined,
+    spreadsheet_id: (body.spreadsheet_id || '').trim() || undefined,
+    quick_replies:
+      Array.isArray(body.quick_replies) && body.quick_replies.length
+        ? body.quick_replies.filter((q) => typeof q === 'string' && q.trim())
+        : undefined,
+  }
+  // Drop undefined keys so they don't linger as null/empty in stored JSON.
+  for (const k of Object.keys(settings)) {
+    if (settings[k as keyof typeof settings] === undefined) delete settings[k as keyof typeof settings]
   }
   await query(
     db,
@@ -140,6 +155,8 @@ interface UpdateTenantBody {
   timezone?: string
   slot_duration?: number
   buffer_minutes?: number
+  /** Partial settings object; merged into the existing settings JSON. */
+  settings?: Record<string, unknown>
 }
 
 export async function updateTenant(db: Client, tenantId: string, raw: string | null): Promise<Response> {
@@ -185,6 +202,12 @@ export async function updateTenant(db: Client, tenantId: string, raw: string | n
     }
     updates.push('buffer_minutes = ?')
     values.push(Math.round(n))
+  }
+  if (body.settings !== undefined && typeof body.settings === 'object') {
+    const current = parseJson<Record<string, unknown>>(rowString(tenant, 'settings', '{}'), {})
+    const merged = { ...current, ...body.settings }
+    updates.push('settings = ?')
+    values.push(JSON.stringify(merged))
   }
 
   if (!updates.length) return json({ detail: 'No fields to update' }, 400)

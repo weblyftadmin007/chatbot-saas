@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 interface SlotPickerProps {
   slots: any[]
-  onSelect: (slot: any) => void
+  onSelect: (slot: any, email?: string) => void
 }
 
 export const SlotPicker: React.FC<SlotPickerProps> = ({ slots, onSelect }) => {
+  const [email, setEmail] = useState('')
+
   // Group slots by date
   const grouped = slots.reduce((acc, slot) => {
     const date = new Date(slot.start_time * 1000).toLocaleDateString()
@@ -13,6 +15,12 @@ export const SlotPicker: React.FC<SlotPickerProps> = ({ slots, onSelect }) => {
     acc[date].push(slot)
     return acc
   }, {} as Record<string, any[]>)
+
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())
+  const pick = (slot: any) => {
+    if (!emailOk) return
+    onSelect(slot, email.trim())
+  }
 
   return (
     <div className="chatbot-slot-picker">
@@ -26,6 +34,17 @@ export const SlotPicker: React.FC<SlotPickerProps> = ({ slots, onSelect }) => {
         </button>
       </div>
       <div className="chatbot-slot-list">
+        <label className="chatbot-slot-email-label">
+          Email for your confirmation
+          <input
+            type="email"
+            className="chatbot-slot-email"
+            placeholder="you@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        {!emailOk && email && <p className="chatbot-slot-email-hint">Enter a valid email to book</p>}
         {Object.entries(grouped).map(([date, daySlots]) => (
           <div key={date} className="chatbot-slot-day">
             <div className="chatbot-slot-date">{date}</div>
@@ -33,9 +52,9 @@ export const SlotPicker: React.FC<SlotPickerProps> = ({ slots, onSelect }) => {
               {daySlots.map((slot) => (
                 <button
                   key={`${slot.start_time}-${slot.end_time}`}
-                  className={`chatbot-slot-btn ${slot.available ? 'available' : 'booked'}`}
-                  onClick={() => slot.available && onSelect(slot)}
-                  disabled={!slot.available}
+                  className={`chatbot-slot-btn ${slot.available && emailOk ? 'available' : 'booked'}`}
+                  onClick={() => pick(slot)}
+                  disabled={!slot.available || !emailOk}
                 >
                   {new Date(slot.start_time * 1000).toLocaleTimeString([], {
                     hour: '2-digit',

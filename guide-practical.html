@@ -342,7 +342,7 @@ footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border
   <article id="article">
 
   <div class="callout warning">
-    <strong>⚠ Stack update (September 2026) — read this first.</strong> This guide was written when the backend ran as a <strong>Docker Space on Hugging Face</strong>. HF removed the Docker-SDK free tier in July 2026 (only Static Spaces are free), so the codebase now ships a <strong>Cloudflare Worker</strong> backend (<code>worker/</code>) with <strong>Google Gemini</strong> for chat + embeddings. Before starting, follow <code>DEPLOY.md</code> / <code>SETUP.md</code> for the current steps and use the Worker URL <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev</code> wherever a chapter says <code>…hf.space</code>. Chapters about later features (appointments, emails, admin dashboard, PDF upload) are the <strong>roadmap</strong> — they land in Phases 2–4, described in the Appendix “Migration Roadmap” at the end of this guide. The old Python backend is kept in <code>backend/</code> as the reference implementation.
+    <strong>⚠ Stack update (September 2026) — read this first.</strong> This guide was written when the backend ran as a <strong>Docker Space on Hugging Face</strong>. HF removed the Docker-SDK free tier in July 2026 (only Static Spaces are free), so the codebase now ships a <strong>Cloudflare Worker</strong> backend (<code>worker/</code>) with <strong>Google Gemini</strong> for chat + embeddings. Before starting, follow <code>DEPLOY.md</code> / <code>SETUP.md</code> for the current steps and use the Worker URL <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev</code> wherever a chapter says <code>…hf.space</code>. The admin dashboard is <strong>mostly live</strong> (Clerk sign-in, tenant list/create/detail/<strong>delete</strong>, analytics — Week 4). Chapters about the remaining later features (appointments, emails, PDF upload in the Worker, settings PATCH) are the <strong>roadmap</strong> — they land in Phases 2–4, described in the Appendix “Migration Roadmap” at the end of this guide. The old Python backend is kept in <code>backend/</code> as the reference implementation.
   </div>
 
 
@@ -420,7 +420,7 @@ gantt
       <tr><td><strong>Google AI Studio</strong></td><td>aistudio.google.com</td><td>Gemini API — the actual AI brain (chat + embeddings) on a generous free tier, no card needed</td><td>Free</td></tr>
       <tr><td><strong>Turso</strong></td><td>turso.tech</td><td>The filing cabinet — a database that stores every chat, booking, and client</td><td>Free (9 GB, 1 B reads/mo)</td></tr>
       <tr><td><strong>Cloudflare</strong></td><td>cloudflare.com</td><td>The delivery service — hosts your chat widget file and your admin dashboard, with unlimited bandwidth</td><td>Free</td></tr>
-      <tr><td><strong>Clerk</strong></td><td>clerk.com</td><td>The bouncer — handles "who is allowed into your admin dashboard" logins for you</td><td>Free (10k users/mo)</td></tr>
+      <tr><td><strong>Clerk</strong></td><td>clerk.com</td><td>The bouncer — handles "who is allowed into your admin dashboard" logins for you</td><td>Free (50k users/mo)</td></tr>
       <tr><td><strong>Google Apps Script</strong></td><td>script.google.com</td><td>A free robot inside your Gmail that sends the booking emails</td><td>Free (100 emails/day)</td></tr>
     </table>
 
@@ -440,7 +440,7 @@ gantt
       <li><input type="checkbox"> <span><strong>Cloudflare</strong> → cloudflare.com → "Sign Up" → My Profile → <strong>API Tokens → Create Token</strong> → template "Edit Cloudflare Workers" (+ add Account → Cloudflare Pages:Edit) → copy the token; note your <strong>Account ID</strong> from the dashboard. You'll paste both into GitHub later.</span></li>
       <li><input type="checkbox"> <span><strong>Google AI Studio</strong> → aistudio.google.com/apikey → "Create API key" → copy it (<code>GEMINI_API_KEY</code>). This powers the AI brain now that Docker-on-HF is paid.</span></li>
       <li><input type="checkbox"> <span><strong>Turso</strong> → turso.tech → "Sign up" with GitHub → click <strong>Create Database</strong> → name it <code>chatbot-db</code> → pick a region near you → create → click the database → <strong>Show connection details</strong> → copy the <strong>URL</strong> (starts with <code>libsql://</code>) and the <strong>auth token</strong>. Save both.</span></li>
-      <li><input type="checkbox"> <span><strong>Clerk</strong> → clerk.com → sign up with GitHub → create an application, name it <code>Chatbot Admin</code> → in the dashboard go to <strong>API Keys</strong> → copy <strong>Publishable Key</strong> (starts <code>pk_test_</code>) and <strong>Secret Key</strong> (starts <code>sk_test_</code>). Save both. Then: <strong>User &amp; Authentication → Email, Phone, Username</strong> → enable <strong>Email</strong> only → add your own email to the <strong>Allowlist</strong>.</span></li>
+      <li><input type="checkbox"> <span><strong>Clerk</strong> → clerk.com → sign up with GitHub → create an application, name it <code>Chatbot Admin</code> → in the dashboard go to <strong>API Keys</strong> → copy <strong>Publishable Key</strong> (starts <code>pk_test_</code>) and <strong>Secret Key</strong> (starts <code>sk_test_</code>). Save both. Then: <strong>User &amp; Authentication → Email, Phone, Username</strong> → enable <strong>Email</strong> only. <strong>Skip the Allowlist</strong> — it's a paid (Pro) feature. On the free plan either use <strong>Invitations</strong> to invite your own email or leave sign-up open; register your email once, then close the window. The real security gate is the <code>ADMIN_EMAILS</code> secret in GitHub, not who can sign up.</span></li>
       <li><input type="checkbox"> <span><strong>Cloudflare</strong> → cloudflare.com → sign up → after login, look at the dashboard's right sidebar for your <strong>Account ID</strong> (long hex string). Save it. Then: profile icon → <strong>My Profile → API Tokens → Create Token</strong> → pick the <strong>"Edit Cloudflare Workers" template</strong> → on the permissions page add <strong>Account → Cloudflare Pages → Edit</strong> (the Workers template alone doesn't cover Pages, which is what deploys your widget and admin) → continue → create → copy the token (shows once!). Save it.</span></li>
       <li><input type="checkbox"> <span><strong>Google Apps Script</strong> → script.google.com → "New Project" → name it <code>Chatbot Email Sender</code> → delete the default code → paste the contents of <code>gas-email/Code.gs</code> from the project → click <strong>Deploy → New deployment</strong> → type gear → <strong>Web app</strong> → Execute as: <strong>Me</strong> → Who has access: <strong>Anyone</strong> → Deploy → copy the URL (ends in <code>/exec</code>). Save it. Then run the <code>testEmail</code> function once (it's in the code) and click through the Google permission screen — this "authorizes" the robot to send email as you.</span></li>
     </ul>
@@ -493,7 +493,7 @@ flowchart LR
       <li><input type="checkbox"> <span>GitHub account, logged in</span></li>
       <li><input type="checkbox"> <span>Hugging Face account + <code>HF_TOKEN</code> (starts <code>hf_</code>) saved</span></li>
       <li><input type="checkbox"> <span>Turso database <code>chatbot-db</code> + URL + token saved</span></li>
-      <li><input type="checkbox"> <span>Clerk app + <code>pk_test_...</code> and <code>sk_test_...</code> saved, your email allowlisted</span></li>
+      <li><input type="checkbox"> <span>Clerk app + <code>pk_test_...</code> and <code>sk_test_...</code> saved, and your email registered on it (invite or open sign-up — no allowlist on the free plan)</span></li>
       <li><input type="checkbox"> <span>Cloudflare Account ID + API token saved</span></li>
       <li><input type="checkbox"> <span>Google Apps Script project with <code>Code.gs</code> pasted, deployed as web app, URL saved, <code>testEmail()</code> run once (check your Gmail!)</span></li>
     </ul>
@@ -510,11 +510,11 @@ flowchart LR
       <tr><td><code>CLERK_SECRET_KEY</code></td><td>Clerk → API Keys (starts <code>sk_test_</code>)</td></tr>
       <tr><td><code>GAS_WEBAPP_URL</code></td><td>Apps Script deploy URL (ends <code>/exec</code>)</td></tr>
       <tr><td><code>GEMINI_API_KEY</code></td><td>Google AI Studio key (replaces the old local model — chat + embeddings run on Gemini)</td></tr>
-      <tr><td><code>ADMIN_EMAILS</code></td><td>Your email(s), comma-separated — allowed on <code>/admin/*</code> (must match your Clerk allowlist)</td></tr>
+      <tr><td><code>ADMIN_EMAILS</code></td><td>Your email(s), comma-separated — the Worker's real gate for <code>/admin/*</code> (must be the exact email you registered with Clerk)</td></tr>
       <tr><td><code>ADMIN_BOOTSTRAP_TOKEN</code></td><td>Optional long random string — only for the first tenant/knowledge uploads (delete once the dashboard works, Phase 3)</td></tr>
       <tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>Cloudflare API token</td></tr>
       <tr><td><code>CLOUDFLARE_ACCOUNT_ID</code></td><td>Cloudflare dashboard → Account ID</td></tr>
-      <tr><td><code>ADMIN_EMAIL</code></td><td>Your email (must match your Clerk allowlist)</td></tr>
+      <tr><td><code>ADMIN_EMAIL</code></td><td>Reference-backend only — the Worker uses <code>ADMIN_EMAILS</code> above. You can skip this one.</td></tr>
     </table>
     <p><strong>How to know it worked:</strong> the secrets page lists all the names with no typos. Secrets are hidden after saving — that's normal. If you typo one, delete and re-add it.</p>
 
@@ -528,7 +528,7 @@ flowchart LR
     <p><strong>How to know it worked:</strong> open <code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code> in a browser (run <code>npx wrangler whoami</code> locally to see your subdomain). You should see <code>{"status":"healthy","version":"1.0.0",...}</code>. Workers don't sleep, so no keep-alive is needed — but watch Gemini's daily free quota (Chapter 9 troubleshooting).</p>
 
     <div class="callout done">
-      <strong>Where things stand (September 2026).</strong> The repo you're cloning is mid-migration from the old Hugging Face Docker backend to the Cloudflare Worker stack. What's implemented now (Phase 1): widget chat with RAG answers, knowledge upload (text/FAQ), conversation history, and Worker deploys via GitHub Actions. What's still being ported (Phases 2–4): appointment booking + emails, the full admin dashboard, PDF upload, and the legacy <code>scripts/</code>. The old Python backend lives on in <code>backend/</code> as the reference implementation. The Appendix at the end of this guide spells out the phases in detail.
+      <strong>Where things stand (September 2026).</strong> The repo you're cloning is mid-migration from the old Hugging Face Docker backend to the Cloudflare Worker stack. What's implemented now (Phase 1): widget chat with RAG answers, knowledge upload (text/FAQ), conversation history, the admin dashboard with Clerk sign-in — tenant list, create, detail, <strong>delete (with warning)</strong>, and analytics — and deploys via GitHub Actions. What's still being ported (Phases 2–4): appointment booking + emails, settings PATCH + PDF upload in the Worker, and the legacy <code>scripts/</code>. The old Python backend lives on in <code>backend/</code> as the reference implementation. The Appendix at the end of this guide spells out the phases in detail.
     </div>
 
     <h3>Day 4 — Set up the database (15 min)</h3>
@@ -663,27 +663,28 @@ flowchart LR
     <p>This week you take the wheel: the admin dashboard, your first real client, monitoring, and the launch checklist. ~1.5 hours.</p>
 
     <h3>Day 1 — Log in and look around (20 min)</h3>
-    <p>Open <code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> → sign in with Clerk (use the email you allowlisted — if you get "couldn't sign you in", add the admin URL to <strong>Clerk → Domains</strong> and allowed redirect URLs).</p>
+    <p>Open <code>https://chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> → sign in with Clerk (use the email you registered — if you get "couldn't sign you in", add the admin URL to <strong>Clerk → Domains</strong> and allowed redirect URLs; in development your <code>pk_test_</code> key usually accepts any origin so this is rarely needed).</p>
+    <div class="callout warning">
+      <strong>If the dashboard stays empty after a fresh sign-in:</strong> Clerk's default session token has no <code>email</code> in it, and the Worker's admin API requires it. Fix once: Clerk dashboard → <strong>Sessions → Customize session token</strong> → add <code>"email": "{{user.primary_email_address}}"</code> → Save → sign out and back in. (See Chapter 9 troubleshooting #12.)
+    </div>
     <p>Tour the screens:</p>
     <ul>
-      <li><strong>Tenants</strong> — your client list. Click one to open its detail page.</li>
+      <li><strong>Tenants</strong> — your client list, each card tinted with the client's brand color. Click one to open its detail page; <strong>Delete Tenant</strong> (top right) removes a client after a warning modal (see below).</li>
       <li><strong>Overview tab</strong> — conversations, appointments, confirmed vs pending counts.</li>
       <li><strong>Conversations tab</strong> — every chat thread with its last message.</li>
       <li><strong>Appointments tab</strong> — every booking with date, time, status.</li>
-      <li><strong>Knowledge tab</strong> — upload a client's PDF/TXT from the browser (note: this page still needs its auth wiring, so if an upload fails, use the Week 2 terminal commands instead — they do the same job).</li>
-      <li><strong>Settings tab</strong> — the business-hours editor (timezone, slot length, buffer) — saving from here is still being wired up, so until then set hours with the Week 2 extraction command or the SQL in Chapter 10).</li>
-      <li><strong>Analytics</strong> — platform totals and your busiest clients.</li>
+      <li><strong>Knowledge tab</strong> — paste an FAQ or upload a text/TXT source from the browser (it posts to the Worker and shows created-chunk counts). PDFs aren't parsed in the browser yet — extract them on your machine first and upload as text, or use the Week-2 commands.</li>
+      <li><strong>Settings tab</strong> — the business-hours editor (timezone, slot length, buffer). Saving from here needs the Worker's settings-PATCH route (Phase 2); until then set hours with the Week-2 extraction command or SQL in Chapter 10.</li>
+      <li><strong>Analytics</strong> — platform totals and your busiest clients (now live against <code>GET /admin/analytics</code>).</li>
     </ul>
-    <div class="callout warning">
-      <strong>Honest status of the dashboard.</strong> Sign-in works once the Week-1, Day-5 key is set, but in the current code the <em>data</em> screens need two wiring steps that aren't finished: the admin app must attach your Clerk session token to its API calls, and its page layout must mount the routes. Until those land, lists can stay empty even right after a successful login — that's a known code gap, not something you did wrong. The terminal recipes from Weeks 2–3 (create tenant, upload PDF, extract hours, test booking) do exactly the same jobs and work today, so lean on them while the dashboard catches up.
-    </div>
+    <p><strong>Deleting a client.</strong> Open the tenant → click the red <strong>Delete Tenant</strong> → the modal tells you exactly what happens (their widget stops immediately, they vanish from the list and analytics, their data becomes inaccessible) → confirm. It's a soft delete (<code>plan='deleted'</code>), not undoable from the dashboard; a permanent purge needs SQL (deep-dive guide, Admin chapter).</p>
 
     <h3>Day 2 — Add your first real client (20 min)</h3>
     <p>The 5-minute client recipe, dashboard edition:</p>
     <ol>
-      <li>Tenants → <strong>Add Tenant</strong> → name (e.g. "Bob's Plumbing"), slug (<code>bobs-plumbing</code>) → Create. (Heads-up: the dashboard's color picker is buggy — the chosen color won't stick. Set the color from the terminal instead: <code>python scripts/create_tenant.py --name "Bob's Plumbing" --slug bobs-plumbing --color "#10B981"</code> if you're creating it that way, or patch it later with SQL.)</li>
-      <li>Upload their FAQ PDF with the Week 2 command (Day 2), using their slug: <code>python scripts/upload_knowledge.py --tenant bobs-plumbing --file faq.pdf</code>.</li>
-      <li>Set their timezone and hours in the dashboard (Tenant → Settings tab saves hours/timezone/slot duration/buffer directly), or re-run the extraction command (Week 2, Day 3) with their slug.</li>
+      <li>Tenants → <strong>Add Tenant</strong> → name (e.g. "Bob's Plumbing"), slug (<code>bobs-plumbing</code>), and pick a brand color (the picker now sends <code>primary_color</code> correctly — the card and the widget both use it) → Create.</li>
+      <li>Upload their FAQ on the tenant's Knowledge tab (paste the FAQ JSON, or upload a text file). PDFs are extracted on your machine first and uploaded as text (the Worker can't parse PDFs — free-plan CPU limit).</li>
+      <li>Set their timezone and hours in the dashboard (Tenant → Settings tab). If saving from Settings isn't wired yet on your build, set <code>business_hours</code>/<code>timezone</code> with SQL in Turso or ask for the Phase-2 settings route.</li>
       <li>Copy the embed code (Week 3, Day 3) → email it to the client with one instruction: "paste before &lt;/body&gt;" — or offer to do it on a 10-minute call.</li>
       <li>Test their robot: "What are your hours?" and "Book for Friday 10am".</li>
     </ol>
@@ -795,7 +796,7 @@ flowchart LR
   </section>
 
   <section class="chapter" id="p9-troubleshooting">
-    <h2>9. Troubleshooting — Top 20</h2>
+    <h2>9. Troubleshooting — Top 21</h2>
 
     <p>"If X happens, do Y." These cover everything a non-technical operator is likely to hit. When in doubt, the health check tells you which half of the world is broken:</p>
     <pre><code>Open: https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/health
@@ -816,8 +817,9 @@ flowchart LR
       <tr><td>9</td><td>Booking succeeds but no email arrives</td><td>Check your Gmail Sent folder first (all sends go through your Gmail). Then run <code>python scripts/test_gas_email.py --to your@email.com</code> in the Space terminal. If that fails, re-deploy the Apps Script and run <code>testEmail()</code> to re-authorize. Remember the 100/day limit.</td></tr>
       <tr><td>10</td><td>Emails land in spam</td><td>Recipients click "not spam". Gmail→Gmail is usually fine. Keep email subject lines normal (no "FREE!!!").</td></tr>
       <tr><td>11</td><td>Client says chat history disappeared</td><td>A refresh with private/incognito browsing loses the session (localStorage). Normal — a new thread starts. Not a data loss bug.</td></tr>
-      <tr><td>12</td><td>Admin login loops</td><td>Clerk doesn't know your admin URL yet. Add <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> to Clerk → Domains and allowed redirect URLs. Also confirm your email is in the allowlist.</td></tr>
-      <tr><td>13</td><td>Logged in but dashboard errors / empty lists</td><td>Usually the admin page can't reach the backend (network) or the auth token isn't attached. Check the browser console for 401/403 and verify your email = <code>ADMIN_EMAIL</code> secret.</td></tr>
+      <tr><td>12</td><td>Admin login loops</td><td>In development a <code>pk_test_</code> key accepts any origin — usually nothing to do. If it persists (or with a production key), add <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> to Clerk → Domains and allowed redirect URLs.</td></tr>
+      <tr><td>13</td><td>Logged in but dashboard lists stay empty</td><td>Most likely the Clerk session token has <strong>no <code>email</code> claim</strong>, so the Worker rejects every admin call. Clerk dashboard → Sessions → <strong>Customize session token</strong> → add <code>"email": "{{user.primary_email_address}}"</code> → Save → sign out/in. Also verify your email = <code>ADMIN_EMAILS</code> secret (comma-separated), and hard-refresh on the <em>production</em> URL (hash-prefixed preview URLs are frozen to old builds).</td></tr>
+      <tr><td>21</td><td>I deleted a tenant by accident</td><td>Soft delete — the row still exists in Turso with <code>plan='deleted'</code>. Restore it with <code>UPDATE tenants SET plan='free' WHERE slug='...';</code> (or ask for help). Deleting is always preceded by a warning modal in the dashboard.</td></tr>
       <tr><td>14</td><td>"Tenant not found" when testing</td><td>Slug typo (case matters) or the tenant was created in a different database than the one the Space uses. Check Turso: <code>SELECT slug FROM tenants;</code>.</td></tr>
       <tr><td>15</td><td>Uploaded PDF does nothing</td><td>The script must print "Created N chunks". If it errors, the file path was wrong or the tenant slug was wrong. If it succeeds but the bot still doesn't know things, the PDF was scanned images (no text) — convert it to real text first.</td></tr>
       <tr><td>16</td><td>Everything was working, now the health URL is down</td><td>Space crashed or hit a quota. Check the Space page (it shows a red/green pulse), open the terminal, look at <code>tail /var/log/supervisor/fastapi_err.log</code>. Restart the Space from the dashboard if needed. (Both <code>…/health</code> and <code>…/widget/health</code> are served by the app.)</td></tr>
@@ -930,7 +932,7 @@ curl -N -X POST "$API/widget/chat/client-slug" -H "Content-Type: application/jso
       <tr><th>Phase</th><th>What ships</th><th>Where (code)</th><th>Done when</th></tr>
       <tr><td><strong>1 — Chat + RAG</strong> ✅ <em>implemented</em></td><td>Widget chat (SSE), RAG answers from per-tenant knowledge, conversation history, admin-lite tenant + knowledge ingest, GitHub Actions deploys</td><td><code>worker/</code> (config, llm, rag, chat, clerk, admin)</td><td>Widget on a test page answers from knowledge; <code>/health</code> green</td></tr>
       <tr><td><strong>2 — Appointments + email</strong></td><td>Availability slots, booking/cancel in the chat, business-hours parsing, Google Apps Script email confirmations, <code>email_pending</code> retry UX on Gmail quota</td><td><code>worker/src</code> ports of <code>appointments.py</code> + <code>email.py</code>; <code>gas-email/</code></td><td>“Book Tuesday 2pm” books + emails both sides</td></tr>
-      <tr><td><strong>3 — Full admin dashboard</strong></td><td>Tenant CRUD, analytics, conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code></td><td>Admin UI matches the old README feature list</td></tr>
+      <tr><td><strong>3 — Full admin dashboard</strong> ✅ <em>mostly shipped</em></td><td>Tenant CRUD incl. <strong>delete</strong> (soft delete + warning modal), analytics (live), conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code></td><td>Admin UI matches the old README feature list</td></tr>
       <tr><td><strong>4 — Cleanup & docs</strong></td><td>Remaining docs/guides rewritten, legacy <code>scripts/</code> ported to Worker API calls, old FastAPI <code>backend/</code> removed once parity is proven</td><td>Repo root</td><td>Repo has no Hugging Face / Docker remnants</td></tr>
     </table>
 
@@ -939,7 +941,7 @@ curl -N -X POST "$API/widget/chat/client-slug" -H "Content-Type: application/jso
       <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims, matching the float32 BLOBs in <code>knowledge_chunks</code>). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
       <li><strong>Database:</strong> Turso stays. Embeddings live in <code>knowledge_chunks</code> as float32 BLOBs and are ranked inside the Worker (Turso doesn't ship sqlite-vec). Schema: <code>worker/db/schema.sql</code>.</li>
       <li><strong>PDFs:</strong> not parsed in the Worker (free-plan CPU limit) — extracted in the browser or CLI, then uploaded as text (§5.6 of the spec).</li>
-      <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>; optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
+      <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>, gated by the token's <code>email</code> claim against <code>ADMIN_EMAILS</code> (free-tier Clerk: no allowlist — invite or open sign-up). Optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted once Clerk login works.</li>
       <li><strong>Deploys:</strong> GitHub Actions → <code>deploy-worker.yml</code> (Worker) + Pages workflows (widget/admin).</li>
     </ul>
 

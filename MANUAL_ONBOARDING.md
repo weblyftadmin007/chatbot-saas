@@ -24,8 +24,27 @@ curl "$API/health"
 ```bash
 curl -X POST "$API/admin/tenants" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"name":"Weblyft Design","slug":"weblyft-design","greeting":"Hi! How can I help?","bot_name":"Weblyft Assistant","primary_color":"#0EA5E9"}'
+  -d '{"name":"Weblyft Design","slug":"weblyft-design","greeting":"Hi! How can I help?","bot_name":"Weblyft Assistant","primary_color":"#0EA5E9","gas_url":"https://script.google.com/macros/s/.../exec","notification_email":"bookings@weblyft.com","spreadsheet_id":"1AbC123...","quick_replies":["What are your hours?","How do I get in touch?"]}'
 # → 201 with the tenant object; note the "id" (TENANT_ID)
+```
+
+`gas_url`, `notification_email`, `spreadsheet_id`, and `quick_replies` are
+optional per-tenant settings (bookings and GAS integration). You can also set
+them later via the admin dashboard → Tenant → Settings → "Notifications &
+Integrations", or PATCH just the settings:
+
+```bash
+curl -X PATCH "$API/admin/tenants/$TENANT_ID" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"settings":{"gas_url":"https://script.google.com/macros/s/.../exec","notification_email":"bookings@weblyft.com","spreadsheet_id":"1AbC123...","quick_replies":["What are your hours?"]}}'
+```
+
+For bookings to work, also set business hours and slot config:
+
+```bash
+curl -X PATCH "$API/admin/tenants/$TENANT_ID" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"timezone":"Asia/Kolkata","slot_duration":30,"buffer_minutes":15,"business_hours":{"monday":{"open":"09:00","close":"18:00"},"tuesday":{"open":"09:00","close":"18:00"},"wednesday":{"open":"09:00","close":"18:00"},"thursday":{"open":"09:00","close":"18:00"},"friday":{"open":"09:00","close":"18:00"}}}'
 ```
 
 ## 3. Upload knowledge
@@ -66,7 +85,24 @@ curl -N -X POST "$API/widget/chat/weblyft-design" -H "Content-Type: application/
   -d '{"message":"What are your hours?"}'
 ```
 
-## 6. Embed on the client site
+## 7. Booking notifications (per tenant)
+
+Each tenant's Google Apps Script web app handles customer/business emails and
+the appointments Google Sheet. Steps per tenant:
+
+1. In the tenant's Google account: script.google.com → New Project → paste
+   `gas-email/Code.gs` → set `TEST_RECIPIENT` → Deploy → Web App
+   (Execute as "Me", access "Anyone") → copy the `/exec` URL.
+2. Run `testEmail()` once (authorizes Gmail); optional `testBooking()` verifies
+   the full customer + business + sheet-row flow.
+3. Paste the URL, the business notification email, and the appointments Google
+   Sheet ID into the admin dashboard → Tenant → Settings → "Notifications &
+   Integrations", or PATCH `settings` as above (steps 2–3).
+
+Booking is saved regardless of GAS availability: if the `/exec` URL is missing
+or fails, the Worker logs it and the visitor still gets a confirmation in chat.
+
+## 8. Embed on the client site
 
 ```html
 <script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js"

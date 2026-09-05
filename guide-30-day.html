@@ -361,7 +361,7 @@ footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border
   <article id="article">
 
   <div class="callout warning">
-    <strong>⚠ Stack update (September 2026) — read this first.</strong> This guide was written when the backend ran as a <strong>Docker Space on Hugging Face</strong>. HF removed the Docker-SDK free tier in July 2026 (only Static Spaces are free), so the codebase now ships a <strong>Cloudflare Worker</strong> backend (<code>worker/</code>) with <strong>Google Gemini</strong> for chat + embeddings. Before starting, follow <code>DEPLOY.md</code> / <code>SETUP.md</code> for the current steps and use the Worker URL <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev</code> wherever a chapter says <code>…hf.space</code>. Chapters about later features (appointments, emails, admin dashboard, PDF upload) are the <strong>roadmap</strong> — they land in Phases 2–4, described in the Appendix “Migration Roadmap” at the end of this guide. The old Python backend is kept in <code>backend/</code> as the reference implementation.
+    <strong>⚠ Stack update (September 2026) — read this first.</strong> This guide was written when the backend ran as a <strong>Docker Space on Hugging Face</strong>. HF removed the Docker-SDK free tier in July 2026 (only Static Spaces are free), so the codebase now ships a <strong>Cloudflare Worker</strong> backend (<code>worker/</code>) with <strong>Google Gemini</strong> for chat + embeddings. Before starting, follow <code>DEPLOY.md</code> / <code>SETUP.md</code> for the current steps and use the Worker URL <code>https://chatbot-api.&lt;subdomain&gt;.workers.dev</code> wherever a chapter says <code>…hf.space</code>. The admin dashboard is <strong>mostly live</strong> (Clerk sign-in, tenant list/create/detail/<strong>delete</strong>, analytics — Day 4 + Day 8 onward). Chapters about the remaining later features (appointments, emails, PDF upload in the Worker, settings PATCH) are the <strong>roadmap</strong> — they land in Phases 2–4, described in the Appendix “Migration Roadmap” at the end of this guide. The old Python backend is kept in <code>backend/</code> as the reference implementation.
   </div>
 
 
@@ -412,7 +412,7 @@ flowchart LR
       <li><strong>Cloudflare</strong> — sign up, then create an API token (My Profile → API Tokens → template “Edit Cloudflare Workers” + Account → Pages:Edit) and copy your Account ID. This replaces Hugging Face: the backend now runs as a Cloudflare Worker, which is free and never sleeps, and your widget + admin dashboard will be served from Cloudflare Pages under this same account. Hugging Face Docker Spaces are no longer free (July 2026).</li>
       <li><strong>Google AI Studio</strong> — at <code>aistudio.google.com/apikey</code> create a Gemini API key (<code>GEMINI_API_KEY</code>). This replaces the local Ollama model — chat and embeddings run on Gemini's free tier.</li>
       <li><strong>Turso</strong> (the database) — go to <code>turso.tech</code>, sign up, click Create Database, name it <code>chatbot-db</code>, pick the region closest to your clients. After creation, open the database → Show connection details and copy the <strong>Database URL</strong> (<code>libsql://…</code>) and the <strong>Auth Token</strong>.</li>
-      <li><strong>Clerk</strong> (login for your admin dashboard) — go to <code>clerk.com</code>, sign up, create an application named <code>Chatbot Admin</code>. Copy the <strong>Publishable Key</strong> (<code>pk_test_…</code>) and the <strong>Secret Key</strong> (<code>sk_test_…</code>). In the Clerk dashboard: Users &amp; Authentication → Email, Phone, Username → enable <strong>Email</strong> only. Then User &amp; Authentication → Email, Phone, Username → Allowlist → add <strong>your email address</strong>. (You'll add your admin dashboard domain on Day 4.)</li>
+      <li><strong>Clerk</strong> (login for your admin dashboard) — go to <code>clerk.com</code>, sign up, create an application named <code>Chatbot Admin</code>. Copy the <strong>Publishable Key</strong> (<code>pk_test_…</code>) and the <strong>Secret Key</strong> (<code>sk_test_…</code>). In the Clerk dashboard: Users &amp; Authentication → Email, Phone, Username → enable <strong>Email</strong> only. <strong>Skip the Allowlist</strong> — that is a paid (Pro) feature on the free plan; instead leave sign-up open ("Every user can sign up") or use <strong>Invitations</strong> to invite your own email. Sign in once to register your email, then close the window. Your email is what matters, and the backend gates admin access by the <code>ADMIN_EMAILS</code> secret regardless of who can sign up (Day 17). (You'll add your admin dashboard domain on Day 4.)</li>
       <li><strong>Google Apps Script</strong> (sends your emails through Gmail) — go to <code>script.google.com</code>, New Project, delete the default code, paste the whole contents of <code>gas-email/Code.gs</code> from this repo, then Deploy → New deployment → gear icon → type: <strong>Web app</strong> → Execute as: <strong>Me</strong> → Who has access: <strong>Anyone</strong> → Deploy. Copy the Web App URL (it ends in <code>/exec</code>). Finally, run the <code>testEmail()</code> function once in the editor to authorize Gmail access.</li>
     </ol>
 
@@ -493,8 +493,15 @@ GAS_WEBAPP_URL          # needed in Phase 2</code></pre></li>
       <li>Cloudflare dashboard → Workers &amp; Pages → Create → Pages → Connect to Git → pick your repo.</li>
       <li>Create the <strong>widget</strong> project: name <code>chatbot-widget</code>, production branch <code>main</code>, framework: None, build command <code>cd widget &amp;&amp; npm run build</code>, build output directory <code>widget/dist</code> → Save and Deploy. The build emits exactly <code>widget.js</code>.</li>
       <li>Create the <strong>admin</strong> project: name <code>chatbot-admin</code>, same branch, build command <code>cd admin-dashboard &amp;&amp; npm run build</code>, output <code>admin-dashboard/dist</code> → Save and Deploy.</li>
-      <li><strong>Give the admin build your Clerk key.</strong> The admin app bakes the publishable key in at build time. In the <code>chatbot-admin</code> project: Settings → Environment variables → add <code>VITE_CLERK_PUBLISHABLE_KEY</code> = your <code>pk_test_…</code> value → Save → redeploy. Without it the page loads but the login screen never appears.</li>
-      <li><strong>Tell Clerk about the admin domain.</strong> Clerk dashboard → Domains → add <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code> (and your custom domain later). Also add it under User &amp; Authentication → Email, Phone, Username → Allowed redirect URLs.</li>
+      <li><strong>Give the admin build your Clerk key.</strong> The admin app bakes the publishable key in at build time. <em>Two deploy paths — pick one:</em>
+        <ul>
+          <li><strong>GitHub Actions (this repo's default):</strong> the <code>deploy-admin.yml</code> workflow already bakes <code>VITE_CLERK_PUBLISHABLE_KEY</code> (from the GitHub secret <code>CLERK_PUBLISHABLE_KEY</code>) and <code>VITE_API_URL</code> (your Worker URL) into the build on every push. Just make sure the <code>CLERK_PUBLISHABLE_KEY</code> secret exists (Day 2) and push — no Pages environment variables needed.</li>
+          <li><strong>Manual Pages git integration:</strong> in the <code>chatbot-admin</code> Pages project, Settings → Environment variables → add <code>VITE_CLERK_PUBLISHABLE_KEY</code> = your <code>pk_test_…</code> → Save → redeploy. Without it the page loads but the login screen never appears.</li>
+        </ul>
+      </li>
+      <li><strong>Make sure the Worker lets your email in.</strong> The Worker's admin API accepts only the email(s) in the <code>ADMIN_EMAILS</code> secret (set on Day 2 by <code>deploy-worker.yml</code>). It must be the exact email you registered with Clerk.</li>
+      <li><strong>Add the <code>email</code> claim to the Clerk session token.</strong> Clerk's default token carries only IDs — the Worker checks your email, so without this claim every admin API call fails and the dashboard shows empty lists. Clerk dashboard → Sessions → <strong>Customize session token</strong> → add <code>"email": "{{user.primary_email_address}}"</code> → Save. (One-time setup; skip on Day 1, do it now that the dashboard exists.)</li>
+      <li><strong>Tell Clerk about the admin domain (optional in development).</strong> Your <code>pk_test_</code> development key accepts any origin, so sign-in works without this. When you add a custom domain in production, add it under Clerk → Domains (and allowed redirect URLs).</li>
       <li>Verify both URLs:
         <ul>
           <li><code>https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code> — downloads a JavaScript file.</li>
@@ -504,37 +511,49 @@ GAS_WEBAPP_URL          # needed in Phase 2</code></pre></li>
     </ol>
 
     <div class="callout done">
-      <strong>How to know it worked:</strong> <code>widget.js</code> downloads; the admin URL shows a login screen; signing in with your allowlisted email works (you'll see "No tenants yet" — that's correct until Day 8).
+      <strong>How to know it worked:</strong> <code>widget.js</code> downloads; the admin URL shows a login screen; signing in with your registered email opens the dashboard and lists your tenants ("No tenants yet" is correct until Day 8 if you haven't created one via API). If the page loads but stays empty after a fresh sign-in, the missing <code>email</code> claim above is the usual cause — add it and sign out/in again.
     </div>
   </section>
 
   <section class="chapter" id="d05">
-    <h2>Day 5 — Local Dev Environment (45 min, optional but recommended)</h2>
+    <h2>Day 5 — Local Dev Environment (45 min, optional)</h2>
 
-    <p><strong>Goal:</strong> you can run and debug the project on your own machine, which makes every later day faster. The database is in the cloud, so "local" means running the API and frontends locally while they talk to the same Turso database.</p>
+    <p><strong>Goal:</strong> you can run and debug the project on your own machine. Since the backend is a Cloudflare Worker and both frontends build statically, "local" means <code>wrangler dev</code> for the API and Vite for the widget/admin — all talking to the same remote Turso database.</p>
+
+    <div class="callout note">
+      <strong>You can skip this day.</strong> Nothing here is required: every deploy already happens automatically from GitHub (Day 3–4). Come back to this page only when you want to edit code and test changes before pushing.
+    </div>
 
     <h3>Steps</h3>
     <ol>
-      <li>Install Python 3.11+ and Node 20+ (visit <code>python.org</code> and <code>nodejs.org</code> if you don't have them).</li>
-      <li>Set up the backend: <pre><code>cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt</code></pre></li>
-      <li>Create <code>backend/.env</code> with the six required settings (the app fails at startup without all of them): <pre><code>TURSO_DATABASE_URL=libsql://your-db.turso.io
+      <li>Install Node 20+ (visit <code>nodejs.org</code> if you don't have it). Python is no longer needed for local dev — the old <code>backend/</code> venv/pip/uvicorn steps were for the previous FastAPI stack.</li>
+      <li><strong>Give the Worker its secrets locally.</strong> <code>wrangler dev</code> reads non-secret config from <code>worker/wrangler.toml</code> and secrets from a <code>worker/.dev.vars</code> file (gitignored). Create it with the same values you stored as GitHub secrets on Day 2:
+        <pre><code>cd worker
+TURSO_DATABASE_URL=libsql://your-db.turso.io
 TURSO_AUTH_TOKEN=your_token
+GEMINI_API_KEY=your_key
 CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-GAS_WEBAPP_URL=https://script.google.com/macros/s/.../exec
-ADMIN_EMAIL=you@example.com</code></pre></li>
-      <li>Run the migration from your machine (it's the same remote database): <pre><code>python run_migrations.py</code></pre></li>
-      <li>Build the frontends once to prove the toolchain works: <pre><code>cd ../widget &amp;&amp; npm install &amp;&amp; npm run build
-cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pre></li>
-      <li>(Optional) Run the API locally: <pre><code>cd ../backend &amp;&amp; uvicorn app.main:app --reload --port 8000</code></pre>
-        then open <code>http://localhost:8000/health</code>.</li>
+ADMIN_EMAILS=you@example.com
+# ADMIN_BOOTSTRAP_TOKEN=...   # optional, same as the GitHub secret</code></pre>
+        (These are real keys for your real database — never commit <code>.dev.vars</code>.)</li>
+      <li><strong>Run the API locally:</strong> <pre><code>npm install
+npx wrangler dev</code></pre>
+        then open <code>http://localhost:8787/health</code> — it returns the same <code>{"status":"healthy",...}</code> payload as production.</li>
+      <li><strong>Run the widget locally</strong> (Vite dev server, hot reload): <pre><code>cd ../widget &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
+        Then open <code>http://localhost:5173</code>. To point it at your <em>local</em> Worker instead of the deployed one, add <code>data-api-url="http://localhost:8787"</code> to the widget's embed script tag (see Day 8).</li>
+      <li><strong>Run the admin dashboard locally:</strong> <pre><code>cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
+        The dev server needs the same two build-time variables the workflow bakes (Day 4) — create a local <code>.env</code> in <code>admin-dashboard/</code> (or export them before <code>npm run dev</code>):
+        <pre><code>VITE_API_URL=http://localhost:8787
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...</code></pre>
+        then open the printed URL (usually <code>http://localhost:5174</code>) and sign in with Clerk.</li>
     </ol>
 
     <div class="callout done">
-      <strong>How to know it worked:</strong> <code>pip install</code> finishes without errors (the pinned versions resolve — earlier versions of the requirements file did not, which is fixed); <code>run_migrations.py</code> prints the SQL statements it executed; both <code>npm run build</code> commands succeed; <code>localhost:8000/health</code> returns <code>healthy</code>.
+      <strong>How to know it worked:</strong> <code>npm install</code> and <code>npx wrangler dev</code> succeed; <code>localhost:8787/health</code> returns <code>healthy</code>; the widget dev server renders the button pointed at your local API; the admin dev server shows the Clerk sign-in and your tenant list.
+    </div>
+
+    <div class="callout tip">
+      <strong>Local vs. deployed — same database.</strong> Local runs use the <em>same</em> Turso database as production, so changes you make locally (tenants, knowledge, chats) appear in the deployed widget immediately. If you ever want an isolated playground, create a second Turso database and point <code>.dev.vars</code> at it.
     </div>
   </section>
 
@@ -548,19 +567,18 @@ cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pr
       <li>Open the repo in your editor and walk the folder map:
         <table>
           <tr><th>Folder</th><th>What lives there</th></tr>
-          <tr><td><code>backend/app/api/</code></td><td>FastAPI routes: <code>widget.py</code> (public chat/config/availability/appointments/history/health), <code>tenant.py</code> (tenant management, admin-auth-protected), <code>admin.py</code> (platform admin + Clerk JWT verification)</td></tr>
-          <tr><td><code>backend/app/services/</code></td><td><code>llm.py</code> (legacy Ollama client — the new backend calls Gemini in <code>worker/src/llm.ts</code>), <code>rag.py</code> (vector search reference), <code>appointments.py</code> (intents + slots + booking + cancel), <code>knowledge.py</code> (PDF/text/FAQ chunking), <code>email.py</code> (GAS email)</td></tr>
-          <tr><td><code>backend/app/middleware/tenant.py</code></td><td>Resolves a tenant from the URL slug, <code>X-Tenant-Slug</code> header, or subdomain</td></tr>
-          <tr><td><code>backend/migrations/</code></td><td><code>001_initial_schema.sql</code> — the whole schema; run by <code>run_migrations.py</code></td></tr>
-          <tr><td><code>widget/src/</code></td><td>The embeddable chat widget (React + Shadow DOM): <code>ChatWidget.tsx</code>, hooks (<code>useChat</code>, <code>useConfig</code>, <code>useSession</code>), components (<code>ChatPanel</code>, <code>SlotPicker</code>, …)</td></tr>
-          <tr><td><code>admin-dashboard/src/</code></td><td>Your control panel: pages (<code>Tenants</code>, <code>TenantDetail</code>, <code>Analytics</code>), components (<code>FileUploader</code>, <code>BusinessHoursEditor</code>), and <code>api.ts</code> (attaches your Clerk token to every request)</td></tr>
-          <tr><td><code>scripts/</code></td><td>CLI helpers: <code>create_tenant.py</code>, <code>upload_knowledge.py</code>, <code>extract_business_hours.py</code>, <code>test_gas_email.py</code>, <code>seed_demo.py</code></td></tr>
-          <tr><td><code>gas-email/</code></td><td>The Apps Script that turns <code>{to, subject, html}</code> into a Gmail send</td></tr>
-          <tr><td><code>.github/workflows/</code></td><td>Auto-deploys (backend → HF, widget + admin → Pages) and the keep-alive pinger</td></tr>
+          <tr><td><code>worker/src/</code></td><td><strong>Your backend</strong> — a TypeScript Cloudflare Worker. <code>index.ts</code> is the router; <code>chat.ts</code> handles chat; <code>llm.ts</code> calls Gemini; <code>rag.ts</code> + <code>knowledge.ts</code> do retrieval and chunking; <code>clerk.ts</code> verifies admin JWTs; <code>admin.ts</code> has tenant/knowledge/analytics handlers; <code>db.ts</code> talks to Turso; <code>config.ts</code> + <code>tenants.ts</code> are config/tenant helpers; <code>vec.ts</code> is float32-vector encoding</td></tr>
+          <tr><td><code>worker/db/schema.sql</code></td><td>The whole database schema (7 tables) — load it into Turso once with <code>turso db shell chatbot-db &lt; worker/db/schema.sql</code></td></tr>
+          <tr><td><code>worker/wrangler.toml</code></td><td>Non-secret config: model names (<code>CHAT_MODEL</code>, <code>EMBED_MODEL</code>), RAG knobs (<code>TOP_K</code>, <code>SIMILARITY_THRESHOLD</code>, chunk sizes), chat throttle (<code>LLM_CHAT_RPM</code>)</td></tr>
+          <tr><td><code>widget/src/</code></td><td>The embeddable chat widget (React + Shadow DOM): <code>main.tsx</code> reads the script tag, <code>ChatWidget.tsx</code>, hooks (<code>useChat</code>, <code>useConfig</code>, <code>useSession</code>), components (<code>ChatButton</code>, <code>ChatPanel</code>, <code>MessageList</code>, …), and <code>styles.css</code> (the look)</td></tr>
+          <tr><td><code>admin-dashboard/src/</code></td><td>Your control panel: <code>main.tsx</code>/<code>App.tsx</code> (Clerk + routes), <code>components/Layout.tsx</code> (header/nav shell that renders its children), pages (<code>Tenants</code>, <code>TenantDetail</code>, <code>Analytics</code>, <code>Settings</code>), components (<code>FileUploader</code>, <code>BusinessHoursEditor</code>), and <code>api.ts</code> (attaches your Clerk token to every request)</td></tr>
+          <tr><td><code>gas-email/</code></td><td>The Apps Script that turns <code>{to, subject, html}</code> into a Gmail send (Phase 2)</td></tr>
+          <tr><td><code>.github/workflows/</code></td><td>The 3 auto-deploys: <code>deploy-worker.yml</code> (Worker + secrets), <code>deploy-widget.yml</code> and <code>deploy-admin.yml</code> (Pages; the admin one bakes <code>VITE_API_URL</code> + <code>VITE_CLERK_PUBLISHABLE_KEY</code>)</td></tr>
+          <tr><td><code>backend/</code>, <code>scripts/</code></td><td>The <em>old</em> Python/FastAPI reference implementation and its CLI helpers — kept only as reference; not deployed, not what you edit</td></tr>
         </table>
       </li>
-      <li>Follow one message end-to-end in <code>backend/app/api/widget.py</code>: the <code>/widget/chat/{slug}</code> handler saves your message, classifies intent, and either runs RAG search + LLM synthesis or the booking flow, then streams the answer back as Server-Sent Events. The widget's <code>useChat.ts</code> reads those events.</li>
-      <li>Note the files you'll touch most: <code>backend/app/config.py</code> (model names, rate limits), <code>backend/app/schemas.py</code> (default greeting/colors), <code>nginx.conf</code> (rate limits), <code>widget/src/styles.css</code> (widget look).</li>
+      <li>Follow one message end-to-end in <code>worker/src/chat.ts</code> (routed from <code>index.ts</code>): the <code>/widget/chat/{slug}</code> handler loads the tenant, saves the user's message, classifies intent via Gemini (<code>llm.ts</code>), and either runs RAG search (<code>rag.ts</code>) + streaming synthesis or returns a friendly fallback — then streams the answer as SSE frames (<code>{type: content|done}</code>). The widget's <code>useChat.ts</code> reads those events.</li>
+      <li>Note the files you'll touch most: <code>worker/wrangler.toml</code> (model names, thresholds, rate limit), <code>worker/src/chat.ts</code> (fallback messages), <code>widget/src/styles.css</code> (widget look), <code>admin-dashboard/src/pages/TenantDetail.tsx</code> (tenant page incl. the Delete button).</li>
     </ol>
 
     <div class="callout done">
@@ -575,9 +593,9 @@ cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pr
 
     <h3>Steps</h3>
     <ol>
-      <li>Re-visit any day that wasn't fully green. Most common fixes: a secret typo, a deploy that needed a second run, or models still downloading.</li>
+      <li>Re-visit any day that wasn't fully green. Most common fixes: a secret typo, a deploy that needed a second run, or a workflow that needed a manual trigger.</li>
       <li>Re-verify the three core URLs in a browser: <code>chatbot-api.YOUR-SUBDOMAIN.workers.dev/health</code>, <code>chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js</code>, <code>chatbot-admin.YOUR-SUBDOMAIN.pages.dev</code>.</li>
-      <li>Write your <strong>Stack Card</strong> — one page with: each service, its URL, your login, what it's for, and its free quota. Include the Space terminal path (Settings → Open in terminal) and the two model-pull commands.</li>
+      <li>Write your <strong>Stack Card</strong> — one page with: each service, its URL, your login, what it's for, and its free quota. Services on the card: GitHub, Cloudflare Workers (<code>chatbot-api</code>), Cloudflare Pages (<code>chatbot-widget</code>, <code>chatbot-admin</code>), Turso (<code>chatbot-db</code>), Clerk, Google AI Studio (Gemini), Apps Script. Note there are <em>no models to pull and no servers to wake</em> — the AI runs on Gemini's API and the Worker never sleeps.</li>
     </ol>
 
     <div class="callout done">
@@ -604,8 +622,13 @@ cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pr
     </div>
 
     <div class="callout tip">
-      <strong>CLI alternative.</strong> Everything the dashboard does is also available as commands you can run from your machine (the database is remote, so location doesn't matter): <pre><code>python scripts/create_tenant.py --name "Weblyft Design" --slug weblyft-design --color "#3B82F6"</code></pre>
-      Note: the legacy Python scripts run against the old backend. On the current stack, create the tenant + upload knowledge with the two curl commands in <code>DEPLOY.md</code> §5 instead.
+      <strong>Removing a tenant.</strong> To take a client offline, open the tenant's page in the admin dashboard and click the red <strong>Delete Tenant</strong> button. A warning modal lists exactly what happens before you confirm:
+      <ul>
+        <li>The tenant's chat widget <strong>stops working immediately</strong> — the config/chat endpoints return "Tenant not found".</li>
+        <li>The tenant disappears from the dashboard list and analytics.</li>
+        <li>Its knowledge base, conversations and messages become inaccessible.</li>
+      </ul>
+      Deletion is a <em>soft delete</em> (the Worker sets <code>plan='deleted'</code>; the row stays in Turso for audit). It cannot be undone from the dashboard. To purge the row and its data permanently you must delete the child rows first (<code>knowledge_chunks</code>, <code>conversations</code>/<code>messages</code>, <code>appointments</code>, <code>usage_logs</code>, <code>end_users</code>) then the <code>tenants</code> row — the schema has no <code>ON DELETE CASCADE</code>. See the deep-dive guide's Admin chapter.
     </div>
   </section>
 
@@ -619,12 +642,19 @@ cd ../admin-dashboard &amp;&amp; npm install &amp;&amp; npm run build</code></pr
       <li>Prepare the client's information. Best sources, in order of usefulness:
         <ul>
           <li>A <strong>FAQ list</strong> — exact questions and answers (works best, because retrieval matches question-shaped text).</li>
-          <li>A <strong>plain-text or Markdown</strong> document of what clients ask about: services, prices, policies, contact info, locations.</li>
-          <li>A <strong>PDF</strong> — must be real text, not scanned images (a scanned PDF has no text to read).</li>
+          <li>A <strong>plain-text</strong> version of what clients ask about: services, prices, policies, contact info, locations.</li>
+          <li>A <strong>PDF</strong> — must be real text, not scanned images; and it must be extracted to text first (the Worker doesn't parse PDFs — see the warning below).</li>
         </ul>
       </li>
-      <li>In the admin dashboard: Tenant → Knowledge tab → upload the file, or choose FAQ (JSON) and paste: <pre><code>[{"question": "What are your hours?", "answer": "Mon–Fri 9am–5pm"},
- {"question": "Do you offer refunds?", "answer": "Yes, full refund if cancelled 24h before"}]</code></pre></li>
+      <li>Admin dashboard → open the tenant → <strong>Knowledge tab → FAQ (JSON)</strong> → paste your Q&amp;A pairs and click Upload:
+        <pre><code>[{"question": "What are your hours?", "answer": "Mon–Fri 9am–5pm"},
+ {"question": "Do you offer refunds?", "answer": "Yes, full refund if cancelled 24h before"}]</code></pre>
+        The dashboard posts this to <code>/admin/tenants/&lt;id&gt;/knowledge/text</code> and shows the created-chunk count.</li>
+      <li><strong>Longer plain-text documents:</strong> the current Worker accepts text through the same API, so upload with curl (the knowledge endpoint takes JSON, not file uploads):
+        <pre><code>curl -X POST "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/admin/tenants/TENANT_ID/knowledge/text" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"source_id":"services","source_type":"txt","content":"We offer web design and SEO. We are open Mon–Fri 9am–5pm."}'</code></pre>
+        Use a Clerk session token or (if still enabled) your bootstrap token as <code>YOUR_ADMIN_TOKEN</code>. Re-uploading the same <code>source_id</code> replaces that source.</li>
       <li>Confirm chunks were created: the Knowledge tab lists the source with a chunk count. Deeper check in Turso: <pre><code>SELECT source_id, COUNT(*) FROM knowledge_chunks
 WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'weblyft-design')
 GROUP BY source_id;</code></pre></li>
@@ -636,30 +666,37 @@ GROUP BY source_id;</code></pre></li>
     </div>
 
     <div class="callout warning">
-      <strong>If it says "I don't have that information":</strong> the question didn't match any chunk closely enough (the similarity threshold is 0.7). Rewrite the FAQ using the words customers actually use, or add the exact Q&amp;A pair. If the bot answers but is wordy, that's the temperature setting — fine for now, tune later (Day 20).
+      <strong>PDFs aren't parsed by the Worker (free-plan CPU limit).</strong> To teach the bot from a PDF, extract its text first — on your machine (e.g. <code>pdftotext file.pdf file.txt</code>) or in the browser later (Phase 3) — then upload that text with the curl step above. A scanned PDF has no text to extract at all.
+    </div>
+
+    <div class="callout warning">
+      <strong>If it says "I don't have that information":</strong> the question didn't match any chunk closely enough (the similarity threshold is 0.7, set in <code>worker/wrangler.toml</code>). Rewrite the FAQ using the words customers actually use, or add the exact Q&amp;A pair. If the bot answers but is wordy, that's the synthesis prompt — fine for now, tune later (Day 20).
     </div>
   </section>
 
   <section class="chapter" id="d10">
-    <h2>Day 10 — Business Hours &amp; Slots (30 min)</h2>
+    <h2>Day 10 — Business Hours &amp; Slots (30 min, Phase 2 preview)</h2>
 
-    <p><strong>Goal:</strong> the bot knows when the business is open, how long appointments are, and the buffer between them.</p>
+    <p><strong>Goal:</strong> understand where appointment data lives, so the booking feature (Phase 2) is a day's work once it lands.</p>
+
+    <div class="callout warning">
+      <strong>Honest status: booking isn't in the Worker yet.</strong> The schema columns exist (<code>business_hours</code>, <code>timezone</code>, <code>slot_duration</code>, <code>buffer_minutes</code> on the <code>tenants</code> table) and the Settings tab's editor exists in the dashboard code, but the live Worker does <strong>not</strong> yet expose the availability/slot endpoints or the settings-save (PATCH) route — those ship in Phase 2 (see the Appendix roadmap). Right now, asking the bot for a booking time returns: <em>"Appointment booking is coming soon — right now I can answer questions about the knowledge base."</em> That is expected, not a bug.
+    </div>
 
     <h3>Steps</h3>
     <ol>
-      <li>Admin dashboard → Tenant → Settings tab. Set:
-        <ul>
-          <li><strong>Business hours</strong> per day (leave closed days empty — the checkbox toggles them).</li>
-          <li><strong>Timezone</strong> — the business's location, not yours.</li>
-          <li><strong>Slot duration</strong> (15–60 min) and <strong>Buffer</strong> between appointments.</li>
-        </ul>
-        Click Save — the Settings tab is fully wired to the API.</li>
-      <li>Verify the availability endpoint returns sensible slots: <pre><code>curl "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/widget/availability/weblyft-design?start_date=2026-09-14&amp;end_date=2026-09-20&amp;timezone=UTC"</code></pre>
-        Open days should return slots starting on the hour according to open/close times; closed days return none.</li>
+      <li>Confirm the bot handles booking intents gracefully in the widget: ask <em>"Book Tuesday at 2pm"</em> — you get the friendly "coming soon" note, and the chat thread stays healthy.</li>
+      <li>Look at the schema so you know the shape for later (Phase 2 fills it in): <pre><code>SELECT timezone, slot_duration, buffer_minutes, business_hours FROM tenants WHERE slug = 'weblyft-design';</code></pre>
+        <code>business_hours</code> is JSON, e.g. <code>{"monday":{"open":"09:00","close":"17:00"},...}</code> with empty open/close meaning closed.</li>
+      <li><strong>Optional — pre-fill hours now</strong> so Phase 2 is plug-and-play (or set them from the dashboard Settings tab once the PATCH route lands). Via Turso SQL:
+        <pre><code>UPDATE tenants SET timezone = 'Asia/Kolkata', slot_duration = 30, buffer_minutes = 15,
+  business_hours = '{"monday":{"open":"09:00","close":"18:00"},"tuesday":{"open":"09:00","close":"18:00"},"wednesday":{"open":"09:00","close":"18:00"},"thursday":{"open":"09:00","close":"18:00"},"friday":{"open":"09:00","close":"18:00"}}'
+WHERE slug = 'weblyft-design';</code></pre>
+      </li>
     </ol>
 
     <div class="callout done">
-      <strong>How to know it worked:</strong> slots exist only on open days, at the right times for the tenant's timezone, honoring slot duration and buffer.
+      <strong>How to know it worked:</strong> booking questions get the friendly "coming soon" reply (never an error), and the tenant row shows the hours columns ready for Phase 2.
     </div>
   </section>
 
@@ -810,18 +847,18 @@ tail -f /var/log/nginx/error.log              # rate-limit 503s, 404s</code></pr
 
     <h3>Steps</h3>
     <ol>
-      <li><strong>Tenant API requires auth:</strong> call a tenant endpoint with a spoofed slug but no token — it must fail: <pre><code>curl -i -X GET "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/api/tenants/me" \
-  -H "X-Tenant-Slug: weblyft-design"
-# → 401 or 403 (HTTPBearer), never tenant data</code></pre></li>
-      <li><strong>Admin only for your email:</strong> with a valid Clerk token from a different account, admin calls return 403. (Test in the dashboard with a second email if you have one.)</li>
-      <li><strong>No public model server:</strong> confirm <code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/ollama/</code> returns 404 — the nginx proxy was removed.</li>
+      <li><strong>Admin only for your email:</strong> with a valid Clerk token from a different account, admin calls return 403 (the Worker checks the token's <code>email</code> claim against <code>ADMIN_EMAILS</code>). Sign out of Clerk in another browser and confirm you can't read <code>/admin/tenants</code>.
+        <pre><code>curl -i "https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/admin/tenants"
+# → 401 Missing Authorization header (no token)
+# → 403 Not authorized (token from an email not in ADMIN_EMAILS)</code></pre></li>
+      <li><strong>No public model server:</strong> <code>https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/ollama/</code> returns 404 — the model lives in the Gemini API, not in your stack.</li>
       <li><strong>Apps Script URL stays private:</strong> the <code>/exec</code> URL is the only secret protecting your Gmail sends. Don't publish it anywhere; anyone with it can send email as you (up to 100/day).</li>
-      <li><strong>Secrets hygiene:</strong> confirm <code>backend/.env</code> is gitignored and never committed; rotate any key you pasted into a chat or public gist.</li>
-      <li><strong>Rate limits on:</strong> nginx limits the widget endpoints to 30 req/s and API/admin to 60 req/s — a public bot can't hammer your free tier.</li>
+      <li><strong>Secrets hygiene:</strong> confirm no <code>.env</code> files are committed; rotate any key you pasted into a chat or public gist. Delete the <code>ADMIN_BOOTSTRAP_TOKEN</code> GitHub secret now that Clerk login works (the Worker falls back to Clerk-only once the secret is gone).</li>
+      <li><strong>Rate limits:</strong> the Worker self-throttles each tenant's chat (<code>LLM_CHAT_RPM</code>, default 10 req/min) — a public bot can't exhaust your Gemini quota through one widget. Platform-wide abuse is capped by Cloudflare + Gemini's own daily limits.</li>
     </ol>
 
     <div class="callout done">
-      <strong>How to know it worked:</strong> unauthenticated tenant calls fail, wrong-account tokens get 403, <code>/ollama/</code> is gone, and your checklist is complete.
+      <strong>How to know it worked:</strong> no-token and wrong-email requests get 401/403, <code>/ollama/</code> is gone, no secret files are committed, and the bootstrap token secret is deleted.
     </div>
   </section>
 
@@ -898,7 +935,7 @@ tail -f /var/log/nginx/error.log              # rate-limit 503s, 404s</code></pr
     <ol>
       <li>Create a throwaway tenant (slug like <code>dry-run</code>) and run the whole Day-14 checklist with a stopwatch running: tenant → knowledge → hours → notification email → chat tests → embed line.</li>
       <li>Record where time went. Fix the top bottleneck (usually: preparing the FAQ, or re-typing settings).</li>
-      <li>Delete the throwaway tenant (admin → DELETE sets <code>plan='deleted'</code>, hiding it everywhere).</li>
+      <li>Delete the throwaway tenant in the dashboard: open it → <strong>Delete Tenant</strong> → read the warning → confirm (soft delete: <code>plan='deleted'</code> hides it everywhere; see Day 8's tip for what happens and how a permanent purge differs).</li>
     </ol>
 
     <div class="callout done">
@@ -1106,25 +1143,22 @@ tail -f /var/log/nginx/error.log              # rate-limit 503s, 404s</code></pr
     <h3>Client embed line</h3>
     <pre><code>&lt;script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js" data-tenant="client-slug"&gt;&lt;/script&gt;</code></pre>
 
-    <h3>Everyday commands (run from your machine with backend/.env present)</h3>
-    <pre><code># Migrations (idempotent; the container also auto-runs this on boot)
-python backend/run_migrations.py
+    <h3>Admin API commands (curl, with your Clerk token in <code>TOKEN</code>)</h3>
+    <pre><code># List tenants
+curl -H "Authorization: Bearer $TOKEN" https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/admin/tenants
 
 # Create a tenant
-python scripts/create_tenant.py --name "Business Name" --slug business-slug --color "#3B82F6"
+curl -X POST https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/admin/tenants \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"Business Name","slug":"business-slug","primary_color":"#3B82F6"}'
 
-# Upload knowledge
-python scripts/upload_knowledge.py --tenant business-slug --file faq.txt --source-type txt
+# Delete (soft delete) a tenant by its ID — the dashboard's Delete Tenant button does the same
+curl -X DELETE https://chatbot-api.YOUR-SUBDOMAIN.workers.dev/admin/tenants/TENANT_ID \
+  -H "Authorization: Bearer $TOKEN"</code></pre>
 
-# Extract business hours from a PDF
-python scripts/extract_business_hours.py --tenant business-slug --file faq.pdf
-
-# Test email
-python scripts/test_gas_email.py --to you@example.com</code></pre>
-
-    <h3>Space terminal (Settings → Open in terminal)</h3>
+    <h3>Worker logs (Cloudflare dashboard → Workers → chatbot-api → Logs)</h3>
     <pre><code># No model downloads — chat + embeddings run on the Gemini API (worker/src/llm.ts)
-tail -f /var/log/supervisor/fastapi_err.log</code></pre>
+# Real-time and past logs live in the Cloudflare dashboard; errors surface in the chat as friendly fallback messages.</code></pre>
 
     <h3>Free quotas that matter</h3>
     <table>
@@ -1132,14 +1166,14 @@ tail -f /var/log/supervisor/fastapi_err.log</code></pre>
       <tr><td>Gmail via Apps Script</td><td>100 emails/day</td><td>15+ emails/day is healthy at pilot scale</td></tr>
       <tr><td>Turso</td><td>9 GB, 1 B reads/month</td><td>RAG searches read the most; check the dashboard graph</td></tr>
       <tr><td>Cloudflare Worker</td><td>100k req/day free (10 ms CPU per request)</td><td>No sleeping; watch Gemini daily caps</td></tr>
-      <tr><td>Clerk</td><td>10k monthly active users</td><td>Only your admin signs in — negligible</td></tr>
+      <tr><td>Clerk</td><td>50k monthly active users</td><td>Only your admin signs in — negligible; free sessions expire every ~7 days, so expect a weekly re-login</td></tr>
       <tr><td>Cloudflare Pages</td><td>Unlimited bandwidth</td><td>—</td></tr>
     </table>
 
     <h3>Weekly maintenance (30 min)</h3>
     <ol>
-      <li>Health URL green; keep-alive workflow green.</li>
-      <li>Tail <code>fastapi_err.log</code> — new errors?</li>
+      <li>Health URL green.</li>
+      <li>Worker logs (Cloudflare dashboard) — new errors? Watch Gemini daily caps in Google AI Studio.</li>
       <li>Gmail quota check (<code>checkQuota()</code>); Turso reads graph.</li>
       <li>Review each client's conversations/appointments; answer anything the bot missed by adding FAQ entries.</li>
     </ol>
@@ -1158,7 +1192,7 @@ tail -f /var/log/supervisor/fastapi_err.log</code></pre>
       <tr><th>Phase</th><th>What ships</th><th>Where (code)</th><th>Done when</th></tr>
       <tr><td><strong>1 — Chat + RAG</strong> ✅ <em>implemented</em></td><td>Widget chat (SSE), RAG answers from per-tenant knowledge, conversation history, admin-lite tenant + knowledge ingest, GitHub Actions deploys</td><td><code>worker/</code> (config, llm, rag, chat, clerk, admin)</td><td>Widget on a test page answers from knowledge; <code>/health</code> green</td></tr>
       <tr><td><strong>2 — Appointments + email</strong></td><td>Availability slots, booking/cancel in the chat, business-hours parsing, Google Apps Script email confirmations, <code>email_pending</code> retry UX on Gmail quota</td><td><code>worker/src</code> ports of <code>appointments.py</code> + <code>email.py</code>; <code>gas-email/</code></td><td>“Book Tuesday 2pm” books + emails both sides</td></tr>
-      <tr><td><strong>3 — Full admin dashboard</strong></td><td>Tenant CRUD, analytics, conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code></td><td>Admin UI matches the old README feature list</td></tr>
+      <tr><td><strong>3 — Full admin dashboard</strong> ✅ <em>mostly shipped</em></td><td>Tenant CRUD incl. <strong>delete</strong> (soft delete + warning modal), analytics (<code>GET /admin/analytics</code>), conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code></td><td>Admin UI matches the old README feature list</td></tr>
       <tr><td><strong>4 — Cleanup & docs</strong></td><td>Remaining docs/guides rewritten, legacy <code>scripts/</code> ported to Worker API calls, old FastAPI <code>backend/</code> removed once parity is proven</td><td>Repo root</td><td>Repo has no Hugging Face / Docker remnants</td></tr>
     </table>
 
@@ -1167,7 +1201,7 @@ tail -f /var/log/supervisor/fastapi_err.log</code></pre>
       <li><strong>LLM:</strong> Gemini free tier (flash-class chat model set via <code>CHAT_MODEL</code>; <code>gemini-embedding-001</code> @ 768 dims, matching the float32 BLOBs in <code>knowledge_chunks</code>). Groq / Workers-AI are optional failovers. Free-tier limits are volatile — verify in AI Studio and treat as config.</li>
       <li><strong>Database:</strong> Turso stays. Embeddings live in <code>knowledge_chunks</code> as float32 BLOBs and are ranked inside the Worker (Turso doesn't ship sqlite-vec). Schema: <code>worker/db/schema.sql</code>.</li>
       <li><strong>PDFs:</strong> not parsed in the Worker (free-plan CPU limit) — extracted in the browser or CLI, then uploaded as text (§5.6 of the spec).</li>
-      <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>; optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
+      <li><strong>Auth:</strong> Clerk JWKS for <code>/admin/*</code>, gated by the <code>email</code> claim against <code>ADMIN_EMAILS</code> (free-tier Clerk: no allowlist — invite or open sign-up; see Day 1). Optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted once Clerk login works (Day 17).</li>
       <li><strong>Deploys:</strong> GitHub Actions → <code>deploy-worker.yml</code> (Worker) + Pages workflows (widget/admin).</li>
     </ul>
 

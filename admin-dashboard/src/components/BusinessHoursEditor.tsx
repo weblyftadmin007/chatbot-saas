@@ -5,6 +5,10 @@ interface BusinessHoursEditorProps {
   timezone: string
   slotDuration: number
   bufferMinutes: number
+  gasUrl?: string
+  notificationEmail?: string
+  spreadsheetId?: string
+  quickReplies?: string[]
   onSave: (settings: any) => void
 }
 
@@ -15,6 +19,10 @@ export function BusinessHoursEditor({
   timezone,
   slotDuration,
   bufferMinutes,
+  gasUrl,
+  notificationEmail,
+  spreadsheetId,
+  quickReplies,
   onSave
 }: BusinessHoursEditorProps) {
   const [hours, setHours] = useState<Record<string, { open: string; close: string }>>(
@@ -31,13 +39,29 @@ export function BusinessHoursEditor({
   const [tz, setTz] = useState(timezone || 'UTC')
   const [slotDur, setSlotDur] = useState(slotDuration || 30)
   const [buffer, setBuffer] = useState(bufferMinutes || 15)
+  const [gasUrlVal, setGasUrlVal] = useState(gasUrl || '')
+  const [notifEmail, setNotifEmail] = useState(notificationEmail || '')
+  const [sheetId, setSheetId] = useState(spreadsheetId || '')
+  const [quickRepliesVal, setQuickRepliesVal] = useState(
+    Array.isArray(quickReplies) && quickReplies.length ? quickReplies.join('\n') : ''
+  )
 
   const handleSave = () => {
+    const qr = quickRepliesVal
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
     onSave({
       business_hours: hours,
       timezone: tz,
       slot_duration: slotDur,
-      buffer_minutes: buffer
+      buffer_minutes: buffer,
+      settings: {
+        gas_url: gasUrlVal.trim() || undefined,
+        notification_email: notifEmail.trim().toLowerCase() || undefined,
+        spreadsheet_id: sheetId.trim() || undefined,
+        quick_replies: qr.length ? qr : undefined
+      }
     })
   }
 
@@ -188,6 +212,53 @@ export function BusinessHoursEditor({
               <option value={15}>15 minutes</option>
               <option value={30}>30 minutes</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <h3>Notifications &amp; Integrations</h3>
+        <p className="form-hint">
+          Booking confirmations, business notifications, and the appointments Google Sheet are
+          handled by the tenant's Google Apps Script. Deploy <code>gas-email/Code.gs</code> in the
+          tenant's Google account and paste the web app URL below.
+        </p>
+        <div className="settings-grid">
+          <div className="form-group">
+            <label>GAS Web App URL</label>
+            <input
+              type="url"
+              value={gasUrlVal}
+              onChange={(e) => setGasUrlVal(e.target.value)}
+              placeholder="https://script.google.com/macros/s/.../exec"
+            />
+          </div>
+          <div className="form-group">
+            <label>Business Notification Email</label>
+            <input
+              type="email"
+              value={notifEmail}
+              onChange={(e) => setNotifEmail(e.target.value)}
+              placeholder="bookings@yourbusiness.com"
+            />
+          </div>
+          <div className="form-group">
+            <label>Google Sheet ID (appointments)</label>
+            <input
+              type="text"
+              value={sheetId}
+              onChange={(e) => setSheetId(e.target.value)}
+              placeholder="1AbC... (from the sheet URL, or the full URL)"
+            />
+          </div>
+          <div className="form-group form-group-full">
+            <label>Quick Reply Suggestions (one per line)</label>
+            <textarea
+              value={quickRepliesVal}
+              onChange={(e) => setQuickRepliesVal(e.target.value)}
+              placeholder={'What are your hours?\nHow do I get in touch?\nWhat services do you offer?'}
+              rows={3}
+            />
           </div>
         </div>
       </div>

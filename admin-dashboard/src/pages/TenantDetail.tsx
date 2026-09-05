@@ -254,6 +254,10 @@ export function TenantDetail() {
               timezone={tenant.timezone}
               slotDuration={tenant.slot_duration}
               bufferMinutes={tenant.buffer_minutes}
+              gasUrl={tenant.settings?.gas_url}
+              notificationEmail={tenant.settings?.notification_email}
+              spreadsheetId={tenant.settings?.spreadsheet_id}
+              quickReplies={tenant.settings?.quick_replies}
               onSave={async (settings) => {
                 const res = await apiFetch(`/admin/tenants/${tenantId}`, {
                   method: 'PATCH',

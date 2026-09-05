@@ -135,7 +135,7 @@ export function useChat(
     }
   }
 
-  const selectSlot = useCallback(async (slot: Slot | null) => {
+  const selectSlot = useCallback(async (slot: Slot | null, email?: string) => {
     // SlotPicker's close button calls onSelect(null) — just dismiss it then.
     if (!slot) {
       setSlots([])
@@ -148,7 +148,9 @@ export function useChat(
       minute: '2-digit'
     })
     const dateStr = new Date(slot.start_time * 1000).toLocaleDateString()
-    await sendMessage(`Book ${dateStr} at ${timeStr}`)
+    await sendMessage(
+      `Book ${dateStr} at ${timeStr}${email ? ` ${email}` : ''}`
+    )
     setSlots([])
   }, [sendMessage])
 

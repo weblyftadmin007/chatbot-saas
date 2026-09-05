@@ -66,6 +66,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
           onClose={handleClose}
           conversationId={chat.conversationId}
           sessionId={session.sessionId}
+          slots={chat.slots}
+          pendingAction={chat.pendingAction}
+          selectSlot={chat.selectSlot}
         />
       )}
     </>

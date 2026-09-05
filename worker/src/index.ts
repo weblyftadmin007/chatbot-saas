@@ -23,7 +23,9 @@
 import type { Env } from './config'
 import { chatModel, embedModel, similarityThreshold, topK } from './config'
 import { getDb, query, rowString } from './db'
-import { tenantBySlug, buildWidgetConfig } from './tenants'
+import { tenantBySlug, buildWidgetConfig, parseJson } from './tenants'
+import { ensureEndUser, bookAppointment, ApptConflict } from './appointments'
+import { notifyBooking } from './email'
 import { handleChat, json } from './chat'
 import { classifyIntent, embedSingle, generateText, synthesizeAnswer } from './llm'
 import { blobToVector, cosineSimilarity } from './vec'
@@ -57,6 +59,9 @@ function notFound(): Response {
   return json({ detail: 'Not found' }, 404)
 }
 
+const EMAIL_REVALIDATE = (v: string): boolean =>
+  /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(v)
+
 function methodNotAllowed(): Response {
   return json({ detail: 'Method not allowed' }, 405)
 }
@@ -74,6 +79,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 2 && tail[0] === 'config') return { pattern: 'widgetConfig', params: [tail[1]!] }
       if (tail.length === 2 && tail[0] === 'chat') return { pattern: 'widgetChat', params: [tail[1]!] }
       if (tail.length === 2 && tail[0] === 'history') return { pattern: 'widgetHistory', params: [tail[1]!] }
+      if (tail.length === 2 && tail[0] === 'appointments') return { pattern: 'widgetAppointments', params: [tail[1]!] }
       return null
     }
     case '/admin': {
@@ -303,6 +309,71 @@ export default {
             session_id: typeof body?.session_id === 'string' ? body.session_id : null,
           }),
         )
+      }
+      case 'widgetAppointments': {
+        if (request.method !== 'POST') return withCors(methodNotAllowed())
+        const [slug] = route.params
+        const tenant = await tenantBySlug(db, slug!)
+        if (!tenant) return withCors(json({ detail: 'Tenant not found' }, 404))
+        const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+        const email =
+          typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
+        const startTime = Number(body?.start_time)
+        const endTime = Number(body?.end_time)
+        const title = typeof body?.title === 'string' ? body.title : 'Appointment'
+        if (!email || !EMAIL_REVALIDATE(email)) {
+          return withCors(json({ detail: 'A valid email is required' }, 400))
+        }
+        if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime >= endTime) {
+          return withCors(json({ detail: 'start_time and end_time are required' }, 400))
+        }
+        const settings = parseJson<Record<string, unknown>>(rowString(tenant, 'settings', '{}'), {})
+        const conversationId = crypto.randomUUID()
+        const now = Math.floor(Date.now() / 1000)
+        await query(
+          db,
+          `INSERT INTO conversations (id, tenant_id, status, created_at, updated_at)
+           VALUES (?, ?, 'active', ?, ?)`,
+          [conversationId, rowString(tenant, 'id'), now, now],
+        )
+        const endUserId = await ensureEndUser(db, tenant, email)
+        try {
+          const appt = await bookAppointment(db, tenant, {
+            conversationId,
+            endUserId,
+            startTime,
+            endTime,
+            title,
+          })
+          await notifyBooking(settings, {
+            type: 'booking',
+            tenant_slug: slug!,
+            tenant_name: rowString(tenant, 'name'),
+            customer_name: '',
+            customer_email: email,
+            start_time: appt.start_time,
+            end_time: appt.end_time,
+            title,
+            notification_email:
+              typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
+            spreadsheet_id:
+              typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
+          })
+          return withCors(
+            json({
+              appointment_id: appt.id,
+              status: appt.status,
+              start_time: appt.start_time,
+              end_time: appt.end_time,
+              confirmation_message: 'Appointment booked successfully!',
+            }),
+          )
+        } catch (e) {
+          if (e instanceof ApptConflict) {
+            return withCors(json({ detail: 'Time slot no longer available' }, 409))
+          }
+          throw e
+        }
       }
       case 'widgetHistory': {
         if (request.method !== 'GET') return withCors(methodNotAllowed())

@@ -19,6 +19,11 @@ def main():
     parser.add_argument('--slug', required=True, help='URL-friendly slug (lowercase, hyphens)')
     parser.add_argument('--color', default='#3B82F6', help='Primary color (hex)')
     parser.add_argument('--greeting', default='Hi! How can I help you today?', help='Welcome message')
+    parser.add_argument('--bot-name', default='Assistant', help='Chatbot display name')
+    parser.add_argument('--gas-url', default='', help="Tenant's Google Apps Script web app URL (/exec)")
+    parser.add_argument('--notification-email', default='', help='Business email to notify on bookings')
+    parser.add_argument('--spreadsheet-id', default='', help='Google Sheet ID for appointments')
+    parser.add_argument('--quick-reply', action='append', default=[], help='Quick reply suggestion (repeatable)')
     args = parser.parse_args()
 
     # Validate slug
@@ -42,12 +47,20 @@ def main():
     now = int(__import__('datetime').datetime.utcnow().timestamp())
 
     settings_dict = {
-        "bot_name": "Assistant",
+        "bot_name": args.bot_name,
         "greeting": args.greeting,
         "primary_color": args.color,
         "secondary_color": "#1E40AF",
         "show_branding": True
     }
+    if args.gas_url.strip():
+        settings_dict["gas_url"] = args.gas_url.strip()
+    if args.notification_email.strip():
+        settings_dict["notification_email"] = args.notification_email.strip().lower()
+    if args.spreadsheet_id.strip():
+        settings_dict["spreadsheet_id"] = args.spreadsheet_id.strip()
+    if args.quick_reply:
+        settings_dict["quick_replies"] = [r.strip() for r in args.quick_reply if r.strip()]
 
     sync_db.execute("""
         INSERT INTO tenants (id, slug, name, plan, settings, created_at, updated_at)

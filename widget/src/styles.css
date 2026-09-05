@@ -404,6 +404,38 @@
   padding: 0 16px 16px;
 }
 
+.chatbot-slot-email-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.chatbot-slot-email {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  color: var(--text-primary);
+  transition: var(--transition);
+}
+
+.chatbot-slot-email:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+.chatbot-slot-email-hint {
+  margin: -4px 0 10px;
+  font-size: 11px;
+  color: #EF4444;
+}
+
 .chatbot-slot-day {
   margin-bottom: 12px;
 }

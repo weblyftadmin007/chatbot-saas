@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Widget Crash Catcher</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; padding: 24px; line-height: 1.6; }
+    pre { background: #f1f5f9; padding: 12px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+    .ok { color: #15803d; font-weight: 700; }
+    .bad { color: #b91c1c; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Widget crash catcher</h1>
+  <p>This page loads the widget exactly like test.html, and prints any error or finding here.</p>
+  <div id="result">Loading widget…</div>
+
+  <script>
+    const log = document.getElementById('result')
+    const line = (html) => {
+      const p = document.createElement('p')
+      p.innerHTML = html
+      log.appendChild(p)
+    }
+
+    // Catch every error and print it on the page
+    window.addEventListener('error', (e) => {
+      line(`<span class="bad">ERROR:</span> ${e.message}<pre>${e.filename || ''}:${e.lineno || ''}</pre>`)
+    })
+    window.addEventListener('unhandledrejection', (e) => {
+      line(`<span class="bad">PROMISE ERROR:</span> ${e.reason && e.reason.message ? e.reason.message : e.reason}<pre>${e.reason && e.reason.stack ? e.reason.stack : ''}</pre>`)
+    })
+
+    // Load the widget exactly like test.html does
+    const s = document.createElement('script')
+    s.src = 'https://chatbot-widget-0of.pages.dev/widget.js'
+    s.setAttribute('data-tenant', 'weblyft-design')
+    s.setAttribute('data-api-url', 'https://chatbot-api.weblyftt.workers.dev')
+    document.body.appendChild(s)
+
+    // Wait, then inspect what the widget built
+    setTimeout(() => {
+      const host = document.getElementById('chatbot-widget-host')
+      line('<b>Check — did the widget build anything?</b>')
+      if (!host) {
+        line('<span class="bad">NO HOST</span> — the widget script never ran its bootstrap.')
+        return
+      }
+      line(`<span class="ok">HOST EXISTS</span> (the widget script did run)`)
+
+      const root = host.shadowRoot
+      if (!root) { line('<span class="bad">NO SHADOW ROOT</span>'); return }
+      const button = root.querySelector('.chatbot-button')
+      const all = root.querySelectorAll('*')
+      line(`Shadow DOM contains ${all.length} elements.`)
+
+      if (button) {
+        line('<span class="ok">BUTTON FOUND</span> — it exists. If you cannot see it, it is a CSS/visibility issue, not a crash.')
+        const rect = button.getBoundingClientRect()
+        line(`Button size: ${Math.round(rect.width)}x${Math.round(rect.height)} at (${Math.round(rect.x)}, ${Math.round(rect.y)}).`)
+      } else {
+        line('<span class="bad">NO BUTTON</span> — the widget did not reach the point of drawing the button.')
+        // Show what IS in the shadow DOM to help debug
+        line('Contents of shadow DOM right now:')
+        all.forEach((el) => {
+          if (el.id || el.className) line(`&nbsp;&nbsp;&lt;${el.tagName.toLowerCase()}&gt; ${el.id ? '#' + el.id : '.' + String(el.className).split(' ').join('.')}`)
+        })
+      }
+    }, 6000)
+  </script>
+</body>
+</html>

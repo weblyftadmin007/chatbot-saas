@@ -18,11 +18,17 @@ import {
   LLMError,
 } from './llm'
 import {
-  BOOKING_PHASE_NOTE,
   KB_UNAVAILABLE_MESSAGE,
   LIMIT_MESSAGE,
   type Env,
 } from './config'
+import {
+  getAvailability,
+  bookAppointment,
+  ensureEndUser,
+  ApptConflict,
+} from './appointments'
+import { notifyBooking } from './email'
 
 const encoder = new TextEncoder()
 
@@ -175,13 +181,31 @@ export async function handleChat(
                 "I don't have that information in my knowledge base. Would you like me to help you with something else?",
             })
           }
-        } else if (
-          intent === 'book_appointment' ||
-          intent === 'check_availability' ||
-          intent === 'cancel_appointment'
-        ) {
-          // Phase 2: appointment availability/booking + email notifications.
-          send({ type: 'content', content: BOOKING_PHASE_NOTE })
+        } else if (intent === 'book_appointment') {
+          await handleBook(db, row, conversationId, message, send, settings)
+        } else if (intent === 'check_availability') {
+          const slots = await getAvailability(db, row, 7)
+          if (slots.length) {
+            send({ type: 'slots', slots })
+            send({
+              type: 'content',
+              content:
+                'Here are the available times. Click one to book, or tell me your preferred day and time.',
+            })
+          } else {
+            send({
+              type: 'content',
+              content:
+                "I couldn't find any available slots in the next week. Please check back soon or contact the team directly.",
+            })
+          }
+        } else if (intent === 'cancel_appointment') {
+          // Phase 2b (cancel flow) not yet ported — friendly note.
+          send({
+            type: 'content',
+            content:
+              "I can help you with that — please reply with the email you used to book and the appointment date, and we'll sort out the cancellation.",
+          })
         } else if (intent === 'transfer_human') {
           send({
             type: 'content',
@@ -247,4 +271,111 @@ export function json(data: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   })
+}
+
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
+
+/** Parse a message like "Book 11/5/2026 at 13:00 person@example.com". */
+function parseBooking(message: string): { start: number; end: number; email: string | null } | null {
+  const emailMatch = message.match(EMAIL_RE)
+  const email = emailMatch ? emailMatch[0] : null
+
+  // Find a date token: MM/DD/YYYY (from the widget) or a bare weekday/day number.
+  const dateMatch = message.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/)
+  const timeMatch = message.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i)
+  if (!dateMatch || !timeMatch) return null
+
+  const month = parseInt(dateMatch[1] ?? '0', 10) - 1
+  const day = parseInt(dateMatch[2] ?? '1', 10)
+  let year = parseInt(dateMatch[3] ?? '0', 10)
+  if (year < 2000) year += 2000
+
+  let hour = parseInt(timeMatch[1] ?? '0', 10)
+  const minute = parseInt(timeMatch[2] ?? '0', 10)
+  const ampm = timeMatch[3]?.toLowerCase()
+  if (ampm === 'pm' && hour < 12) hour += 12
+  if (ampm === 'am' && hour === 12) hour = 0
+
+  const start = Date.UTC(year, month, day, hour, minute) / 1000
+  // Slot length derived from the tenant config is applied by the caller;
+  // here we assume 30 min default (overridden by the booking payload).
+  const end = start + 30 * 60
+  return { start, end, email }
+}
+
+async function handleBook(
+  db: Client,
+  tenant: Awaited<ReturnType<typeof tenantBySlug>>,
+  conversationId: string,
+  message: string,
+  send: (payload: Record<string, unknown>) => void,
+  settings: Record<string, unknown>,
+): Promise<void> {
+  if (!tenant) {
+    send({ type: 'content', content: "I couldn't find the business to book with." })
+    return
+  }
+  const parsed = parseBooking(message)
+  const emailMatch = message.match(EMAIL_RE)
+  const email = parsed?.email || (emailMatch ? emailMatch[0] : null)
+
+  if (!parsed || !email) {
+    if (!parsed) {
+      send({
+        type: 'content',
+        content:
+          'I can book that for you. Could you tell me which day and time you prefer (e.g. "book Friday 2pm")?',
+      })
+    } else {
+      send({
+        type: 'content',
+        content: 'To send your confirmation, please share your email address (e.g. "book Friday 2pm, me@email.com").',
+      })
+    }
+    return
+  }
+
+  const tenantId = rowString(tenant, 'id')
+  const endUserId = await ensureEndUser(db, tenant, email)
+  try {
+    const appt = await bookAppointment(db, tenant, {
+      conversationId,
+      endUserId,
+      startTime: parsed.start,
+      endTime: parsed.end,
+      title: 'Appointment',
+    })
+    const when = new Date(parsed.start * 1000).toLocaleString()
+    send({
+      type: 'content',
+      content: `You're booked for ${when}. A confirmation email is on its way to ${email}.`,
+    })
+    // Notify best-effort (customer + business emails + sheet row handled by GAS).
+    await notifyBooking(settings, {
+      type: 'booking',
+      tenant_slug: rowString(tenant, 'slug'),
+      tenant_name: rowString(tenant, 'name'),
+      customer_name: '',
+      customer_email: email,
+      start_time: appt.start_time,
+      end_time: appt.end_time,
+      title: 'Appointment',
+      notification_email: typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
+      spreadsheet_id: typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
+    })
+  } catch (e) {
+    if (e instanceof ApptConflict) {
+      send({
+        type: 'content',
+        content:
+          'Sorry, that time was just taken. Tap to pick an available slot, or tell me another day/time.',
+      })
+    } else {
+      console.error(`[book] ${e instanceof Error ? e.stack || e.message : String(e)}`)
+      send({
+        type: 'content',
+        content: "I couldn't complete the booking. Please try again in a moment.",
+      })
+    }
+  }
 }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Widget Diagnostic</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; padding: 24px; line-height: 1.6; }
+    pre { background: #f1f5f9; padding: 12px; border-radius: 8px; overflow-x: auto; }
+    .ok { color: #15803d; font-weight: 700; }
+    .bad { color: #b91c1c; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Widget diagnostic page</h1>
+  <p>This page runs the same checks the widget does and prints the result here — no Console needed.</p>
+  <div id="result">Running checks…</div>
+
+  <script>
+    const log = document.getElementById('result')
+    const line = (text) => {
+      const p = document.createElement('p')
+      p.innerHTML = text
+      log.appendChild(p)
+    }
+
+    ;(async () => {
+      // Check 1: was the widget script present on this page?
+      // (We do NOT load it here — the widget is loaded by test.html — so this just confirms fetch works.)
+      line('<b>Check 1 — can this page fetch your Worker config (the thing the widget needs)?</b>')
+      try {
+        const r = await fetch('https://chatbot-api.weblyftt.workers.dev/widget/config/weblyft-design')
+        const t = await r.text()
+        line(`<span class="ok">SUCCESS</span> — HTTP ${r.status}. Config starts with: <pre>${t.slice(0, 200)}</pre>`)
+      } catch (e) {
+        line(`<span class="bad">FAILED</span> — ${e.message}`)
+        line('If it says "blocked by CORS" or "has been blocked", an extension or browser setting is blocking the request.')
+      }
+
+      // Check 2: does the widget file load from Pages?
+      line('<b>Check 2 — can this page load the widget script from Pages?</b>')
+      try {
+        const r = await fetch('https://chatbot-widget-0of.pages.dev/widget.js', { method: 'HEAD' })
+        line(`<span class="ok">SUCCESS</span> — widget.js reachable (HTTP ${r.status}).`)
+      } catch (e) {
+        line(`<span class="bad">FAILED</span> — ${e.message}`)
+      }
+
+      line('')
+      line('<b>Now open <a href="/test.html">test.html</a> again and check for the blue button bottom-right.</b>')
+    })()
+  </script>
+</body>
+</html>

@@ -451,7 +451,7 @@ sequenceDiagram
       <tr><td>Database</td><td>Turso (libSQL = SQLite fork)</td><td>SQLite semantics (JSON-in-TEXT, unix timestamps) keep the schema trivial; the <code>sqlite-vec</code> extension gives vector search without a separate vector database; generous free tier (9 GB, 1 B reads/mo); zero-ops</td><td>Postgres + pgvector (Supabase/Neon), PlanetScale, MongoDB</td><td>pgvector needs a managed Postgres (heavier free tier, more moving parts); a document DB loses joins for conversations/messages/appointments</td></tr>
       <tr><td>LLM</td><td>Ollama, <code>phi3:mini</code> + <code>nomic-embed-text</code></td><td>Runs <em>inside</em> the free HF Space — no per-token API cost, no API key, private data stays local; 3.8B model fits in 16 GB RAM and answers fast enough on CPU</td><td>OpenAI API, Anthropic, Gemini</td><td>Per-token cost breaks the "$0 forever" premise; data would leave the platform; needs a credit card</td></tr>
       <tr><td>Hosting</td><td>Cloudflare Worker (<code>worker/</code>) + Cloudflare Pages</td><td>Worker = the ported backend as TypeScript (never sleeps, 100k req/day free); Pages = free static hosting with unlimited bandwidth for the two front-ends; all three auto-deploy from GitHub Actions. (The original Docker-on-HF hosting is gone — HF made Docker Spaces paid in July 2026.)</td><td>Vercel, Netlify, Railway, Fly.io</td><td>Vercel/Netlify have no always-free compute backend; Railway/Fly have free tiers but with sleep/wake and credit-card walls; Workers + Pages keeps <em>everything</em> free in one account — with Gemini for the LLM instead of a self-hosted container</td></tr>
-      <tr><td>Auth</td><td>Clerk</td><td>Hosted sign-in UI (email + password), JWT sessions, React SDK (<code>&lt;SignedIn&gt;</code>) and a server-side verify path via <code>python-jose</code> against Clerk's JWKS public keys</td><td>Auth0, Firebase Auth, roll-your-own JWT</td><td>Auth0's free tier is stingier; Firebase pulls in Google Cloud; hand-rolled auth is the #1 security mistake — Clerk's 10k MAU free tier covers a solo operator forever</td></tr>
+      <tr><td>Auth</td><td>Clerk</td><td>Hosted sign-in UI (email + password), JWT sessions, React SDK (<code>&lt;SignedIn&gt;</code>) and a server-side verify path via <code>python-jose</code> against Clerk's JWKS public keys</td><td>Auth0, Firebase Auth, roll-your-own JWT</td><td>Auth0's free tier is stingier; Firebase pulls in Google Cloud; hand-rolled auth is the #1 security mistake — Clerk's 50k MAU free tier covers a solo operator forever</td></tr>
       <tr><td>Email</td><td>Google Apps Script + Gmail</td><td>Zero setup cost, zero API keys; the "web app" is a real HTTPS endpoint that FastAPI POSTs JSON to; Gmail's 100/day free quota is plenty for a booking business</td><td>SendGrid, Resend, Postmark, SES</td><td>All need a credit card and a verified sending domain; transactional providers charge per email at this scale; Gmail is already universal</td></tr>
       <tr><td>Widget distribution</td><td>Single IIFE file on Cloudflare Pages</td><td>Clients add one <code>&lt;script&gt;</code> tag; the widget is self-contained (React bundled in), styles isolated by Shadow DOM, so it can't clash with the client's CSS</td><td>npm package, iframe embed, Web Component</td><td>npm install is unrealistic for non-technical clients; iframes are ugly and block modals; a raw Web Component is basically what Shadow DOM gives us anyway</td></tr>
     </table>
@@ -692,7 +692,8 @@ jobs:
       <tr><td><code>HF_SPACE_NAME</code></td><td>deploy-hf.yml + keep-alive URL</td><td>the Space you created</td></tr>
       <tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>deploy-widget/admin</td><td>Cloudflare → API tokens (Pages:Edit)</td></tr>
       <tr><td><code>CLOUDFLARE_ACCOUNT_ID</code></td><td>deploy-widget/admin</td><td>Cloudflare dashboard sidebar</td></tr>
-      <tr><td><code>ADMIN_EMAIL</code></td><td>backend admin authorization</td><td>your email (must be in Clerk allowlist)</td></tr>
+      <tr><td><code>ADMIN_EMAIL</code></td><td>backend admin authorization (reference backend only)</td><td>your email</td></tr>
+      <tr><td><code>ADMIN_EMAILS</code></td><td><strong>Worker</strong> admin authorization (comma-separated; set by <code>deploy-worker.yml</code>)</td><td>your email(s) — the real gate; no Clerk allowlist needed on the free plan (9.1)</td></tr>
     </table>
 
     <h3>2.8 docker-compose.yml — local development</h3>
@@ -889,7 +890,7 @@ LIMIT ?;</code></pre>
       <tr><td><code>turso_auth_token</code></td><td><code>TURSO_AUTH_TOKEN</code></td><td>— (required)</td><td>DB auth</td></tr>
       <tr><td><code>clerk_publishable_key</code></td><td><code>CLERK_PUBLISHABLE_KEY</code></td><td>—</td><td>JWT audience for admin verify</td></tr>
       <tr><td><code>clerk_secret_key</code></td><td><code>CLERK_SECRET_KEY</code></td><td>—</td><td>JWT signature verification</td></tr>
-      <tr><td><code>admin_email</code></td><td><code>ADMIN_EMAIL</code></td><td>—</td><td>the only allowed admin identity</td></tr>
+      <tr><td><code>admin_email</code></td><td><code>ADMIN_EMAIL</code></td><td>—</td><td>the only allowed admin identity (reference backend; the Worker uses <code>ADMIN_EMAILS</code>)</td></tr>
       <tr><td><code>gas_webapp_url</code></td><td><code>GAS_WEBAPP_URL</code></td><td>—</td><td>email endpoint</td></tr>
       <tr><td><code>ollama_host</code></td><td><code>OLLAMA_HOST</code></td><td><code>http://localhost:11434</code></td><td>local model server</td></tr>
       <tr><td><code>ollama_chat_model</code></td><td><code>OLLAMA_CHAT_MODEL</code></td><td><code>phi3:mini</code></td><td>chat model</td></tr>
@@ -975,6 +976,9 @@ app.include_router(admin.router)
       <tr><td>GET</td><td><code>/admin/analytics</code></td><td>admin</td><td>Clerk JWT</td><td>platform-wide counts + top tenants</td></tr>
       <tr><td>GET</td><td><code>/admin/usage</code></td><td>admin</td><td>Clerk JWT</td><td>raw usage_logs with filters</td></tr>
     </table>
+    <div class="callout note">
+      <strong>Live route surface (the Cloudflare Worker, not FastAPI).</strong> The table above is the reference <code>backend/</code> catalog. The <strong>live</strong> Worker (<code>worker/src/index.ts</code>) currently exposes a subset of it — the widget endpoints, <code>/admin/tenants</code> (GET/POST), <code>/admin/tenants/{id}</code> (<strong>GET + DELETE — soft delete, added with the dashboard's Delete Tenant flow</strong>), <code>/admin/tenants/{id}/knowledge</code> (+ <code>/text</code>, <code>/{source_id}</code>), and <code>/admin/analytics</code>. Everything else in this chapter's catalog is what the reference backend offers and what later phases port.
+    </div>
 
     <h3>4.5 The chat endpoint, dissected</h3>
     <p>This is the heart of the product. <code>POST /widget/chat/{slug}</code>:</p>
@@ -1473,17 +1477,24 @@ stateDiagram-v2
   <section class="chapter" id="ch9-admin">
     <h2>9. Admin Dashboard (React + Clerk)</h2>
 
-    <p>The dashboard is a React 18 SPA (Vite) on Cloudflare Pages, protected by <strong>Clerk</strong>. It's the operator's control room: tenants, per-tenant data, knowledge uploads, and platform analytics.</p>
+    <p>The dashboard is a React 18 SPA (Vite) on Cloudflare Pages, protected by <strong>Clerk</strong>. It's the operator's control room: tenants (including <strong>delete</strong>), per-tenant data, knowledge uploads, and platform analytics.</p>
 
     <h3>9.1 Clerk auth flow</h3>
     <p><strong>Client side:</strong> <code>main.tsx</code> wraps the app in <code>&lt;ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}&gt;</code>. <code>App.tsx</code> gates rendering with <code>&lt;SignedIn&gt; / &lt;SignedOut&gt;</code> — signed-out users see the hosted <code>&lt;SignIn /&gt;</code> screen; signed-in users get the full app. <code>useAuth()</code> exposes <code>isLoaded</code>/<code>isSignedIn</code> so the router doesn't flash protected pages before Clerk hydrates. (That publishable key is baked in at <em>build time</em>: set <code>VITE_CLERK_PUBLISHABLE_KEY</code> as a build-time environment variable in Cloudflare Pages — or in the workflow's <code>npm run build</code> step — or the key is empty and the sign-in screen can't render.)</p>
-    <p><strong>Server side:</strong> every <code>/admin/*</code> call carries the Clerk JWT in <code>Authorization: Bearer ...</code>. The backend's <code>verify_admin</code> dependency (Chapter 4.6) verifies the signature against Clerk's JWKS public keys (RS256), then — the critical gate — compares the token's email to <code>ADMIN_EMAIL</code>. A valid Clerk session from anyone else gets 403.</p>
+    <p><strong>Server side:</strong> every <code>/admin/*</code> call carries the Clerk JWT in <code>Authorization: Bearer ...</code>. The Worker's <code>authorize()</code> (<code>worker/src/clerk.ts</code>) verifies the signature against Clerk's JWKS public keys (RS256 via WebCrypto), then — the critical gate — compares the token's <code>email</code> claim to the <code>ADMIN_EMAILS</code> secret (comma-separated, set by <code>deploy-worker.yml</code>). A valid Clerk session from anyone else gets 403.</p>
+    <div class="callout warning">
+      <strong>Two free-tier gotchas that cause silent "empty dashboard" symptoms.</strong>
+      <ol>
+        <li><strong>The token must contain an <code>email</code> claim.</strong> Clerk's default session token carries only IDs (<code>sub</code>, <code>sid</code>, …) — no email. The Worker's admin gate compares <em>email</em> against <code>ADMIN_EMAILS</code>, so without this claim every admin call fails and the dashboard renders empty lists with no visible error. Fix once, in the Clerk dashboard: <strong>Sessions → Customize session token</strong> → add <code>"email": "{{user.primary_email_address}}"</code> → Save → sign out/in again (claims also refresh client-side every ~60 s).</li>
+        <li><strong>The Allowlist is a paid Clerk feature.</strong> On the free Developer plan, sign-up restrictions are "Invitations" (invite-only) or fully open — there is no self-serve email Allowlist. Invite your own email, or leave sign-up open and rely on <code>ADMIN_EMAILS</code> as the real gate (open sign-up is harmless because a non-allowlisted email still gets 403 on every admin call).</li>
+      </ol>
+    </div>
     <div class="callout note">
-      <strong>Who attaches the token?</strong> The Clerk React SDK does not inject the session token into arbitrary <code>fetch</code> calls, so the dashboard wraps requests in <code>api.ts</code> (<code>apiFetch</code>): <code>App.tsx</code> registers a token getter from <code>useAuth().getToken()</code> once signed in, and <code>apiFetch</code> adds <code>Authorization: Bearer &lt;token&gt;</code> to every admin/tenant call. Tenant detail views also use admin-scoped endpoints (<code>/admin/tenants/{id}/conversations|appointments|knowledge</code>) so no <code>X-Tenant-Slug</code> header is needed.
+      <strong>Who attaches the token?</strong> The Clerk React SDK does not inject the session token into arbitrary <code>fetch</code> calls, so the dashboard wraps requests in <code>api.ts</code> (<code>apiFetch</code>): <code>App.tsx</code> registers a token getter from <code>useAuth().getToken()</code> once signed in, and <code>apiFetch</code> adds <code>Authorization: Bearer &lt;token&gt;</code> to every admin/tenant call. It also adds a 15 s abort timeout so a hung request surfaces as a visible error instead of an eternal spinner. Tenant detail views use admin-scoped endpoints (<code>/admin/tenants/{id}...</code>) so no <code>X-Tenant-Slug</code> header is needed.
     </div>
 
     <h3>9.2 Routing — React Router v6</h3>
-    <pre><code>&lt;Layout&gt;                                        // sidebar + header + &lt;Outlet /&gt;
+    <pre><code>&lt;Layout&gt;                                        // sidebar + header, renders {children}
   &lt;Routes&gt;
     &lt;Route path="/" element={&lt;Navigate to="/tenants" replace /&gt;} /&gt;
     &lt;Route path="/tenants" element={&lt;Tenants /&gt;} /&gt;
@@ -1493,41 +1504,48 @@ stateDiagram-v2
   &lt;/Routes&gt;
 &lt;/Layout&gt;
 </code></pre>
-    <p>Patterns worth noting: the catch-all <code>Navigate replace</code> keeps the URL canonical; <code>Layout</code> uses <code>&lt;Outlet /&gt;</code> (v6 nested-route rendering) with <code>useLocation()</code> to highlight the active nav link; <code>TenantDetail</code> reads <code>useParams().tenantId</code> for its data fetch.</p>
+    <p>Patterns worth noting: the catch-all <code>Navigate replace</code> keeps the URL canonical; <code>Layout</code> renders its <code>children</code> (the <code>Routes</code> block) inside the header/nav shell and uses <code>useLocation()</code> to highlight the active nav link. <strong>Keep it that way:</strong> an earlier revision rendered <code>&lt;Outlet /&gt;</code> with no matching nested routes, which made every page below the header render as blank white space while the nav still showed. <code>TenantDetail</code> reads <code>useParams().tenantId</code> for its data fetch.</p>
 
     <h3>9.3 Page-by-page</h3>
     <table>
       <tr><th>Page</th><th>What it does</th><th>API calls</th></tr>
-      <tr><td><code>Tenants</code></td><td>Card grid of clients (avatar with first letter, slug, plan badge, created date); "Add Tenant" modal (name, slug sanitized to <code>[a-z0-9-]</code>, color picker)</td><td><code>GET /admin/tenants</code>, <code>POST /admin/tenants</code></td></tr>
-      <tr><td><code>TenantDetail</code></td><td>5 tabs: Overview (stat cards: conversations, appointments, confirmed, pending), Conversations (table with message count + last message), Appointments (date/time/title/status/customer), Knowledge (<code>FileUploader</code>), Settings (<code>BusinessHoursEditor</code>)</td><td><code>GET /admin/tenants/{id}</code>, plus tenant-scoped endpoints</td></tr>
-      <tr><td><code>Analytics</code></td><td>6 stat cards (tenants, active 30d, conversations, appointments, messages 7d, appointments 7d) + "Top Tenants by Conversations" table</td><td><code>GET /admin/analytics</code></td></tr>
+      <tr><td><code>Tenants</code></td><td>Card grid of clients (avatar tinted with the tenant's <code>primary_color</code>, name, slug, plan badge, created date); "Add Tenant" modal (name, slug sanitized to <code>[a-z0-9-]</code>, color picker). Soft-deleted tenants (<code>plan='deleted'</code>) are excluded by the API.</td><td><code>GET /admin/tenants</code>, <code>POST /admin/tenants</code></td></tr>
+      <tr><td><code>TenantDetail</code></td><td>5 tabs: Overview (stat cards: conversations, appointments, confirmed, pending), Conversations (table with message count + last message), Appointments (date/time/title/status/customer), Knowledge (<code>FileUploader</code>), Settings (<code>BusinessHoursEditor</code>). Header has a red <strong>Delete Tenant</strong> button that opens a warning modal before the DELETE is sent (9.4).</td><td><code>GET /admin/tenants/{id}</code>, <code>DELETE /admin/tenants/{id}</code>, plus tenant-scoped endpoints</td></tr>
+      <tr><td><code>Analytics</code></td><td>Stat cards (tenants, active 30d, conversations, appointments, messages 7d, appointments 7d) + "Top Tenants by Conversations" table. Now live — the Worker serves <code>GET /admin/analytics</code> (see 9.7) and the page degrades to a friendly error instead of a white screen if it fails.</td><td><code>GET /admin/analytics</code></td></tr>
       <tr><td><code>Settings</code></td><td>placeholder card ("coming soon")</td><td>—</td></tr>
     </table>
 
-    <h3>9.4 File upload with progress</h3>
-    <p><code>FileUploader</code> supports three source types:</p>
+    <h3>9.4 Deleting a tenant</h3>
+    <p>Tenant removal is a <strong>soft delete</strong> — the Worker runs <code>UPDATE tenants SET plan='deleted', updated_at=? WHERE id=?</code> and returns <code>{"success": true}</code>. The row (and its children) stay in Turso for audit; every public and admin query filters <code>plan != 'deleted'</code> (widget config/chat, tenant list, analytics counts).</p>
+    <p>The UI never deletes silently. The <strong>Delete Tenant</strong> button on <code>TenantDetail</code> opens a modal that states the consequences before the <code>DELETE /admin/tenants/{id}</code> call is made:</p>
     <ul>
-      <li><strong>PDF / TXT / MD:</strong> one <code>FormData</code> per file (<code>file</code>, <code>source_id</code> = filename minus extension, <code>source_type</code>), POSTed to <code>/api/tenants/me/knowledge</code>. Multiple files upload sequentially, each reporting <code>✓ name uploaded</code> / <code>✗ name failed</code>.</li>
-      <li><strong>FAQ:</strong> a JSON array of <code>{question, answer}</code> typed into a textarea, POSTed to <code>/api/tenants/me/knowledge/text</code> with <code>source_type: 'faq'</code>; the backend parses and stores each Q/A as its own chunk.</li>
+      <li>The chat widget on the tenant's website <strong>stops working immediately</strong> — the config endpoint 404s, so visitors no longer see the button or can start chats.</li>
+      <li>The tenant disappears from the dashboard's Tenants list and from analytics.</li>
+      <li>Its knowledge base, conversations, and messages become inaccessible.</li>
+      <li>It <strong>cannot be undone from the dashboard</strong> (restoring means flipping <code>plan</code> back via SQL).</li>
     </ul>
-    <p>There's a <code>uploading</code> state (button shows "Uploading...") but no per-file progress bar — the honest improvement is a <code>XMLHttpRequest</code> <code>upload.onprogress</code> or a chunk-count callback, since PDF processing can take tens of seconds on CPU.</p>
+    <p>For a <em>permanent</em> purge (GDPR-style erase), delete the child rows first — the schema has no <code>ON DELETE CASCADE</code> — then the tenant row. Child order: <code>messages</code> → <code>conversations</code>, <code>knowledge_chunks</code>, <code>appointments</code>, <code>usage_logs</code>, <code>end_users</code>; then <code>DELETE FROM tenants WHERE id=…</code>. Wrap it in a transaction.</p>
 
-    <h3>9.5 Business hours editor</h3>
-    <p><code>BusinessHoursEditor</code> manages local state: a <code>DAYS</code> array drives rows; each row has an open checkbox + two <code>&lt;input type="time"&gt;</code> fields; empty open/close = day closed; plus selects for timezone (9 common zones), slot duration (15/30/45/60), and buffer (0–30). <code>handleSave</code> packages everything into <code>{business_hours, timezone, slot_duration, buffer_minutes}</code> and calls <code>onSave</code> — which in the current <code>TenantDetail</code> is a <code>// TODO</code> that only <code>console.log</code>s. Wiring it to <code>PATCH /api/tenants/me</code> is on the roadmap (Chapter 12/13).</p>
+    <h3>9.5 File upload</h3>
+    <p><code>FileUploader</code> supports text/FAQ uploads against the Worker's <code>/admin/tenants/{id}/knowledge/text</code> endpoint (multipart PDF upload is a Phase-3 item; PDFs are extracted in the browser/CLI first, then posted as text — see the appendix). FAQ uploads post a JSON array of <code>{question, answer}</code> with <code>source_type: 'faq'</code>; the backend parses and stores each Q/A as its own chunk. There's an <code>uploading</code> state (button shows "Uploading...") and per-source results (<code>✓</code> / <code>✗</code>). The API reports the free-tier embedding quota as a distinct <code>429 embed_quota</code> response so the UI can show "try again tomorrow" instead of a generic failure.</p>
 
-    <h3>9.6 Analytics queries</h3>
-    <p><code>get_platform_analytics</code> runs six cheap aggregate queries:</p>
+    <h3>9.6 Business hours editor</h3>
+    <p><code>BusinessHoursEditor</code> manages local state: a <code>DAYS</code> array drives rows; each row has an open checkbox + two <code>&lt;input type="time"&gt;</code> fields; empty open/close = day closed; plus selects for timezone (9 common zones), slot duration (15/30/45/60), and buffer (0–30). <code>handleSave</code> packages everything into <code>{business_hours, timezone, slot_duration, buffer_minutes}</code> and calls <code>onSave</code>. The Settings tab wires <code>onSave</code> to <code>PATCH /admin/tenants/{id}</code> (the reference backend supports PATCH; the Worker currently routes GET + DELETE on <code>/admin/tenants/{id}</code> — PATCH lands with the Phase-2 settings port). Until then, hours can be set via SQL or the reference backend.</p>
+
+    <h3>9.7 Platform analytics — live</h3>
+    <p>The Worker's <code>getAnalytics</code> (<code>worker/src/admin.ts</code>, <code>GET /admin/analytics</code>, Clerk + <code>ADMIN_EMAILS</code> protected) runs the cheap aggregate queries that the old FastAPI backend ran:</p>
     <pre><code>SELECT COUNT(*) FROM tenants WHERE plan != 'deleted';                       -- total tenants
 SELECT COUNT(DISTINCT tenant_id) FROM usage_logs WHERE created_at &gt; ?;      -- active 30d
 SELECT COUNT(*) FROM conversations;                                         -- total threads
 SELECT COUNT(*) FROM appointments;                                          -- total bookings
 SELECT COUNT(*) FROM messages WHERE created_at &gt; ?;                         -- msgs last 7d
--- top tenants by conversation volume:
-SELECT t.name, t.slug, COUNT(c.id) AS conv_count
-FROM conversations c JOIN tenants t ON c.tenant_id = t.id
-GROUP BY t.id ORDER BY conv_count DESC LIMIT 10;
+-- top tenants by conversation volume (excludes soft-deleted tenants):
+SELECT t.name, t.slug, COUNT(c.id) AS conversations
+FROM tenants t LEFT JOIN conversations c ON c.tenant_id = t.id
+WHERE t.plan != 'deleted'
+GROUP BY t.id, t.name, t.slug ORDER BY conversations DESC LIMIT 5;
 </code></pre>
-    <p>The "active tenants" metric leans on <code>usage_logs</code> (written on every chat message) — a nice illustration of why the log table exists. All queries are tenant-id-agnostic platform rollups, safe to run at this scale.</p>
+    <p>The "active tenants" metric leans on <code>usage_logs</code> (written on every chat message) — a nice illustration of why the log table exists. The <code>Analytics</code> page renders these cards and is crash-proof: if the request fails it shows a friendly error, never a white screen (an earlier version crashed on the missing endpoint).</p>
   </section>
 
   <section class="chapter" id="ch10-cli">
@@ -1689,12 +1707,13 @@ sync_db = db.sync_connect()      # sync libSQL client — no asyncio needed for 
     <h3>12.7 Auth / Admin</h3>
     <table>
       <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
-      <tr><td>Admin login loops / "Couldn't sign you in"</td><td>Clerk app not configured for the pages.dev domain</td><td>Add the admin URL to Clerk → Domains (and allowed redirect URLs)</td></tr>
-      <tr><td>Signs in but admin API returns 401/403</td><td>Email ≠ <code>ADMIN_EMAIL</code> secret, or an old dashboard build without the token wrapper</td><td>Verify the <code>ADMIN_EMAIL</code> secret matches the signed-in account; current code attaches the token automatically via <code>api.ts</code> (9.1)</td></tr>
+      <tr><td>Admin login loops / "Couldn't sign you in"</td><td>Clerk app not configured for the pages.dev domain</td><td>In development a <code>pk_test_</code> key accepts any origin — usually nothing to do. With a production key, add the admin URL to Clerk → Domains (and allowed redirect URLs)</td></tr>
+      <tr><td>Signs in but admin API returns 401/403</td><td>The session token has <strong>no <code>email</code> claim</strong>, the email ≠ <code>ADMIN_EMAILS</code> secret, or an old dashboard build without the token wrapper</td><td>The #1 cause is the missing claim: Clerk → Sessions → Customize session token → add <code>"email": "{{user.primary_email_address}}"</code> → Save → sign out/in (9.1). Otherwise verify <code>ADMIN_EMAILS</code> matches the signed-in account; current code attaches the token automatically via <code>api.ts</code></td></tr>
       <tr><td>403 for valid user</td><td><code>verify_aud: False</code> + audience mismatch</td><td>By design Clerk audience differs; keep the option off and rely on the email check</td></tr>
-      <tr><td>TenantDetail tabs empty (conversations/appointments)</td><td>Old revision — the page used tenant-scoped <code>/api/tenants/me/...</code> endpoints that needed an <code>X-Tenant-Slug</code> header the admin flow never sent</td><td>Current code uses admin-scoped endpoints (<code>/admin/tenants/{id}/conversations|appointments|knowledge</code>) with the token attached — rebuild and redeploy the admin dashboard</td></tr>
+      <tr><td>TenantDetail loads but lists are empty / pages blank under the nav</td><td>Routing mismatch — an old <code>Layout</code> rendered <code>&lt;Outlet /&gt;</code> with no nested routes, so route content never mounted; or the tenant-scoped <code>/api/tenants/me/...</code> endpoints 404 on the Worker</td><td>Current <code>Layout</code> renders its <code>children</code> (9.2) and detail views use admin-scoped endpoints (<code>/admin/tenants/{id}...</code>) with the token attached — rebuild and redeploy the admin dashboard. If a <em>single</em> tenant page shows nothing, hard-refresh (Cmd+Shift+R) on the <em>production</em> URL — hash-prefixed preview URLs (<code>xxxx.chatbot-admin-*.pages.dev</code>) are frozen to an old build forever</td></tr>
       <tr><td>Brand color picked in "Add Tenant" never appears on the widget</td><td>Old revision — the front-end posted <code>color</code> but the API field is <code>primary_color</code>, and Pydantic silently dropped the unknown key</td><td>Current code sends <code>primary_color: newTenant.color</code> — rebuild and redeploy the admin dashboard</td></tr>
-      <tr><td>Dashboard Settings save does nothing</td><td>Old revision — <code>BusinessHoursEditor</code>'s <code>onSave</code> was a <code>// TODO: console.log</code></td><td>Current code PATCHes <code>/admin/tenants/{id}</code> with hours/timezone/slot/buffer — rebuild and redeploy the admin dashboard</td></tr>
+      <tr><td>Dashboard Settings save does nothing</td><td><code>BusinessHoursEditor</code>'s <code>onSave</code> PATCHes <code>/admin/tenants/{id}</code>, but the Worker currently routes only GET + DELETE on that path (PATCH is a Phase-2 port)</td><td>Set hours via SQL or the reference backend until the Worker PATCH route lands (9.6)</td></tr>
+      <tr><td>Deleting a tenant should be impossible to hit by accident</td><td>None — deletion is a deliberate flow</td><td>The dashboard only deletes after the warning modal is confirmed (<code>DELETE /admin/tenants/{id}</code>, soft delete 9.4). To purge permanently, delete child rows first in a transaction (no <code>ON DELETE CASCADE</code>)</td></tr>
     </table>
 
     <h3>12.8 Deployment / CI</h3>
@@ -1749,7 +1768,7 @@ SELECT source_id, COUNT(*) FROM knowledge_chunks GROUP BY source_id;
       <tr><td>HF Spaces</td><td>16 GB RAM, 2 vCPU, sleeps after ~48 h idle</td><td>CPU latency as tenants multiply (all inference is serial per request)</td></tr>
       <tr><td>Turso</td><td>9 GB storage, 1 B row reads/month</td><td>Reads: RAG searches + dashboard rollups dominate</td></tr>
       <tr><td>Cloudflare Pages</td><td>Unlimited bandwidth (fair use), 100k requests/day on Workers functions</td><td>Practically never for static assets</td></tr>
-      <tr><td>Clerk</td><td>10k monthly active users</td><td>Never for a solo operator</td></tr>
+      <tr><td>Clerk</td><td>50k monthly active users</td><td>Never for a solo operator</td></tr>
       <tr><td>Gmail via GAS</td><td>100 emails/day (personal)</td><td>Booking confirmations at ~100/day</td></tr>
     </table>
 
@@ -1759,7 +1778,7 @@ SELECT source_id, COUNT(*) FROM knowledge_chunks GROUP BY source_id;
       <tr><td>Chat response latency &gt; 5 s average or &gt; 3 concurrent chats</td><td>HF Space CPU upgrade, or move Ollama to a GPU instance</td><td>from ~$0.60/hr GPU</td></tr>
       <tr><td>Turso reads &gt; 80% of 1 B/mo</td><td>Turso scale plan</td><td>$29/mo (100 GB)</td></tr>
       <tr><td>Gmail &gt; 80 emails/day sustained</td><td>Google Workspace</td><td>$6/user/mo (1,500/day)</td></tr>
-      <tr><td>More than a handful of admins/agents</td><td>Clerk paid plan</td><td>$25/mo @ 10k+ MAU</td></tr>
+      <tr><td>More than a handful of admins/agents</td><td>Clerk paid plan</td><td>Beyond 50k MAU (Development keys also expire sessions ~7 days; switch to production keys + custom domain before launch)</td></tr>
       <tr><td>You want HTTPS + custom domains per client</td><td>Cloudflare Pro (or keep free — Pages supports custom domains on free)</td><td>free, or $20/mo Pro for advanced rules</td></tr>
     </table>
 
@@ -1805,7 +1824,7 @@ SELECT source_id, COUNT(*) FROM knowledge_chunks GROUP BY source_id;
       <tr><th>Phase</th><th>What ships</th><th>Where (code)</th><th>Done when</th></tr>
       <tr><td><strong>1 — Chat + RAG</strong> ✅ <em>implemented</em></td><td>Widget chat (SSE), RAG answers from per-tenant knowledge, conversation history, admin-lite tenant + knowledge ingest, GitHub Actions deploys</td><td><code>worker/</code> — <code>config.ts</code>, <code>db.ts</code>, <code>llm.ts</code>, <code>rag.ts</code>, <code>chat.ts</code>, <code>clerk.ts</code>, <code>admin.ts</code>, <code>index.ts</code>; schema in <code>worker/db/schema.sql</code></td><td>Widget on a test page answers from knowledge; <code>/health</code> green</td></tr>
       <tr><td><strong>2 — Appointments + email</strong></td><td>Availability slots, booking/cancel in the chat, business-hours parsing, Google Apps Script email confirmations, <code>email_pending</code> retry UX on Gmail quota</td><td>Worker ports of <code>backend/app/services/appointments.py</code> + <code>email.py</code> (Chapter 6/7 detail); <code>gas-email/</code></td><td>“Book Tuesday 2pm” books + emails both sides</td></tr>
-      <tr><td><strong>3 — Full admin dashboard</strong></td><td>Tenant CRUD, analytics, conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction — the Worker can't spend CPU on PDFs), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code> (already supported in <code>api.ts</code>)</td><td>Admin UI matches the feature list in Chapter 9</td></tr>
+      <tr><td><strong>3 — Full admin dashboard</strong> ✅ <em>mostly shipped</em></td><td>Tenant CRUD incl. <strong>delete</strong> (soft delete + warning modal, Chapter 9.4), analytics (<code>GET /admin/analytics</code> — live, 9.7), conversations, appointments, usage, PDF upload (browser-side <code>pdfjs-dist</code> extraction — the Worker can't spend CPU on PDFs), Clerk-only auth (bootstrap token removed)</td><td>Admin APIs in <code>worker/src/admin.ts</code>; <code>admin-dashboard/</code> wired via <code>VITE_API_URL</code> (already supported in <code>api.ts</code>)</td><td>Admin UI matches the feature list in Chapter 9</td></tr>
       <tr><td><strong>4 — Cleanup & docs</strong></td><td>Remaining docs/guides rewritten, legacy <code>scripts/</code> (Chapter 10) ported to Worker API calls, old FastAPI <code>backend/</code> removed once parity is proven</td><td>Repo root</td><td>Repo has no Hugging Face / Docker remnants</td></tr>
     </table>
 
@@ -1815,12 +1834,12 @@ SELECT source_id, COUNT(*) FROM knowledge_chunks GROUP BY source_id;
       <li><strong>Provider-mixing rule:</strong> never embed new chunks with a different model while existing vectors in the same table come from another — cross-model cosine distances are meaningless. Embeddings “failover” = full re-embed job or graceful degradation, never a silent switch. §5.3, §5.6.</li>
       <li><strong>Database:</strong> Turso stays. Note: Turso's hosted DB does <em>not</em> ship sqlite-vec (the Chapter 3 <code>vec0</code> table is historical), so the Worker stores embeddings as float32 BLOBs in <code>knowledge_chunks</code> and ranks them by cosine inside the Worker. Schema: <code>worker/db/schema.sql</code>.</li>
       <li><strong>PDFs (§5.6):</strong> the Worker free plan caps CPU at 10 ms/request, so PDF text extraction happens outside it — in the admin browser (<code>pdfjs-dist</code>) or a local CLI — then POSTs text to <code>/knowledge/text</code>. <code>unpdf</code> is a possible future in-Worker path for small files.</li>
-      <li><strong>Auth (§5.4):</strong> Clerk JWKS verification in the Worker (WebCrypto); optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted in Phase 3.</li>
+      <li><strong>Auth (§5.4):</strong> Clerk JWKS verification in the Worker (WebCrypto), gated by the token's <code>email</code> claim against <code>ADMIN_EMAILS</code>. Free-tier Clerk has no allowlist — invite your email or leave sign-up open (9.1). Optional <code>ADMIN_BOOTSTRAP_TOKEN</code> only for initial onboarding, deleted once Clerk login works (Day 17 / Phase 3).</li>
       <li><strong>Graceful limits (§5.7):</strong> self-throttle + daily caps; 429 → retry → failover → friendly “at my usage limit” message; embeddings quota surfaces as HTTP 429 <code>embed_quota</code> in the admin.</li>
     </ul>
 
     <h3>Mapping this guide's chapters to the new code</h3>
-    <p>Chapters 3–13 keep their value as the design + reference documentation for <code>backend/</code> (still in the repo). Quick map: Ch. 4 (FastAPI) → <code>worker/src/index.ts</code> + handlers; Ch. 5 (AI pipeline) → <code>worker/src/llm.ts</code> / <code>rag.ts</code> (Gemini instead of Ollama); Ch. 8 (widget) → unchanged plus the <code>data-api-url</code> attribute; Ch. 9 (admin/Clerk) → API arrives in Phase 3; Ch. 11–13 (monitoring/scaling) → replace HF-Space concerns with Workers/Gemini free-tier budget (§5.5). The live build steps always live in <code>DEPLOY.md</code>.</p>
+    <p>Chapters 3–13 keep their value as the design + reference documentation for <code>backend/</code> (still in the repo). Quick map: Ch. 4 (FastAPI) → <code>worker/src/index.ts</code> + handlers; Ch. 5 (AI pipeline) → <code>worker/src/llm.ts</code> / <code>rag.ts</code> (Gemini instead of Ollama); Ch. 8 (widget) → unchanged plus the <code>data-api-url</code> attribute; Ch. 9 (admin/Clerk) → <em>mostly live in Phase 1</em>: Clerk sign-in, tenant list/create/<strong>delete</strong>, and <code>/admin/analytics</code> all work today (9.1–9.7); conversations/appointments/settings-PATCH and PDF upload are the remaining Phase-2/3 ports; Ch. 11–13 (monitoring/scaling) → replace HF-Space concerns with Workers/Gemini free-tier budget (§5.5). The live build steps always live in <code>DEPLOY.md</code>.</p>
   </section>
 
   </article>
