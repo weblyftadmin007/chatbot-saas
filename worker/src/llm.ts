@@ -38,7 +38,8 @@ async function geminiFetch(
   path: string,
   init: RequestInit,
 ): Promise<Response> {
-  const url = `${API_BASE}${path}?key=${encodeURIComponent(env.GEMINI_API_KEY)}`
+  const sep = path.includes('?') ? '&' : '?'
+  const url = `${API_BASE}${path}${sep}key=${encodeURIComponent(env.GEMINI_API_KEY)}`
   const res = await fetch(url, init)
   if (!res.ok) {
     const body = await res.text().catch(() => '')
