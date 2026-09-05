@@ -10,6 +10,8 @@
  *   GET  /widget/history/:slug?conversation_id=
  *   GET  /admin/tenants                (Clerk + ADMIN_EMAILS allowlist)
  *   POST /admin/tenants                { name, slug, ... }
+ *   GET  /admin/tenants/:id
+ *   DELETE /admin/tenants/:id          (soft delete: plan='deleted')
  *   POST /admin/tenants/:id/knowledge/text  { source_id, source_type, content }
  *   GET  /admin/tenants/:id/knowledge
  *   DELETE /admin/tenants/:id/knowledge/:source_id
@@ -22,8 +24,10 @@ import {
   authorize,
   createTenant,
   deleteKnowledge,
+  deleteTenant,
   getAnalytics,
   getKnowledge,
+  getTenant,
   listTenants,
   uploadKnowledgeText,
 } from './admin'
@@ -67,6 +71,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
     case '/admin': {
       if (tail.length === 1 && tail[0] === 'analytics') return { pattern: 'adminAnalytics', params: [] }
       if (tail.length === 1 && tail[0] === 'tenants') return { pattern: 'adminTenants', params: [] }
+      if (tail.length === 2 && tail[0] === 'tenants') return { pattern: 'adminTenant', params: [tail[1]!] }
       if (tail.length === 3 && tail[0] === 'tenants' && tail[2] === 'knowledge')
         return { pattern: 'adminTenantKnowledge', params: [tail[1]!] }
       if (tail.length === 4 && tail[0] === 'tenants' && tail[2] === 'knowledge')
@@ -166,6 +171,14 @@ export default {
         if (request.method === 'GET') return withCors(await listTenants(db))
         if (request.method === 'POST')
           return withCors(await createTenant(db, await request.text()))
+        return withCors(methodNotAllowed())
+      }
+      case 'adminTenant': {
+        const denied = await authorize(request, env)
+        if (denied) return withCors(denied)
+        const [tenantId] = route.params
+        if (request.method === 'GET') return withCors(await getTenant(db, tenantId!))
+        if (request.method === 'DELETE') return withCors(await deleteTenant(db, tenantId!))
         return withCors(methodNotAllowed())
       }
       case 'adminTenantKnowledge': {

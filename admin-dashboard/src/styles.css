@@ -111,9 +111,24 @@ body {
   background: var(--bg);
 }
 
+.btn-danger {
+  background: #DC2626;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #B91C1C;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 /* Layout */
@@ -670,6 +685,39 @@ code {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
+}
+
+.modal-danger h2 {
+  color: #B91C1C;
+}
+
+.delete-warning {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 8px;
+}
+
+.delete-warning-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: #991B1B;
+}
+
+.delete-warning ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #7F1D1D;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.delete-warning-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #991B1B;
 }
 
 /* Empty State */

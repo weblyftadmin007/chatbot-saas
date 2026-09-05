@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { FileUploader } from '../components/FileUploader'
 import { BusinessHoursEditor } from '../components/BusinessHoursEditor'
 import { apiFetch } from '../api'
@@ -37,11 +37,15 @@ interface Appointment {
 
 export function TenantDetail() {
   const { tenantId } = useParams()
+  const navigate = useNavigate()
   const [tenant, setTenant] = useState<TenantDetail | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [activeTab, setActiveTab] = useState<'overview' | 'conversations' | 'appointments' | 'knowledge' | 'settings'>('overview')
   const [loading, setLoading] = useState(true)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const fetchData = async () => {
     try {
@@ -84,6 +88,27 @@ export function TenantDetail() {
     return colors[status] || '#64748B'
   }
 
+  const handleDelete = async () => {
+    if (!tenantId) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const res = await apiFetch(`/admin/tenants/${tenantId}`, { method: 'DELETE' })
+      const text = await res.text().catch(() => '')
+      if (res.ok) {
+        navigate('/tenants')
+      } else {
+        let detail = text
+        try { detail = JSON.parse(text).detail || text } catch { /* keep raw text */ }
+        setDeleteError(detail || `Request failed (${res.status})`)
+        setDeleting(false)
+      }
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Unknown error')
+      setDeleting(false)
+    }
+  }
+
   if (loading) return <div className="loading">Loading...</div>
   if (!tenant) return <div className="error">Tenant not found</div>
 
@@ -98,6 +123,15 @@ export function TenantDetail() {
           <span className="embed-code">
             Embed: <code><script src="..." data-tenant="{tenant.slug}"></script></code>
           </span>
+          <button
+            className="btn btn-danger"
+            onClick={() => {
+              setDeleteError(null)
+              setShowDeleteModal(true)
+            }}
+          >
+            Delete Tenant
+          </button>
         </div>
       </div>
 
@@ -237,6 +271,32 @@ export function TenantDetail() {
           </div>
         )}
       </div>
+
+      {showDeleteModal && tenant && (
+        <div className="modal-overlay" onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className="modal modal-danger" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete "{tenant.name}"?</h2>
+            <div className="delete-warning">
+              <p className="delete-warning-title">⚠️ This will permanently affect this tenant:</p>
+              <ul>
+                <li>The chat widget on the tenant's website <strong>stops working immediately</strong> — visitors will no longer see the chat button or be able to start conversations.</li>
+                <li>The tenant is <strong>removed from this dashboard</strong> (Tenants list and Analytics).</li>
+                <li>Its knowledge base, conversations, and messages become <strong>inaccessible</strong>.</li>
+              </ul>
+              <p className="delete-warning-note">This cannot be undone from the dashboard.</p>
+            </div>
+            {deleteError && <div className="error-banner" style={{ marginTop: 16 }}>{deleteError}</div>}
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)} disabled={deleting}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Deleting...' : 'Yes, delete this tenant'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

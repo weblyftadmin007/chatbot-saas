@@ -75,9 +75,29 @@ function parseJson<T>(raw: string, fallback: T): T {
 }
 
 export async function listTenants(db: Client): Promise<Response> {
-  const result = await query(db, 'SELECT * FROM tenants ORDER BY created_at DESC LIMIT 100')
+  const result = await query(
+    db,
+    "SELECT * FROM tenants WHERE plan != 'deleted' ORDER BY created_at DESC LIMIT 100",
+  )
   const tenants = result.rows.map((r) => tenantResponse(r))
   return json({ tenants, total: tenants.length, page: 1, page_size: 100 })
+}
+
+export async function getTenant(db: Client, tenantId: string): Promise<Response> {
+  const tenant = await tenantById(db, tenantId)
+  if (!tenant) return json({ detail: 'Tenant not found' }, 404)
+  return json(tenantResponse(tenant))
+}
+
+export async function deleteTenant(db: Client, tenantId: string): Promise<Response> {
+  const tenant = await tenantById(db, tenantId)
+  if (!tenant) return json({ detail: 'Tenant not found' }, 404)
+  if (rowString(tenant, 'plan') === 'deleted') {
+    return json({ detail: 'Tenant is already deleted' }, 409)
+  }
+  const now = Math.floor(Date.now() / 1000)
+  await query(db, "UPDATE tenants SET plan = 'deleted', updated_at = ? WHERE id = ?", [now, tenantId])
+  return json({ success: true, id: tenantId })
 }
 
 export async function createTenant(db: Client, raw: string | null): Promise<Response> {
