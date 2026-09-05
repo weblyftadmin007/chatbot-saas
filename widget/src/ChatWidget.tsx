@@ -17,11 +17,27 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
 
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [bookingBusy, setBookingBusy] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const selectedDateRef = useRef<string | null>(null)
 
   // Load config on mount
   useEffect(() => {
     config.load()
   }, [tenantSlug])
+
+  // 30-min inactivity expiry: once config is available, drop the stale
+  // conversation if the last activity is older than the tenant timeout.
+  useEffect(() => {
+    if (!config.data) return
+    const last = session.getLastActivity()
+    const timeoutMin = config.data.session_timeout_minutes ?? 30
+    if (last && Date.now() - last > timeoutMin * 60000) {
+      chat.reset()
+      session.clearSession()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.data])
 
   // Handle new messages when closed
   useEffect(() => {
@@ -34,15 +50,54 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
   }, [chat.messages, isOpen])
 
   const toggleChat = useCallback(() => {
-    setIsOpen(prev => !prev)
+    const opening = !isOpen
+    if (opening) {
+      const last = session.getLastActivity()
+      const timeoutMin = config.data?.session_timeout_minutes ?? 30
+      if (last && Date.now() - last > timeoutMin * 60000) {
+        chat.reset()
+        session.clearSession()
+      }
+      session.markActive()
+    }
+    setIsOpen(opening)
     if (unreadCount > 0) {
       setUnreadCount(0)
     }
-  }, [unreadCount])
+  }, [isOpen, unreadCount, config.data, session, chat])
 
   const handleClose = useCallback(() => {
     setIsOpen(false)
   }, [])
+
+  const handleSendMessage = useCallback((content: string) => {
+    session.markActive()
+    chat.sendMessage(content)
+  }, [session, chat])
+
+  const handleDateChange = useCallback((iso: string | null) => {
+    selectedDateRef.current = iso
+    chat.fetchAvailableDate(iso)
+  }, [chat])
+
+  const handleSelectSlot = useCallback(async (slot: any, email?: string, name?: string) => {
+    session.markActive()
+    if (!email) return
+    setBookingBusy(true)
+    setBookingError(null)
+    const res = await chat.bookSlot(slot, email, name || '')
+    setBookingBusy(false)
+    if (!res.ok) {
+      if (res.conflict) {
+        setBookingError('That time was just taken — please pick another.')
+        chat.fetchAvailableDate(selectedDateRef.current)
+      } else {
+        setBookingError(res.error || 'Booking failed — please try again.')
+      }
+    } else {
+      setBookingError(null)
+    }
+  }, [session, chat])
 
   if (!config.data) {
     return null // Still loading config
@@ -62,13 +117,17 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
           config={config.data}
           messages={chat.messages}
           isLoading={chat.isLoading}
-          onSendMessage={chat.sendMessage}
+          onSendMessage={handleSendMessage}
           onClose={handleClose}
           conversationId={chat.conversationId}
           sessionId={session.sessionId}
           slots={chat.slots}
           pendingAction={chat.pendingAction}
-          selectSlot={chat.selectSlot}
+          selectSlot={handleSelectSlot}
+          onDateChange={handleDateChange}
+          horizonDays={config.data.booking_horizon_days ?? 60}
+          busy={bookingBusy}
+          error={bookingError}
         />
       )}
     </>

@@ -300,6 +300,8 @@ export function TenantDetail() {
               notificationEmail={tenant.settings?.notification_email}
               spreadsheetId={tenant.settings?.spreadsheet_id}
               quickReplies={tenant.settings?.quick_replies}
+              bookingHorizon={tenant.settings?.booking_horizon_days}
+              sessionTimeout={tenant.settings?.session_timeout_minutes}
               onSave={async (settings) => {
                 const res = await apiFetch(`/admin/tenants/${tenantId}`, {
                   method: 'PATCH',

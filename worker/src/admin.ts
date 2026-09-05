@@ -49,6 +49,8 @@ interface TenantBody {
   notification_email?: string
   spreadsheet_id?: string
   quick_replies?: string[]
+  booking_horizon_days?: number
+  session_timeout_minutes?: number
 }
 
 function tenantResponse(row: SqlRow) {
@@ -136,6 +138,14 @@ export async function createTenant(db: Client, raw: string | null): Promise<Resp
     quick_replies:
       Array.isArray(body.quick_replies) && body.quick_replies.length
         ? body.quick_replies.filter((q) => typeof q === 'string' && q.trim())
+        : undefined,
+    booking_horizon_days:
+      Number.isFinite(Number(body.booking_horizon_days)) && Number(body.booking_horizon_days) > 0
+        ? Math.min(Math.floor(Number(body.booking_horizon_days)), 365)
+        : undefined,
+    session_timeout_minutes:
+      Number.isFinite(Number(body.session_timeout_minutes)) && Number(body.session_timeout_minutes) > 0
+        ? Math.floor(Number(body.session_timeout_minutes))
         : undefined,
   }
   // Drop undefined keys so they don't linger as null/empty in stored JSON.

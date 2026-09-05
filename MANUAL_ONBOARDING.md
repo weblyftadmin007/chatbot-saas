@@ -85,6 +85,43 @@ curl -N -X POST "$API/widget/chat/weblyft-design" -H "Content-Type: application/
   -d '{"message":"What are your hours?"}'
 ```
 
+## 6. Availability & date booking (no auth needed)
+
+```bash
+# Rolling week (default)
+curl "$API/widget/appointments/weblyft-design/availability"
+
+# A specific date (YYYY-MM-DD in the tenant's timezone) or a wider window
+curl "$API/widget/appointments/weblyft-design/availability?date=2026-09-15"
+curl "$API/widget/appointments/weblyft-design/availability?days=14"
+```
+
+Response:
+
+```json
+{
+  "date": "2026-09-15",
+  "timezone": "UTC",
+  "slot_duration": 30,
+  "buffer_minutes": 15,
+  "horizon_days": 60,
+  "slots": [{ "start_time": 1789462800, "end_time": 1789464600, "available": true }]
+}
+```
+
+- Slots are generated in the **tenant's timezone** and expire against a booking
+  window controlled by `settings.booking_horizon_days` (default 60, max 365).
+- The widget date picker lets visitors choose any day within the horizon and
+  shows times as **dd/mm/yyyy**; it also accepts natural language in chat, e.g.
+  `book friday 2pm` or `book july 15 at 3pm for Alex`.
+- Widget bookings post exact epochs to `POST /widget/appointments/:slug` with
+  `{ email, name, start_time, end_time }` — no client-side text reparse.
+  `409` means the slot was just taken (the picker refreshes that day);
+  `400` includes a `detail` (past time / outside window / closed).
+- The chat conversation expires after `settings.session_timeout_minutes`
+  (default 30) of inactivity (bumped on send + opening the widget), so a repeat
+  visitor starts a fresh conversation while keeping the same stable session id.
+
 ## 7. Booking notifications (per tenant)
 
 Each tenant's Google Apps Script web app handles customer/business emails and

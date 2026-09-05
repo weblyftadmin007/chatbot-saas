@@ -13,7 +13,11 @@ interface ChatPanelProps {
   sessionId: string
   slots: any[]
   pendingAction: string | null
-  selectSlot: (slot: any) => void
+  selectSlot: (slot: any, email?: string, name?: string) => void
+  onDateChange: (dateIso: string | null) => void
+  horizonDays: number
+  busy?: boolean
+  error?: string | null
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -26,7 +30,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   sessionId,
   slots,
   pendingAction,
-  selectSlot
+  selectSlot,
+  onDateChange,
+  horizonDays,
+  busy = false,
+  error = null
 }) => {
   const panelRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -79,8 +87,15 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {pendingAction === 'pick_slot' && slots.length > 0 && (
-        <SlotPicker slots={slots} onSelect={selectSlot} />
+      {pendingAction === 'pick_slot' && (
+        <SlotPicker
+          slots={slots}
+          onSelect={selectSlot}
+          onDateChange={onDateChange}
+          horizonDays={horizonDays}
+          busy={busy}
+          error={error}
+        />
       )}
 
       <InputBar

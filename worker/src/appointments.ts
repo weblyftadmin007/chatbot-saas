@@ -62,22 +62,123 @@ const DEFAULT_HOURS: Record<string, { open: string; close: string }> = {
 }
 
 /**
- * Get available slots across the next `days` calendar days (from today),
- * in the tenant's timezone.
+ * Booking window cap (in days) for this tenant. Slots/books outside this are
+ * rejected. Tenant setting `booking_horizon_days`, default 60, capped at 365.
+ */
+export function bookingHorizon(tenant: SqlRow): number {
+  const settings = parseJson<Record<string, unknown>>(rowString(tenant, 'settings', '{}'), {})
+  const raw = Number(settings['booking_horizon_days'])
+  if (Number.isFinite(raw) && raw > 0) return Math.min(Math.floor(raw), 365)
+  return 60
+}
+
+/** Calendar date (YYYY-MM-DD) of "now + offsetDays" in the given timezone. */
+export function localIsoDate(offsetDays: number, tzName: string): string {
+  const d = new Date(Date.now() + offsetDays * 86400000)
+  try {
+    return d.toLocaleDateString('en-CA', { timeZone: tzName })
+  } catch {
+    return d.toISOString().slice(0, 10)
+  }
+}
+
+/** Offset (in days from today) whose tz-local calendar date equals `iso`. */
+export function isoToDayOffset(iso: string, tzName: string): number | null {
+  const targetUtc = Date.parse(`${iso}T00:00:00Z`)
+  if (Number.isNaN(targetUtc)) return null
+  const todayIso = localIsoDate(0, tzName)
+  const todayUtc = Date.parse(`${todayIso}T00:00:00Z`)
+  const dayMs = 86400000
+  const offset = Math.round((targetUtc - todayUtc) / dayMs)
+  if (localIsoDate(offset, tzName) === iso) return offset
+  for (const alt of [offset - 1, offset + 1]) {
+    if (localIsoDate(alt, tzName) === iso) return alt
+  }
+  return null
+}
+
+/** UTC offset in minutes for a timezone at a given instant. */
+export function tzOffsetMinutes(utcMs: number, tzName: string): number {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tzName,
+      timeZoneName: 'shortOffset',
+    })
+    const val = dtf.formatToParts(new Date(utcMs)).find((p) => p.type === 'timeZoneName')?.value || ''
+    const m = val.match(/GMT?([+-])(\d{2}):?(\d{2})/)
+    if (!m) return 0
+    const sign = m[1] === '-' ? -1 : 1
+    return sign * (parseInt(m[2] ?? '0', 10) * 60 + parseInt(m[3] ?? '0', 10))
+  } catch {
+    return 0
+  }
+}
+
+/** Epoch (seconds) of tenant-local midnight for a calendar date. */
+export function localMidnightEpoch(iso: string, tzName: string): number {
+  const utcMidnight = Date.parse(`${iso}T00:00:00Z`) / 1000
+  const offsetMin = tzOffsetMinutes(Date.parse(`${iso}T12:00:00Z`), tzName)
+  return Math.floor(utcMidnight) - offsetMin * 60
+}
+
+/** {start, end} bounds of an epoch slot, as tenant-local minutes-in-day. */
+function localSlotMinutes(
+  ts: number,
+  tzName: string,
+): { dayIso: string; minutes: number } | null {
+  try {
+    const d = new Date(ts * 1000)
+    const dayIso = d.toLocaleDateString('en-CA', { timeZone: tzName })
+    const t = d.toLocaleTimeString('en-US', {
+      timeZone: tzName,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+    const [h, mi] = t.split(':')
+    return { dayIso, minutes: (parseInt(h ?? '0', 10) % 24) * 60 + parseInt(mi ?? '0', 10) }
+  } catch {
+    return null
+  }
+}
+
+export interface AvailabilityOptions {
+  /** Rolling window in days from today (default 7, capped at the horizon). */
+  days?: number
+  /** A specific YYYY-MM-DD to return slots for instead of a window. */
+  date?: string
+}
+
+/**
+ * Get available slots across the next `days` calendar days (from today), or
+ * for one specific date, in the tenant's timezone. Window and specific dates
+ * are capped at bookingHorizon(tenant).
  */
 export async function getAvailability(
   db: Client,
   tenant: SqlRow,
-  days = 7,
+  opts: AvailabilityOptions = {},
 ): Promise<Slot[]> {
   const tenantId = rowString(tenant, 'id')
   const tzName = rowString(tenant, 'timezone', 'UTC')
   const hours = businessHours(tenant)
   const slotDuration = Number(tenant['slot_duration'] ?? 30) || 30
   const bufferMinutes = Number(tenant['buffer_minutes'] ?? 15) || 0
+  const horizon = bookingHorizon(tenant)
+
+  let offsets: number[]
+  if (opts.date && /^\d{4}-\d{2}-\d{2}$/.test(opts.date)) {
+    const off = isoToDayOffset(opts.date, tzName)
+    if (off === null || off < 0 || off > horizon) return []
+    offsets = [off]
+  } else {
+    const days = Math.min(Math.max(Math.floor(opts.days ?? 7), 1), horizon)
+    offsets = Array.from({ length: days }, (_, i) => i)
+  }
+  const maxOff = Math.max(...offsets)
 
   const startTs = Math.floor(Date.now() / 1000)
-  const endTs = startTs + days * 86400
+  const endTs = startTs + (maxOff + 1) * 86400
 
   const apptRes = await query(
     db,
@@ -92,16 +193,8 @@ export async function getAvailability(
   }))
 
   const slots: Slot[] = []
-  // Walk day by day from local midnight so day-name resolution is correct per tz.
-  for (let dayOffset = 0; dayOffset < days; dayOffset++) {
-    const now = new Date()
-    const local = new Date(now.getTime() + dayOffset * 86400000)
-    let iso: string
-    try {
-      iso = local.toLocaleDateString('en-CA', { timeZone: tzName }) // YYYY-MM-DD
-    } catch {
-      iso = local.toISOString().slice(0, 10)
-    }
+  for (const offset of offsets) {
+    const iso = localIsoDate(offset, tzName) // YYYY-MM-DD in tenant tz
     const dt = new Date(`${iso}T00:00:00`)
     const dayName = DAY_NAMES[dt.getDay()] ?? 'sunday'
     const dayHours = hours[dayName] || (Object.keys(hours).length ? undefined : (DEFAULT_HOURS as any)[dayName])
@@ -112,8 +205,9 @@ export async function getAvailability(
     const { hour: oh, minute: om } = parseTime(String(open))
     const { hour: ch, minute: cm } = parseTime(String(close))
 
-    let slotStart = dt.getTime() / 1000 + oh * 3600 + om * 60
-    const dayEnd = dt.getTime() / 1000 + ch * 3600 + cm * 60
+    const midnight = localMidnightEpoch(iso, tzName)
+    let slotStart = midnight + oh * 3600 + om * 60
+    const dayEnd = midnight + ch * 3600 + cm * 60
     while (slotStart + slotDuration * 60 <= dayEnd) {
       const slotEnd = slotStart + slotDuration * 60
       const conflict = busy.some(
@@ -160,6 +254,7 @@ export async function bookAppointment(
   if (conflictRes.rows.length) {
     throw new ApptConflict('Time slot no longer available')
   }
+  assertBookable(tenant, opts.startTime, opts.endTime)
 
   const id = crypto.randomUUID()
   await query(
@@ -186,6 +281,40 @@ export async function bookAppointment(
 }
 
 export class ApptConflict extends Error {}
+export class ApptClosed extends Error {}
+export class ApptHorizon extends Error {}
+
+/**
+ * Reject a slot that is in the past, beyond the tenant's booking horizon, or
+ * falls outside the tenant's business hours. Throws ApptClosed / ApptHorizon.
+ */
+function assertBookable(tenant: SqlRow, start: number, end: number): void {
+  const now = Math.floor(Date.now() / 1000)
+  const horizon = bookingHorizon(tenant)
+  if (start < now) throw new ApptClosed('That time has already passed')
+  if (start > now + horizon * 86400) {
+    throw new ApptHorizon(`That's beyond the ${horizon}-day booking window`)
+  }
+  const tzName = rowString(tenant, 'timezone', 'UTC')
+  const startInfo = localSlotMinutes(start, tzName)
+  const endInfo = localSlotMinutes(end, tzName)
+  if (!startInfo || !endInfo) throw new ApptClosed('Unable to verify business hours')
+  if (endInfo.minutes < startInfo.minutes) throw new ApptClosed('That time is not valid')
+
+  const hours = businessHours(tenant)
+  const dayName = DAY_NAMES[new Date(`${startInfo.dayIso}T00:00:00`).getDay()] ?? 'sunday'
+  const day = hours[dayName] || (Object.keys(hours).length ? undefined : (DEFAULT_HOURS as any)[dayName])
+  const open = day ? (day as any).open : undefined
+  const close = day ? (day as any).close : undefined
+  if (!day || !open || !close) throw new ApptClosed('The business is closed at that time')
+  const { hour: oh, minute: om } = parseTime(String(open))
+  const { hour: ch, minute: cm } = parseTime(String(close))
+  const openMin = oh * 60 + om
+  const closeMin = ch * 60 + cm
+  if (startInfo.minutes < openMin || endInfo.minutes > closeMin) {
+    throw new ApptClosed('The business is closed at that time')
+  }
+}
 
 /**
  * Attempts to notify an existing appointment (emails + sheet via the tenant's
@@ -369,10 +498,16 @@ export async function ensureEndUser(
   const now = Math.floor(Date.now() / 1000)
   const existing = await query(
     db,
-    'SELECT id FROM end_users WHERE tenant_id = ? AND email = ? LIMIT 1',
+    'SELECT id, name FROM end_users WHERE tenant_id = ? AND email = ? LIMIT 1',
     [tenantId, email],
   )
-  if (existing.rows.length) return rowString(existing.rows[0]!, 'id')
+  if (existing.rows.length) {
+    const row = existing.rows[0]!
+    if (name && !rowString(row, 'name')) {
+      await query(db, 'UPDATE end_users SET name = ? WHERE id = ?', [name, rowString(row, 'id')])
+    }
+    return rowString(row, 'id')
+  }
   const id = crypto.randomUUID()
   await query(
     db,

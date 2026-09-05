@@ -41,6 +41,10 @@ export interface WidgetConfig {
   show_branding: boolean
   business_hours?: Record<string, unknown> | null
   quick_replies?: string[]
+  /** Booking window in days (default 60). */
+  booking_horizon_days: number
+  /** Minutes of inactivity before the widget starts a fresh conversation (default 30). */
+  session_timeout_minutes: number
 }
 
 /** Build the /widget/config payload exactly as the FastAPI backend did. */
@@ -66,6 +70,14 @@ export function buildWidgetConfig(row: SqlRow): WidgetConfig {
     quick_replies: Array.isArray(settings['quick_replies'])
       ? (settings['quick_replies'] as string[]).filter((q) => typeof q === 'string' && q.trim())
       : undefined,
+    booking_horizon_days: Math.min(
+      Math.max(Number(settings['booking_horizon_days'] ?? 60) || 60, 1),
+      365,
+    ),
+    session_timeout_minutes: Math.max(
+      Number(settings['session_timeout_minutes'] ?? 30) || 30,
+      1,
+    ),
     business_hours: businessHours,
   }
 }

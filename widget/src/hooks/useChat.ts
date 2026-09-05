@@ -32,6 +32,9 @@ export function useChat(
   const [pendingAction, setPendingAction] = useState<string | null>(null)
 
   const eventSourceRef = useRef<EventSource | null>(null)
+  // The rolling-week slots returned by the chat stream; restored when the
+  // user clears a hand-picked date in the picker.
+  const weekSlotsRef = useRef<Slot[]>([])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
@@ -123,6 +126,7 @@ export function useChat(
 
       case 'slots':
         setSlots(data.slots)
+        weekSlotsRef.current = data.slots || []
         setPendingAction('pick_slot')
         break
 
@@ -157,6 +161,88 @@ export function useChat(
     )
   }, [sendMessage])
 
+  /** Start a fresh conversation (used by the 30-min inactivity expiry). */
+  const reset = useCallback(() => {
+    setMessages([])
+    setConversationId(null)
+    setSlots([])
+    setPendingAction(null)
+    weekSlotsRef.current = []
+  }, [])
+
+  /**
+   * Show slots for a specific date (fetched from the availability endpoint),
+   * or restore the chat's rolling-week slots when passed null.
+   */
+  const fetchAvailableDate = useCallback(async (dateIso: string | null) => {
+    if (!dateIso) {
+      setSlots(weekSlotsRef.current || [])
+      setPendingAction('pick_slot')
+      return weekSlotsRef.current || []
+    }
+    try {
+      const response = await fetch(
+        apiUrl(apiBase, `/widget/appointments/${tenantSlug}/availability?date=${dateIso}`)
+      )
+      if (!response.ok) throw new Error('Availability request failed')
+      const data = await response.json()
+      const fetched: Slot[] = data.slots || []
+      setSlots(fetched)
+      setPendingAction('pick_slot')
+      return fetched
+    } catch (e) {
+      console.error('Failed to fetch availability:', e)
+      setSlots([])
+      return []
+    }
+  }, [tenantSlug, apiBase])
+
+  /** Book a slot directly via the REST endpoint (exact epochs, no text reparse). */
+  const bookSlot = useCallback(async (slot: Slot, email: string, name: string) => {
+    try {
+      const response = await fetch(apiUrl(apiBase, `/widget/appointments/${tenantSlug}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          name,
+          start_time: slot.start_time,
+          end_time: slot.end_time
+        })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: (data.detail as string) || 'Booking failed',
+          conflict: response.status === 409
+        }
+      }
+      setSlots([])
+      setPendingAction(null)
+      const when = new Date(slot.start_time * 1000).toLocaleDateString([], {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+      const at = new Date(slot.start_time * 1000).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      setMessages(prev => [...prev, {
+        id: `msg_${Date.now()}`,
+        role: 'assistant',
+        content: data.confirmation_message
+          ? `${data.confirmation_message} (${when}, ${at})`
+          : `You're booked for ${when} at ${at}. A confirmation email is on its way to ${email}.`
+      }])
+      return { ok: true }
+    } catch (e) {
+      console.error('Booking failed:', e)
+      return { ok: false, error: 'Network error — please try again.', conflict: false }
+    }
+  }, [tenantSlug, apiBase])
+
   // Load history on conversation change
   useEffect(() => {
     if (conversationId) {
@@ -184,6 +270,9 @@ export function useChat(
     pendingAction,
     sendMessage,
     selectSlot,
-    setConversationId
+    setConversationId,
+    reset,
+    fetchAvailableDate,
+    bookSlot
   }
 }

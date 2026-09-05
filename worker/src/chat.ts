@@ -27,6 +27,12 @@ import {
   bookAndNotify,
   ensureEndUser,
   ApptConflict,
+  ApptClosed,
+  ApptHorizon,
+  bookingHorizon,
+  localMidnightEpoch,
+  localIsoDate,
+  isoToDayOffset,
 } from './appointments'
 
 const encoder = new TextEncoder()
@@ -183,13 +189,35 @@ export async function handleChat(
         } else if (intent === 'book_appointment') {
           await handleBook(db, row, conversationId, message, send, settings)
         } else if (intent === 'check_availability') {
-          const slots = await getAvailability(db, row, 7)
+          const tzName = rowString(row, 'timezone', 'UTC')
+          const hint = resolveDateIso(message, tzName)
+          let slots: Awaited<ReturnType<typeof getAvailability>> = []
+          if (hint) {
+            const horizon = bookingHorizon(row)
+            const off = isoToDayOffset(hint, tzName)
+            if (off !== null && off > horizon) {
+              send({
+                type: 'content',
+                content: `That date is beyond our ${horizon}-day booking window. Please pick a date within the next ${horizon} days.`,
+              })
+            } else {
+              slots = await getAvailability(db, row, { date: hint })
+            }
+          } else {
+            slots = await getAvailability(db, row, { days: 7 })
+          }
           if (slots.length) {
             send({ type: 'slots', slots })
             send({
               type: 'content',
               content:
                 'Here are the available times. Click one to book, or tell me your preferred day and time.',
+            })
+          } else if (hint) {
+            send({
+              type: 'content',
+              content:
+                "I couldn't find any available times on that day — it may be a day the business is closed. Try another date or this week's slots.",
             })
           } else {
             send({
@@ -274,32 +302,123 @@ export function json(data: unknown, status = 200): Response {
 
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
 
-/** Parse a message like "Book 11/5/2026 at 13:00 person@example.com". */
-function parseBooking(message: string): { start: number; end: number; email: string | null } | null {
-  const emailMatch = message.match(EMAIL_RE)
-  const email = emailMatch ? emailMatch[0] : null
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n)
+}
 
-  // Find a date token: MM/DD/YYYY (from the widget) or a bare weekday/day number.
-  const dateMatch = message.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/)
-  const timeMatch = message.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i)
-  if (!dateMatch || !timeMatch) return null
+function isoFromYMD(y: number, m: number, d: number): string | null {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null
+  if (y >= 0 && y < 100) y += 2000
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null
+  return `${pad2(y)}-${pad2(m)}-${pad2(d)}`
+}
 
-  const month = parseInt(dateMatch[1] ?? '0', 10) - 1
-  const day = parseInt(dateMatch[2] ?? '1', 10)
-  let year = parseInt(dateMatch[3] ?? '0', 10)
-  if (year < 2000) year += 2000
+function monthNum(word: string): number | null {
+  const names = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+  const i = names.indexOf(word.toLowerCase().slice(0, 3))
+  return i >= 0 ? i + 1 : null
+}
 
-  let hour = parseInt(timeMatch[1] ?? '0', 10)
-  const minute = parseInt(timeMatch[2] ?? '0', 10)
-  const ampm = timeMatch[3]?.toLowerCase()
+function weekdayNum(word: string): number {
+  const map: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+    sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6,
+  }
+  const k = word.toLowerCase()
+  return k in map ? map[k]! : -1
+}
+
+/**
+ * Resolve the YYYY-MM-DD (tenant-timezone) date a message refers to, or null.
+ * Accepts YYYY-MM-DD, "July 15 (2026)", "15 July", "15/7", "7/15/2026",
+ * weekday names (next occurrence), "tomorrow", "today".
+ */
+function resolveDateIso(message: string, tzName: string): string | null {
+  const iso = message.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
+  if (iso) return isoFromYMD(+iso[1]!, +iso[2]!, +iso[3]!)
+
+  const monthFirst = message.match(/\b([a-zA-Z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?\b/i)
+  if (monthFirst) {
+    const mi = monthNum(monthFirst[1]!)
+    if (mi) {
+      const iso2 = isoFromYMD(monthFirst[3] ? +monthFirst[3] : new Date().getFullYear(), mi, +monthFirst[2]!)
+      if (iso2) return iso2
+    }
+  }
+  const dayFirst = message.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-zA-Z]{3,9})\b(?:\s*,?\s*(\d{4}))?/i)
+  if (dayFirst) {
+    const mi = monthNum(dayFirst[2]!)
+    if (mi) {
+      const iso2 = isoFromYMD(dayFirst[3] ? +dayFirst[3] : new Date().getFullYear(), mi, +dayFirst[1]!)
+      if (iso2) return iso2
+    }
+  }
+  const slash = message.match(/\b(\d{1,2})\s*[/.]\s*(\d{1,2})(?:\s*[/.]\s*(\d{2,4}))?\b/)
+  if (slash) {
+    const p1 = +slash[1]!
+    const p2 = +slash[2]!
+    const y = slash[3] ? +slash[3] : new Date().getFullYear()
+    if (p1 > 12) return isoFromYMD(y, p2, p1) // day-first (dd/mm)
+    if (p2 > 12) return isoFromYMD(y, p1, p2) // month-first (mm/dd)
+    return isoFromYMD(y, p1, p2) // ambiguous -> month-first (matches widget format)
+  }
+  const wd = message.match(
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i,
+  )
+  if (wd) {
+    const want = weekdayNum(wd[1]!)
+    const todayIso = localIsoDate(0, tzName)
+    const todayEpoch = localMidnightEpoch(todayIso, tzName)
+    const todayIdx = new Date(todayEpoch * 1000).getUTCDay()
+    const diff = (((want - todayIdx) % 7) + 7) % 7 || 7
+    const when = new Date((todayEpoch + diff * 86400) * 1000)
+    return isoFromYMD(when.getUTCFullYear(), when.getUTCMonth() + 1, when.getUTCDate())
+  }
+  if (/\btomorrow\b/i.test(message)) {
+    const todayEpoch = localMidnightEpoch(localIsoDate(0, tzName), tzName)
+    const when = new Date((todayEpoch + 86400) * 1000)
+    return isoFromYMD(when.getUTCFullYear(), when.getUTCMonth() + 1, when.getUTCDate())
+  }
+  if (/\btoday\b/i.test(message)) {
+    return localIsoDate(0, tzName)
+  }
+  return null
+}
+
+function resolveTime(message: string): { hour: number; minute: number } | null {
+  const at = message.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i)
+  const colon = at ? null : message.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?/i)
+  const bare = at || colon ? null : message.match(/\b(\d{1,2})\s*(am|pm)\b/i)
+  const m = at || colon || bare
+  if (!m) return null
+  let hour = parseInt(m[1] ?? '0', 10)
+  const minute = m[2] ? parseInt(m[2], 10) : 0
+  const ampm = (m[3] || '').toLowerCase()
   if (ampm === 'pm' && hour < 12) hour += 12
   if (ampm === 'am' && hour === 12) hour = 0
+  if (hour > 23 || minute > 59) return null
+  return { hour, minute }
+}
 
-  const start = Date.UTC(year, month, day, hour, minute) / 1000
-  // Slot length derived from the tenant config is applied by the caller;
-  // here we assume 30 min default (overridden by the booking payload).
+/**
+ * Parse a booking message like "Book 11/5/2026 at 13:00 person@example.com",
+ * "book friday 2pm a@b.com", or "book July 15 at 3pm for Alex".
+ */
+function parseBooking(
+  message: string,
+  tzName: string,
+): { start: number; end: number; email: string | null; name: string } | null {
+  const emailMatch = message.match(EMAIL_RE)
+  const email = emailMatch ? emailMatch[0] : null
+  const nameMatch = message.match(/\b(?:for|name(?:d)?)\s+([A-Za-z][A-Za-z .'’-]{1,40})/i)
+  const name = nameMatch ? nameMatch[1]!.replace(/\s+/g, ' ').trim() : ''
+  const iso = resolveDateIso(message, tzName)
+  const time = resolveTime(message)
+  if (!iso || !time) return null
+  const start = localMidnightEpoch(iso, tzName) + time.hour * 3600 + time.minute * 60
   const end = start + 30 * 60
-  return { start, end, email }
+  return { start, end, email, name }
 }
 
 async function handleBook(
@@ -314,7 +433,8 @@ async function handleBook(
     send({ type: 'content', content: "I couldn't find the business to book with." })
     return
   }
-  const parsed = parseBooking(message)
+  const tzName = rowString(tenant, 'timezone', 'UTC')
+  const parsed = parseBooking(message, tzName)
   const emailMatch = message.match(EMAIL_RE)
   const email = parsed?.email || (emailMatch ? emailMatch[0] : null)
 
@@ -335,7 +455,7 @@ async function handleBook(
   }
 
   const tenantId = rowString(tenant, 'id')
-  const endUserId = await ensureEndUser(db, tenant, email)
+  const endUserId = await ensureEndUser(db, tenant, email, parsed.name || undefined)
   try {
     const appt = await bookAndNotify(db, tenant, settings, {
       conversationId,
@@ -344,11 +464,15 @@ async function handleBook(
       endTime: parsed.end,
       title: 'Appointment',
       customerEmail: email,
+      customerName: parsed.name || '',
     })
     const when = new Date(parsed.start * 1000).toLocaleString()
     send({
       type: 'content',
-      content: `You're booked for ${when}. A confirmation email is on its way to ${email}.`,
+      content:
+        parsed.name
+          ? `You're booked for ${when}, ${parsed.name}. A confirmation email is on its way to ${email}.`
+          : `You're booked for ${when}. A confirmation email is on its way to ${email}.`,
     })
   } catch (e) {
     if (e instanceof ApptConflict) {
@@ -356,6 +480,17 @@ async function handleBook(
         type: 'content',
         content:
           'Sorry, that time was just taken. Tap to pick an available slot, or tell me another day/time.',
+      })
+    } else if (e instanceof ApptHorizon) {
+      send({
+        type: 'content',
+        content: `I couldn't book that — it's outside the ${bookingHorizon(tenant)}-day booking window. Please choose a date within that range.`,
+      })
+    } else if (e instanceof ApptClosed) {
+      send({
+        type: 'content',
+        content:
+          "I couldn't book that time — the business is closed then. Pick an available slot or ask me for opening times.",
       })
     } else {
       console.error(`[book] ${e instanceof Error ? e.stack || e.message : String(e)}`)

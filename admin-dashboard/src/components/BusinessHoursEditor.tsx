@@ -9,6 +9,8 @@ interface BusinessHoursEditorProps {
   notificationEmail?: string
   spreadsheetId?: string
   quickReplies?: string[]
+  bookingHorizon?: number
+  sessionTimeout?: number
   onSave: (settings: any) => void
 }
 
@@ -23,6 +25,8 @@ export function BusinessHoursEditor({
   notificationEmail,
   spreadsheetId,
   quickReplies,
+  bookingHorizon,
+  sessionTimeout,
   onSave
 }: BusinessHoursEditorProps) {
   const [hours, setHours] = useState<Record<string, { open: string; close: string }>>(
@@ -45,6 +49,8 @@ export function BusinessHoursEditor({
   const [quickRepliesVal, setQuickRepliesVal] = useState(
     Array.isArray(quickReplies) && quickReplies.length ? quickReplies.join('\n') : ''
   )
+  const [horizonDays, setHorizonDays] = useState(bookingHorizon || 60)
+  const [sessionTimeoutMin, setSessionTimeoutMin] = useState(sessionTimeout || 30)
 
   const handleSave = () => {
     const qr = quickRepliesVal
@@ -60,7 +66,9 @@ export function BusinessHoursEditor({
         gas_url: gasUrlVal.trim() || undefined,
         notification_email: notifEmail.trim().toLowerCase() || undefined,
         spreadsheet_id: sheetId.trim() || undefined,
-        quick_replies: qr.length ? qr : undefined
+        quick_replies: qr.length ? qr : undefined,
+        booking_horizon_days: horizonDays,
+        session_timeout_minutes: sessionTimeoutMin
       }
     })
   }
@@ -212,6 +220,30 @@ export function BusinessHoursEditor({
               <option value={15}>15 minutes</option>
               <option value={30}>30 minutes</option>
             </select>
+          </div>
+
+          <div className="form-group">
+            <label>Booking Window (days)</label>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={horizonDays}
+              onChange={(e) => setHorizonDays(Number(e.target.value))}
+            />
+            <p className="form-hint">How far ahead customers can book (1–365).</p>
+          </div>
+
+          <div className="form-group">
+            <label>Chat Session Timeout (minutes)</label>
+            <input
+              type="number"
+              min={1}
+              max={1440}
+              value={sessionTimeoutMin}
+              onChange={(e) => setSessionTimeoutMin(Number(e.target.value))}
+            />
+            <p className="form-hint">Inactivity before the widget starts a fresh conversation.</p>
           </div>
         </div>
       </div>

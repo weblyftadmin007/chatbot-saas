@@ -24,7 +24,16 @@ import type { Env } from './config'
 import { chatModel, embedModel, similarityThreshold, topK } from './config'
 import { getDb, query, rowString, ensureSchemaMigrations } from './db'
 import { tenantBySlug, tenantById, buildWidgetConfig, parseJson } from './tenants'
-import { ensureEndUser, bookAndNotify, ApptConflict } from './appointments'
+import {
+  ensureEndUser,
+  bookAndNotify,
+  getAvailability,
+  bookingHorizon,
+  ApptConflict,
+  ApptClosed,
+  ApptHorizon,
+  type AvailabilityOptions,
+} from './appointments'
 import { handleChat, json } from './chat'
 import { classifyIntent, embedSingle, generateText, synthesizeAnswer } from './llm'
 import { blobToVector, cosineSimilarity } from './vec'
@@ -82,6 +91,8 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 2 && tail[0] === 'chat') return { pattern: 'widgetChat', params: [tail[1]!] }
       if (tail.length === 2 && tail[0] === 'history') return { pattern: 'widgetHistory', params: [tail[1]!] }
       if (tail.length === 2 && tail[0] === 'appointments') return { pattern: 'widgetAppointments', params: [tail[1]!] }
+      if (tail.length === 3 && tail[0] === 'appointments' && tail[2] === 'availability')
+        return { pattern: 'widgetAvailability', params: [tail[1]!] }
       return null
     }
     case '/admin': {
@@ -321,6 +332,30 @@ export default {
           }),
         )
       }
+      case 'widgetAvailability': {
+        if (request.method !== 'GET') return withCors(methodNotAllowed())
+        const [slug] = route.params
+        const tenant = await tenantBySlug(db, slug!)
+        if (!tenant) return withCors(json({ detail: 'Tenant not found' }, 404))
+        const qp = url.searchParams
+        const date = (qp.get('date') || '').slice(0, 10)
+        const dayN = parseInt(qp.get('days') || '', 10)
+        const opts: AvailabilityOptions = {}
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) opts.date = date
+        else if (Number.isFinite(dayN) && dayN > 0) opts.days = dayN
+        else opts.days = 7
+        const slots = await getAvailability(db, tenant, opts)
+        return withCors(
+          json({
+            date: opts.date ?? null,
+            timezone: rowString(tenant, 'timezone', 'UTC'),
+            slot_duration: Number(tenant['slot_duration'] ?? 30),
+            buffer_minutes: Number(tenant['buffer_minutes'] ?? 15),
+            horizon_days: bookingHorizon(tenant),
+            slots,
+          }),
+        )
+      }
       case 'widgetAppointments': {
         if (request.method !== 'POST') return withCors(methodNotAllowed())
         const [slug] = route.params
@@ -329,6 +364,7 @@ export default {
         const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
         const email =
           typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
+        const name = typeof body?.name === 'string' ? body.name.trim() : ''
         const startTime = Number(body?.start_time)
         const endTime = Number(body?.end_time)
         const title = typeof body?.title === 'string' ? body.title : 'Appointment'
@@ -347,7 +383,7 @@ export default {
            VALUES (?, ?, 'active', ?, ?)`,
           [conversationId, rowString(tenant, 'id'), now, now],
         )
-        const endUserId = await ensureEndUser(db, tenant, email)
+        const endUserId = await ensureEndUser(db, tenant, email, name || undefined)
         try {
           const appt = await bookAndNotify(db, tenant, settings, {
             conversationId,
@@ -356,6 +392,7 @@ export default {
             endTime,
             title,
             customerEmail: email,
+            customerName: name || '',
           })
           return withCors(
             json({
@@ -371,6 +408,9 @@ export default {
         } catch (e) {
           if (e instanceof ApptConflict) {
             return withCors(json({ detail: 'Time slot no longer available' }, 409))
+          }
+          if (e instanceof ApptClosed || e instanceof ApptHorizon) {
+            return withCors(json({ detail: (e as Error).message }, 400))
           }
           throw e
         }
