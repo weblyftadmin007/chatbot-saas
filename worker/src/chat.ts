@@ -156,7 +156,10 @@ export async function handleChat(
               for await (const chunk of synthesizeAnswer(env, message, context)) {
                 send({ type: 'content', content: chunk })
               }
-            } catch {
+            } catch (e) {
+              console.error(
+                `[synthesizeAnswer] failed slug:${slug} | ${e instanceof Error ? e.stack || e.message : String(e)}`,
+              )
               if (!full) {
                 send({
                   type: 'content',

@@ -134,26 +134,33 @@ export async function* streamText(
   if (!reader) throw new LLMError(500, 'No stream body')
   const decoder = new TextDecoder()
   let buffer = ''
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      try {
-        const data = JSON.parse(line.slice(6)) as {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6)) as {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+          }
+          const text = (data.candidates?.[0]?.content?.parts || [])
+            .map((p) => p.text || '')
+            .join('')
+          if (text) yield text
+        } catch {
+          // Skip malformed SSE frames (e.g. keep-alive or final metadata).
         }
-        const text = (data.candidates?.[0]?.content?.parts || [])
-          .map((p) => p.text || '')
-          .join('')
-        if (text) yield text
-      } catch {
-        // Skip malformed SSE frames (e.g. keep-alive or final metadata).
       }
     }
+  } catch (e) {
+    console.error(
+      `[streamText] failed model:${chatModel(env)} | ${e instanceof Error ? e.stack || e.message : String(e)}`,
+    )
+    throw e
   }
 }
 
