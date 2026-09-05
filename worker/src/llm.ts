@@ -220,7 +220,7 @@ Intent:`
     return 'unclear'
   }
   const intent = response.trim().toLowerCase()
-  console.log(`[classifyIntent] input:${text.slice(0, 80)! == text ? text : text.slice(0, 80) + '...'} | raw_response:${response.slice(0, 120)} | intent:${intent}`)
+  console.error(`[classifyIntent] input:${text.length <= 80 ? text : text.slice(0, 80) + '...'} | raw:${response.slice(0, 140)} | intent:${intent}`)
   const valid = [
     'book_appointment',
     'cancel_appointment',
