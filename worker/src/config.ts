@@ -30,7 +30,7 @@ export interface Env {
 }
 
 export function chatModel(env: Env): string {
-  return env.CHAT_MODEL || 'gemini-2.5-flash'
+  return env.CHAT_MODEL || 'gemini-3.6-flash'
 }
 
 export function embedModel(env: Env): string {

@@ -72,6 +72,9 @@ export async function generateText(
     generationConfig: {
       temperature: req.temperature ?? 0.3,
       maxOutputTokens: req.maxTokens ?? 800,
+      // Disable model reasoning so every request yields visible text (2.5+/3.x
+      // thinking can silently consume the whole output budget, returning empty).
+      thinkingConfig: { thinkingBudget: 0 },
     },
   }
   if (req.system) {
@@ -108,6 +111,9 @@ export async function* streamText(
     generationConfig: {
       temperature: req.temperature ?? 0.3,
       maxOutputTokens: req.maxTokens ?? 800,
+      // Disable model reasoning so every request yields visible text (2.5+/3.x
+      // thinking can silently consume the whole output budget, returning empty).
+      thinkingConfig: { thinkingBudget: 0 },
     },
   }
   if (req.system) {
@@ -214,7 +220,7 @@ Intent:`
     response = await generateText(env, {
       messages: [{ role: 'user', text: prompt }],
       temperature: 0.1,
-      maxTokens: 20,
+      maxTokens: 100,
     })
   } catch {
     return 'unclear'

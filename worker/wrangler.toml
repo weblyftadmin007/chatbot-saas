@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 # Chat model. Free-tier flash-class model — pick the one with the best free
 # Requests-Per-Day in AI Studio (https://aistudio.google.com) at setup time.
-CHAT_MODEL = "gemini-2.5-flash"
+CHAT_MODEL = "gemini-3.6-flash"
 # Embedding model. Keep 768 output dimensions — stored vectors are 768-dim
 # float32 BLOBs in knowledge_chunks.embedding (db/schema.sql, src/rag.ts).
 EMBED_MODEL = "gemini-embedding-001"
