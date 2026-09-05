@@ -226,9 +226,9 @@ export async function uploadKnowledgeText(
     return json({ detail: 'source_id and content are required' }, 400)
   }
 
-  // Idempotent re-upload: drop the source first so re-runs don't duplicate.
-  await deleteChunks(db, tenantId, sourceId)
-
+  // Atomic re-upload: embeddings are fetched for all chunks BEFORE any old
+  // rows are touched (rag.addChunks) — a quota/API failure now leaves the
+  // existing knowledge intact instead of wiping it first.
   try {
     let result: { source_id: string; chunks_created: number; total_chars?: number; total_items?: number }
     if (sourceType === 'faq') {

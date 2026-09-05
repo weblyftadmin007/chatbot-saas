@@ -21,10 +21,12 @@
  *                     or customer data. Useful for diagnosing 1101/500 chat failures.
  */
 import type { Env } from './config'
+import { chatModel, embedModel, similarityThreshold, topK } from './config'
 import { getDb, query, rowString } from './db'
 import { tenantBySlug, buildWidgetConfig } from './tenants'
 import { handleChat, json } from './chat'
-import { classifyIntent, generateText, synthesizeAnswer } from './llm'
+import { classifyIntent, embedSingle, generateText, synthesizeAnswer } from './llm'
+import { blobToVector, cosineSimilarity } from './vec'
 import {
   authorize,
   createTenant,
@@ -91,6 +93,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 1 && tail[0] === 'db') return { pattern: 'debugDb', params: [] }
       if (tail.length === 1 && tail[0] === 'classify') return { pattern: 'debugClassify', params: [] }
       if (tail.length === 1 && tail[0] === 'answer') return { pattern: 'debugAnswer', params: [] }
+      if (tail.length === 1 && tail[0] === 'search') return { pattern: 'debugSearch', params: [] }
       return null
     }
     default:
@@ -189,6 +192,84 @@ export default {
             error,
             timestamp: Math.floor(Date.now() / 1000),
             note: 'Runs synthesizeAnswer stream; surfaces the raw error for debugging.',
+          }),
+        )
+      }
+
+      case 'debugSearch': {
+        if (request.method !== 'GET') return withCors(methodNotAllowed())
+        const url = new URL(request.url)
+        const text = (url.searchParams.get('text') || 'Hello').slice(0, 500)
+        const slug = (url.searchParams.get('slug') || 'weblyft-design').slice(0, 100)
+        const tenant = await tenantBySlug(db, slug)
+        if (!tenant) return withCors(json({ ok: false, error: 'Tenant not found' }, 404))
+        const tenantId = rowString(tenant, 'id')
+
+        let queryEmbedding: number[] = []
+        let embedError: string | null = null
+        try {
+          queryEmbedding = await embedSingle(env, text)
+        } catch (e) {
+          embedError = (e instanceof Error ? e.message : String(e)).slice(0, 400)
+        }
+
+        const result = await query(
+          db,
+          `SELECT id, source_id, content, embedding
+           FROM knowledge_chunks WHERE tenant_id = ? AND embedding IS NOT NULL`,
+          [tenantId],
+        )
+        const scored: Array<{
+          id: string
+          source_id: string
+          similarity: number
+          dims: number
+          content: string
+        }> = []
+        let emptyBlobs = 0
+        const dimsSeen = new Set<number>()
+        for (const r of result.rows) {
+          const vec = blobToVector(r['embedding'])
+          if (!vec || !vec.length) {
+            emptyBlobs++
+            continue
+          }
+          dimsSeen.add(vec.length)
+          scored.push({
+            id: rowString(r, 'id'),
+            source_id: rowString(r, 'source_id'),
+            content: rowString(r, 'content').slice(0, 100),
+            similarity: queryEmbedding.length ? cosineSimilarity(queryEmbedding, vec) : 0,
+            dims: vec.length,
+          })
+        }
+        scored.sort((a, b) => b.similarity - a.similarity)
+
+        return withCors(
+          json({
+            ok: true,
+            slug,
+            tenant_id: tenantId,
+            text,
+            query_embedding: {
+              ok: embedError === null,
+              error: embedError,
+              dims: queryEmbedding.length,
+            },
+            scanned: {
+              total_rows: result.rows.length,
+              empty_blobs: emptyBlobs,
+              dims_seen: [...dimsSeen],
+            },
+            top_hits: scored.slice(0, 5),
+            config: {
+              chat_model: chatModel(env),
+              embed_model: embedModel(env),
+              top_k: topK(env),
+              similarity_threshold: similarityThreshold(env),
+            },
+            timestamp: Math.floor(Date.now() / 1000),
+            note: 'Dev diagnostic: raw cosine scores vs the chat pipeline threshold.',
           }),
         )
       }

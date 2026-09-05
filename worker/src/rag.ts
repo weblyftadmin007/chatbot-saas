@@ -35,13 +35,30 @@ export interface SearchHit {
   similarity: number
 }
 
+/**
+ * Embed + store chunks atomically: embeddings are fetched for ALL chunks
+ * BEFORE any row is written, so a quota/API failure never leaves the source
+ * half-replaced. After the INSERT OR REPLACE, stale rows (ids that existed
+ * in a previous version of the source but are no longer produced) are purged.
+ * Passing sourceId also lets an empty chunk list fully clear the source.
+ */
 export async function addChunks(
   db: Client,
   env: Env,
   tenantId: string,
   chunks: KnowledgeChunk[],
+  sourceId?: string,
 ): Promise<string[]> {
-  if (!chunks.length) return []
+  if (!chunks.length) {
+    if (sourceId) {
+      await query(
+        db,
+        'DELETE FROM knowledge_chunks WHERE tenant_id = ? AND source_id = ?',
+        [tenantId, sourceId],
+      )
+    }
+    return []
+  }
   const texts = chunks.map((c) => c.content)
   const embeddings = await embedTexts(env, texts)
   const ids: string[] = []
@@ -71,6 +88,17 @@ export async function addChunks(
       ],
     )
     ids.push(chunkId)
+  }
+  if (sourceId) {
+    // Purge rows left over from an older version of this source (ids removed
+    // during a re-upload). Runs only after the new rows are safely in place.
+    const placeholders = ids.map(() => '?').join(', ')
+    await query(
+      db,
+      `DELETE FROM knowledge_chunks
+       WHERE tenant_id = ? AND source_id = ? AND id NOT IN (${placeholders})`,
+      [tenantId, sourceId, ...ids],
+    )
   }
   return ids
 }

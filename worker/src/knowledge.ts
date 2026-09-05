@@ -39,7 +39,7 @@ export async function processText(
     content: c,
     metadata: {},
   }))
-  const added = await addChunks(db, env, tenantId, chunks)
+  const added = await addChunks(db, env, tenantId, chunks, sourceId)
   return { source_id: sourceId, chunks_created: added.length, total_chars: text.length }
 }
 
@@ -64,6 +64,6 @@ export async function processFaq(
       })
     }
   }
-  const added = await addChunks(db, env, tenantId, chunks)
+  const added = await addChunks(db, env, tenantId, chunks, sourceId)
   return { source_id: sourceId, chunks_created: added.length, total_items: faqItems.length }
 }
