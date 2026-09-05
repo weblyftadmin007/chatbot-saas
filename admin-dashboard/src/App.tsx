@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { SignedIn, SignedOut, SignIn, UserButton, useAuth } from '@clerk/clerk-react'
 import { Tenants } from './pages/Tenants'
@@ -11,12 +11,13 @@ import { setTokenGetter } from './api'
 function AuthenticatedApp() {
   const { isLoaded, isSignedIn, getToken } = useAuth()
 
-  // Make the Clerk session token available to apiFetch() once signed in
-  useEffect(() => {
-    if (isSignedIn) {
-      setTokenGetter(() => getToken())
-    }
-  }, [isSignedIn, getToken])
+  // Register the token getter during render — NOT in an effect. Effects fire
+  // child-first, so if this ran in an effect, child pages (Tenants, etc.)
+  // would fire their first fetch before the token was available and get a
+  // 401 that never retried (looking like "no tenants" until you re-navigate).
+  if (isSignedIn) {
+    setTokenGetter(() => getToken())
+  }
 
   if (!isLoaded) {
     return <div className="loading">Loading...</div>
