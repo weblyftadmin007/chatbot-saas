@@ -198,11 +198,15 @@
 .chatbot-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
+  background: var(--bg-secondary);
+}
+
+.chatbot-message-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--bg-secondary);
 }
 
 .chatbot-welcome {
@@ -272,6 +276,7 @@
   align-items: flex-end;
   gap: 8px;
   max-width: 82%;
+  min-width: 0;
   animation: fadeIn 0.3s ease;
 }
 
@@ -314,6 +319,7 @@
   border-radius: 18px;
   border-bottom-left-radius: 4px;
   padding: 10px 14px;
+  min-width: 0;
 }
 
 .chatbot-message.user .chatbot-bubble {
@@ -332,6 +338,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.55;
+  white-space: normal;
 }
 
 .chatbot-typing {
