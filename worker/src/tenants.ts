@@ -40,6 +40,7 @@ export interface WidgetConfig {
   logo_url?: string | null
   show_branding: boolean
   business_hours?: Record<string, unknown> | null
+  quick_replies?: string[]
 }
 
 /** Build the /widget/config payload exactly as the FastAPI backend did. */
@@ -62,6 +63,9 @@ export function buildWidgetConfig(row: SqlRow): WidgetConfig {
     secondary_color: (settings['secondary_color'] as string) || '#1E40AF',
     logo_url: (settings['logo_url'] as string) || null,
     show_branding: settings['show_branding'] !== false,
+    quick_replies: Array.isArray(settings['quick_replies'])
+      ? (settings['quick_replies'] as string[]).filter((q) => typeof q === 'string' && q.trim())
+      : undefined,
     business_hours: businessHours,
   }
 }

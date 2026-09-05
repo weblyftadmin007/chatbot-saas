@@ -74,6 +74,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           messages={messages}
           isLoading={isLoading}
           config={config}
+          onSend={onSendMessage}
         />
         <div ref={messagesEndRef} />
       </div>

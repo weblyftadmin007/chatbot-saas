@@ -10,6 +10,7 @@ interface WidgetConfig {
   logo_url?: string
   show_branding: boolean
   business_hours?: Record<string, any>
+  quick_replies?: string[]
 }
 
 function apiUrl(apiBase: string, path: string): string {
