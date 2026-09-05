@@ -113,11 +113,13 @@ export async function handleChat(
 
   // Intent classification is best-effort; any failure falls back to unclear.
   let intent = 'unclear'
+  let quotaExceeded = false
   const throttled = !chatAllowed(slug, env)
   if (!throttled) {
     try {
       intent = await classifyIntent(env, message)
-    } catch {
+    } catch (e) {
+      quotaExceeded = e instanceof LLMError && e.status === 429
       intent = 'unclear'
     }
   }
@@ -137,7 +139,7 @@ export async function handleChat(
         controller.enqueue(encoder.encode(frame))
       }
       try {
-        if (throttled) {
+        if (throttled || quotaExceeded) {
           send({ type: 'content', content: LIMIT_MESSAGE })
         } else if (intent === 'general_query') {
           let hits: Awaited<ReturnType<typeof search>>

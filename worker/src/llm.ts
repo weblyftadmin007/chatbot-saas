@@ -224,7 +224,10 @@ Intent:`
       temperature: 0.1,
       maxTokens: 300,
     })
-  } catch {
+  } catch (e) {
+    // Surface quota exhaustion (429) to the caller so the chat handler can show
+    // a clear "usage limit" message instead of a misleading unclear fallback.
+    if (e instanceof LLMError && e.status === 429) throw e
     return 'unclear'
   }
   const intent = response.trim().toLowerCase()
