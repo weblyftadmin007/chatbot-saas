@@ -72,9 +72,10 @@ export async function generateText(
     generationConfig: {
       temperature: req.temperature ?? 0.3,
       maxOutputTokens: req.maxTokens ?? 800,
-      // Disable model reasoning so every request yields visible text (2.5+/3.x
-      // thinking can silently consume the whole output budget, returning empty).
-      thinkingConfig: { thinkingBudget: 0 },
+      // Gemini 3.x can't have reasoning disabled (thinkingBudget is 2.5-only),
+      // so pin the lowest supported thinking level to keep responses short and
+      // ensure the output budget is left for visible text.
+      thinkingConfig: { thinkingLevel: 'MINIMAL' },
     },
   }
   if (req.system) {
@@ -111,9 +112,10 @@ export async function* streamText(
     generationConfig: {
       temperature: req.temperature ?? 0.3,
       maxOutputTokens: req.maxTokens ?? 800,
-      // Disable model reasoning so every request yields visible text (2.5+/3.x
-      // thinking can silently consume the whole output budget, returning empty).
-      thinkingConfig: { thinkingBudget: 0 },
+      // Gemini 3.x can't have reasoning disabled (thinkingBudget is 2.5-only),
+      // so pin the lowest supported thinking level to keep responses short and
+      // ensure the output budget is left for visible text.
+      thinkingConfig: { thinkingLevel: 'MINIMAL' },
     },
   }
   if (req.system) {
@@ -220,7 +222,7 @@ Intent:`
     response = await generateText(env, {
       messages: [{ role: 'user', text: prompt }],
       temperature: 0.1,
-      maxTokens: 100,
+      maxTokens: 300,
     })
   } catch {
     return 'unclear'
