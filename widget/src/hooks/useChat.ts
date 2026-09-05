@@ -36,6 +36,11 @@ export function useChat(
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
 
+    // Any new message discards a pending slot-picker choice (it re-opens if
+    // the user asks about availability again).
+    setSlots([])
+    setPendingAction(null)
+
     // Add user message immediately
     const userMessage: Message = {
       id: `msg_${Date.now()}`,
@@ -130,7 +135,6 @@ export function useChat(
         setMessages(prev => prev.map((m, i) =>
           i === prev.length - 1 && m.role === 'assistant' ? { ...m, read: true } : m
         ))
-        setPendingAction(null)
         break
     }
   }
@@ -151,7 +155,6 @@ export function useChat(
     await sendMessage(
       `Book ${dateStr} at ${timeStr}${email ? ` ${email}` : ''}`
     )
-    setSlots([])
   }, [sendMessage])
 
   // Load history on conversation change
