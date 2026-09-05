@@ -418,6 +418,7 @@ function parseBooking(
   if (!iso || !time) return null
   const start = localMidnightEpoch(iso, tzName) + time.hour * 3600 + time.minute * 60
   const end = start + 30 * 60
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null
   return { start, end, email, name }
 }
 
