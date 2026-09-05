@@ -74,6 +74,9 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 2 && tail[0] === 'tenants') return { pattern: 'adminTenant', params: [tail[1]!] }
       if (tail.length === 3 && tail[0] === 'tenants' && tail[2] === 'knowledge')
         return { pattern: 'adminTenantKnowledge', params: [tail[1]!] }
+      if (tail.length === 4 && tail[0] === 'tenants' && tail[2] === 'knowledge' && tail[3] === 'text')
+        // POST /admin/tenants/:id/knowledge/text { source_id, source_type, content }
+        return { pattern: 'adminTenantKnowledge', params: [tail[1]!] }
       if (tail.length === 4 && tail[0] === 'tenants' && tail[2] === 'knowledge')
         return { pattern: 'adminTenantKnowledgeSource', params: [tail[1]!, tail[3]!] }
       return null
