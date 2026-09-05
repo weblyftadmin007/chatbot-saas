@@ -299,6 +299,7 @@ export function TenantDetail() {
               gasUrl={tenant.settings?.gas_url}
               notificationEmail={tenant.settings?.notification_email}
               spreadsheetId={tenant.settings?.spreadsheet_id}
+              gasSecret={tenant.settings?.gas_secret}
               quickReplies={tenant.settings?.quick_replies}
               bookingHorizon={tenant.settings?.booking_horizon_days}
               sessionTimeout={tenant.settings?.session_timeout_minutes}

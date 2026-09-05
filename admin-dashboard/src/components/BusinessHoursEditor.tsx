@@ -8,6 +8,7 @@ interface BusinessHoursEditorProps {
   gasUrl?: string
   notificationEmail?: string
   spreadsheetId?: string
+  gasSecret?: string
   quickReplies?: string[]
   bookingHorizon?: number
   sessionTimeout?: number
@@ -24,6 +25,7 @@ export function BusinessHoursEditor({
   gasUrl,
   notificationEmail,
   spreadsheetId,
+  gasSecret,
   quickReplies,
   bookingHorizon,
   sessionTimeout,
@@ -46,6 +48,7 @@ export function BusinessHoursEditor({
   const [gasUrlVal, setGasUrlVal] = useState(gasUrl || '')
   const [notifEmail, setNotifEmail] = useState(notificationEmail || '')
   const [sheetId, setSheetId] = useState(spreadsheetId || '')
+  const [gasSecretVal, setGasSecretVal] = useState(gasSecret || '')
   const [quickRepliesVal, setQuickRepliesVal] = useState(
     Array.isArray(quickReplies) && quickReplies.length ? quickReplies.join('\n') : ''
   )
@@ -66,6 +69,7 @@ export function BusinessHoursEditor({
         gas_url: gasUrlVal.trim() || undefined,
         notification_email: notifEmail.trim().toLowerCase() || undefined,
         spreadsheet_id: sheetId.trim() || undefined,
+        gas_secret: gasSecretVal.trim() || undefined,
         quick_replies: qr.length ? qr : undefined,
         booking_horizon_days: horizonDays,
         session_timeout_minutes: sessionTimeoutMin
@@ -282,6 +286,21 @@ export function BusinessHoursEditor({
               onChange={(e) => setSheetId(e.target.value)}
               placeholder="1AbC... (from the sheet URL, or the full URL)"
             />
+          </div>
+          <div className="form-group">
+            <label>Webhook Secret (GAS)</label>
+            <input
+              type="password"
+              value={gasSecretVal}
+              onChange={(e) => setGasSecretVal(e.target.value)}
+              placeholder="same value as WEBHOOK_SECRET in the script"
+              autoComplete="off"
+            />
+            <p className="form-hint">
+              Must exactly match <code>WEBHOOK_SECRET</code> in the tenant's Apps Script. If they
+              differ, every notification fails with "Invalid webhook secret". Leave the script's
+              <code>WEBHOOK_SECRET</code> empty to disable verification instead.
+            </p>
           </div>
           <div className="form-group form-group-full">
             <label>Quick Reply Suggestions (one per line)</label>
