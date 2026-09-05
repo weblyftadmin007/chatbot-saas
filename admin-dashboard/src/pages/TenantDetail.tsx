@@ -19,6 +19,7 @@ interface TenantDetail {
 interface Conversation {
   id: string
   end_user_id: string
+  end_user_email?: string
   status: string
   created_at: number
   updated_at: number
@@ -33,6 +34,8 @@ interface Appointment {
   status: string
   title?: string
   end_user_email?: string
+  notify_status?: string
+  notify_error?: string
 }
 
 export function TenantDetail() {
@@ -86,6 +89,30 @@ export function TenantDetail() {
       active: '#10B981'
     }
     return colors[status] || '#64748B'
+  }
+
+  const getNotifyColor = (status: string) => {
+    const colors: Record<string, string> = {
+      sent: '#10B981',
+      pending: '#F59E0B',
+      failed: '#EF4444'
+    }
+    return colors[status] || '#64748B'
+  }
+
+  const retryNotify = async (apptId: string) => {
+    try {
+      const res = await apiFetch(`/admin/tenants/${tenantId}/appointments/${apptId}/notify`, {
+        method: 'POST'
+      })
+      if (res.ok) {
+        await fetchData()
+      } else {
+        alert('Retry failed — check the GAS URL / sheet config.')
+      }
+    } catch (e) {
+      alert('Retry failed unexpectedly.')
+    }
   }
 
   const handleDelete = async () => {
@@ -222,6 +249,7 @@ export function TenantDetail() {
                   <th>Title</th>
                   <th>Status</th>
                   <th>Customer</th>
+                  <th>Notifications</th>
                 </tr>
               </thead>
               <tbody>
@@ -236,6 +264,20 @@ export function TenantDetail() {
                       </span>
                     </td>
                     <td>{appt.end_user_email || 'Unknown'}</td>
+                    <td>
+                      <span className="badge" style={{ backgroundColor: getNotifyColor(appt.notify_status || 'pending') }}>
+                        {appt.notify_status || 'pending'}
+                      </span>
+                      {(appt.notify_status === 'failed' || appt.notify_status === 'pending') && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ marginLeft: 8 }}
+                          onClick={() => retryNotify(appt.id)}
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

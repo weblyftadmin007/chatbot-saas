@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     status TEXT DEFAULT 'pending',
     title TEXT,
     notes TEXT,
+    notify_status TEXT DEFAULT 'pending',
+    notify_error TEXT,
     metadata TEXT DEFAULT '{}',
     created_at INTEGER DEFAULT (strftime('%s','now')),
     updated_at INTEGER DEFAULT (strftime('%s','now'))

@@ -1,33 +1,38 @@
 /**
- * Google Apps Script - Per-Tenant Booking Notifications for the Chatbot
+ * Google Apps Script - Weblyft Design Booking Notifications
  *
- * Runs in the TENANT's Google account, so it has access to their Gmail and
- * Google Sheets. The Worker calls each tenant's /exec URL with a `type:
- * 'booking'` payload after an appointment is created; this script:
+ * Per-tenant GAS web app for the "weblyft-design" chatbot tenant. Runs in
+ * Weblyft Design's Google account so it can send email from their Gmail and
+ * log bookings straight into their appointments Google Sheet.
+ *
+ * The Worker calls this script's /exec URL with a `type: 'booking'` payload
+ * after an appointment is created. This script (idempotent per appointment_id
+ * — retries never duplicate emails or sheet rows):
  *
  *   1. Emails the customer a confirmation.
  *   2. Emails the business (notification_email) a booking alert.
- *   3. Appends a row to the tenant's appointments Google Sheet.
+ *   3. Appends a row to the weblyft-design appointments Google Sheet.
  *
- * SETUP INSTRUCTIONS (per tenant):
- * 1. Go to https://script.google.com
- * 2. Click "New Project"
- * 3. Paste this entire code
- * 4. Optional: set SPREADSHEET_ID below to the tenant's appointments sheet
- *    (otherwise the Worker passes `spreadsheet_id`, which takes precedence).
- * 5. Click "Deploy" → "New Deployment"
- * 6. Type: "Web App" / Execute as: "Me" / Who has access: "Anyone"
- * 7. Click "Deploy", copy the URL (ends with /exec)
- * 8. Paste that URL + the business notification email + sheet ID into the
- *    admin dashboard → Tenant → Settings → "Notifications & Integrations".
- * 9. Run testEmail() once to authorize (set TEST_RECIPIENT first).
+ * SETUP (ONE TIME, in Google):
+ * 1. Go to https://script.google.com → New Project
+ * 2. Paste this entire code
+ * 3. Set SPREADSHEET_ID below to the Weblyft Design appointments sheet
+ *    (or leave blank and set the sheet ID in the admin dashboard — the Worker
+ *    passes `spreadsheet_id`, which takes precedence).
+ * 4. Set TEST_RECIPIENT to your own email, then run testEmail() + testBooking()
+ *    once to authorize Gmail + Sheets.
+ * 5. Deploy → New Deployment → Type: "Web App" / Execute as: "Me" /
+ *    Who has access: "Anyone". Copy the URL ending in /exec.
+ * 6. Paste that /exec URL + the business notification email (+ sheet ID) into
+ *    the admin dashboard → Tenant → Settings → "Notifications & Integrations"
+ *    for the weblyft-design tenant.
  */
 
 /**
  * Optional spreadsheet ID used when the Worker request omits `spreadsheet_id`.
- * You can leave this blank if you always set the sheet in the dashboard.
+ * PRE-FILL with the Weblyft Design appointments sheet (or set in the dashboard).
  */
-var SPREADSHEET_ID = '';
+var SPREADSHEET_ID = 'PASTE_WEBLYFT_DESIGN_SHEET_ID_HERE';
 
 /**
  * Your real receiving address for test emails. CHANGE THIS.

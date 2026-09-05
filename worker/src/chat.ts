@@ -24,11 +24,10 @@ import {
 } from './config'
 import {
   getAvailability,
-  bookAppointment,
+  bookAndNotify,
   ensureEndUser,
   ApptConflict,
 } from './appointments'
-import { notifyBooking } from './email'
 
 const encoder = new TextEncoder()
 
@@ -338,30 +337,18 @@ async function handleBook(
   const tenantId = rowString(tenant, 'id')
   const endUserId = await ensureEndUser(db, tenant, email)
   try {
-    const appt = await bookAppointment(db, tenant, {
+    const appt = await bookAndNotify(db, tenant, settings, {
       conversationId,
       endUserId,
       startTime: parsed.start,
       endTime: parsed.end,
       title: 'Appointment',
+      customerEmail: email,
     })
     const when = new Date(parsed.start * 1000).toLocaleString()
     send({
       type: 'content',
       content: `You're booked for ${when}. A confirmation email is on its way to ${email}.`,
-    })
-    // Notify best-effort (customer + business emails + sheet row handled by GAS).
-    await notifyBooking(settings, {
-      type: 'booking',
-      tenant_slug: rowString(tenant, 'slug'),
-      tenant_name: rowString(tenant, 'name'),
-      customer_name: '',
-      customer_email: email,
-      start_time: appt.start_time,
-      end_time: appt.end_time,
-      title: 'Appointment',
-      notification_email: typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
-      spreadsheet_id: typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
     })
   } catch (e) {
     if (e instanceof ApptConflict) {

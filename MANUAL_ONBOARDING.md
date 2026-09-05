@@ -91,7 +91,8 @@ Each tenant's Google Apps Script web app handles customer/business emails and
 the appointments Google Sheet. Steps per tenant:
 
 1. In the tenant's Google account: script.google.com → New Project → paste
-   `gas-email/Code.gs` → set `TEST_RECIPIENT` → Deploy → Web App
+   `gas-email/Code.gs` (or the pre-filled copy at `gas-email/weblyft-design/Code.gs`
+   for the Weblyft Design tenant) → set `TEST_RECIPIENT` → Deploy → Web App
    (Execute as "Me", access "Anyone") → copy the `/exec` URL.
 2. Run `testEmail()` once (authorizes Gmail); optional `testBooking()` verifies
    the full customer + business + sheet-row flow.
@@ -99,8 +100,28 @@ the appointments Google Sheet. Steps per tenant:
    Sheet ID into the admin dashboard → Tenant → Settings → "Notifications &
    Integrations", or PATCH `settings` as above (steps 2–3).
 
+### Notification state (Turso = source of truth)
+
+Every booking is saved to the `appointments` table in Turso before anything
+else; the GAS call (customer + business emails + sheet row) is then recorded
+per appointment:
+
+- `notify_status`: `pending` → `sent` | `failed` (stored on the appointment row).
+- `notify_error`: machine-readable reason + trace when `failed`.
+- The Worker auto-retries up to 3 times per booking with short backoff; anything
+  still failing is surfaced in the admin dashboard → Appointments tab.
+
+The dashboard Appointments tab shows a **Notifications** column
+(Sent/Pending/Failed) with a **Retry** button for failed/pending rows. Retries
+are idempotent — the GAS script dedupes by `appointment_id`, so retrying never
+sends duplicate emails or appends duplicate sheet rows.
+
+- Manual retry endpoint:
+  `POST /admin/tenants/:id/appointments/:apptId/notify` (Clerk-protected).
+
 Booking is saved regardless of GAS availability: if the `/exec` URL is missing
-or fails, the Worker logs it and the visitor still gets a confirmation in chat.
+or fails, the row is still created with `notify_status='failed'` and the
+visitor still gets a confirmation in chat — you can fix the URL and Retry later.
 
 ## 8. Embed on the client site
 

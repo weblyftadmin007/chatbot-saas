@@ -7,6 +7,8 @@
  */
 import type { Client } from '@libsql/client/web'
 import { query, rowString, type SqlRow } from './db'
+import { parseJson } from './tenants'
+import { notifyBooking, type BookingNotification, type NotifyResult } from './email'
 
 export interface Slot {
   start_time: number
@@ -164,8 +166,8 @@ export async function bookAppointment(
     db,
     `INSERT INTO appointments
        (id, tenant_id, conversation_id, end_user_id, start_time, end_time,
-        status, title, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)`,
+        status, title, notes, notify_status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, 'pending', ?, ?)`,
     [
       id,
       tenantId,
@@ -184,6 +186,174 @@ export async function bookAppointment(
 }
 
 export class ApptConflict extends Error {}
+
+/**
+ * Attempts to notify an existing appointment (emails + sheet via the tenant's
+ * GAS web app), persisting the outcome to notify_status/notify_error.
+ *
+ * Retry policy: up to MAX_NOTIFY_ATTEMPTS inline attempts with short backoff,
+ * so transient GAS blips self-heal. Anything still failing is surfaced in the
+ * dashboard for a manual Retry (which is safe thanks to GAS idempotency).
+ */
+const MAX_NOTIFY_ATTEMPTS = 3
+
+export interface NotifyCtx {
+  appointmentId: string
+  email: string
+  name?: string
+  startTime: number
+  endTime: number
+  title: string
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+export async function notifyAppointment(
+  db: Client,
+  tenant: SqlRow,
+  settings: Record<string, unknown>,
+  ctx: NotifyCtx,
+): Promise<NotifyResult> {
+  const payload: BookingNotification = {
+    type: 'booking',
+    tenant_slug: rowString(tenant, 'slug'),
+    tenant_name: rowString(tenant, 'name'),
+    customer_name: ctx.name || '',
+    customer_email: ctx.email,
+    start_time: ctx.startTime,
+    end_time: ctx.endTime,
+    title: ctx.title,
+    appointment_id: ctx.appointmentId,
+    notification_email:
+      typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
+    spreadsheet_id:
+      typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
+  }
+
+  let last: NotifyResult = { ok: false, error: 'notify failed' }
+  for (let attempt = 0; attempt < MAX_NOTIFY_ATTEMPTS; attempt++) {
+    if (attempt > 0) await sleep(600 * attempt)
+    last = await notifyBooking(settings, payload)
+    if (last.ok) break
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const errorCol = last.ok
+    ? null
+    : JSON.stringify({ error: last.error || 'notify failed', detail: last.detail || null })
+  await query(
+    db,
+    `UPDATE appointments SET notify_status = ?, notify_error = ?, updated_at = ? WHERE id = ?`,
+    [last.ok ? 'sent' : 'failed', errorCol, now, ctx.appointmentId],
+  )
+  return last
+}
+
+export interface BookOutcome extends BookedAppointment {
+  notify: NotifyResult
+}
+
+/**
+ * Atomic book + notify used by every booking path (chat + REST) so the
+ * notification state is recorded consistently everywhere.
+ */
+export async function bookAndNotify(
+  db: Client,
+  tenant: SqlRow,
+  settings: Record<string, unknown>,
+  opts: {
+    conversationId: string
+    endUserId: string | null
+    startTime: number
+    endTime: number
+    title?: string
+    notes?: string
+    customerEmail: string
+    customerName?: string
+  },
+): Promise<BookOutcome> {
+  const appt = await bookAppointment(db, tenant, opts)
+  const notify = await notifyAppointment(db, tenant, settings, {
+    appointmentId: appt.id,
+    email: opts.customerEmail,
+    name: opts.customerName,
+    startTime: appt.start_time,
+    endTime: appt.end_time,
+    title: opts.title || 'Appointment',
+  })
+  return { ...appt, notify }
+}
+
+export interface RetryOutcome extends BookedAppointment {
+  notify: NotifyResult
+}
+
+/**
+ * Re-run the notify pipeline for an existing appointment (admin Retry button).
+ * Safe to call repeatedly: the GAS script dedupes by appointment_id.
+ * Resolves null if the appointment is not found for this tenant.
+ */
+export async function retryAppointmentNotify(
+  db: Client,
+  tenant: SqlRow,
+  apptId: string,
+): Promise<RetryOutcome | null> {
+  const tenantId = rowString(tenant, 'id')
+  const apptRes = await query(
+    db,
+    'SELECT * FROM appointments WHERE id = ? AND tenant_id = ?',
+    [apptId, tenantId],
+  )
+  if (!apptRes.rows.length) return null
+  const appt = apptRes.rows[0]!
+
+  let email = ''
+  let name = ''
+  const endUserId = rowString(appt, 'end_user_id')
+  if (endUserId) {
+    const euRes = await query(db, 'SELECT email, name FROM end_users WHERE id = ?', [endUserId])
+    if (euRes.rows.length) {
+      email = rowString(euRes.rows[0]!, 'email')
+      name = rowString(euRes.rows[0]!, 'name')
+    }
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  if (!email) {
+    const err = JSON.stringify({ error: 'no customer email on record' })
+    await query(
+      db,
+      `UPDATE appointments SET notify_status = 'failed', notify_error = ?, updated_at = ? WHERE id = ?`,
+      [err, now, apptId],
+    )
+    return {
+      id: apptId,
+      status: rowString(appt, 'status', 'pending'),
+      start_time: Number(appt['start_time'] || 0),
+      end_time: Number(appt['end_time'] || 0),
+      notify: { ok: false, error: 'no customer email on record' },
+    }
+  }
+
+  const settings = parseJson<Record<string, unknown>>(rowString(tenant, 'settings', '{}'), {})
+  const notify = await notifyAppointment(db, tenant, settings, {
+    appointmentId: apptId,
+    email,
+    name,
+    startTime: Number(appt['start_time'] || 0),
+    endTime: Number(appt['end_time'] || 0),
+    title: rowString(appt, 'title', 'Appointment'),
+  })
+  return {
+    id: apptId,
+    status: rowString(appt, 'status', 'pending'),
+    start_time: Number(appt['start_time'] || 0),
+    end_time: Number(appt['end_time'] || 0),
+    notify,
+  }
+}
 
 /**
  * Find or create the end_user for an email within a tenant (dedupe by

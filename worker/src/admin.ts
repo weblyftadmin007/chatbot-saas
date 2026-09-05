@@ -15,6 +15,8 @@ import { processFaq, processText, deleteChunks, listSources } from './knowledge'
 import type { Env } from './config'
 import { json } from './chat'
 
+export { retryAppointmentNotify } from './appointments'
+
 export async function authorize(
   request: Request,
   env: Env,
@@ -370,4 +372,70 @@ export async function getAnalytics(db: Client): Promise<Response> {
     top_tenants,
   }
   return json(data)
+}
+
+/** Conversations + last-message preview for the tenant detail dashboard. */
+export async function listTenantConversations(db: Client, tenantId: string): Promise<Response> {
+  const tenant = await tenantById(db, tenantId)
+  if (!tenant) return json({ detail: 'Tenant not found' }, 404)
+  const result = await query(
+    db,
+    `SELECT
+       c.id,
+       c.end_user_id,
+       eu.email AS end_user_email,
+       c.status,
+       c.created_at,
+       c.updated_at,
+       (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) AS message_count,
+       (SELECT content FROM messages WHERE conversation_id = c.id
+        ORDER BY created_at DESC LIMIT 1) AS last_message
+     FROM conversations c
+     LEFT JOIN end_users eu ON c.end_user_id = eu.id
+     WHERE c.tenant_id = ?
+     ORDER BY c.updated_at DESC
+     LIMIT 100`,
+    [tenantId],
+  )
+  return json(
+    result.rows.map((r) => ({
+      id: rowString(r, 'id'),
+      end_user_id: (r['end_user_id'] as string | null) || null,
+      end_user_email: (r['end_user_email'] as string | null) || null,
+      status: rowString(r, 'status', 'active'),
+      created_at: Number(r['created_at'] || 0),
+      updated_at: Number(r['updated_at'] || 0),
+      message_count: Number(r['message_count'] ?? 0),
+      last_message: (r['last_message'] as string | null) || '',
+    })),
+  )
+}
+
+/** Appointments (with customer email + notification state) for the dashboard. */
+export async function listTenantAppointments(db: Client, tenantId: string): Promise<Response> {
+  const tenant = await tenantById(db, tenantId)
+  if (!tenant) return json({ detail: 'Tenant not found' }, 404)
+  const result = await query(
+    db,
+    `SELECT a.*, eu.email AS end_user_email, eu.name AS end_user_name
+     FROM appointments a
+     LEFT JOIN end_users eu ON a.end_user_id = eu.id
+     WHERE a.tenant_id = ?
+     ORDER BY a.start_time DESC
+     LIMIT 100`,
+    [tenantId],
+  )
+  return json(
+    result.rows.map((r) => ({
+      id: rowString(r, 'id'),
+      start_time: Number(r['start_time'] || 0),
+      end_time: Number(r['end_time'] || 0),
+      status: rowString(r, 'status', 'pending'),
+      title: (r['title'] as string | null) || null,
+      end_user_email: (r['end_user_email'] as string | null) || null,
+      notify_status: rowString(r, 'notify_status', 'pending'),
+      notify_error: (r['notify_error'] as string | null) || null,
+      created_at: Number(r['created_at'] || 0),
+    })),
+  )
 }

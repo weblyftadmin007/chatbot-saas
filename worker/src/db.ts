@@ -17,6 +17,39 @@ export interface SqlResult {
 
 const dbKey = Symbol.for('chatbot.turso.client')
 
+let schemaMigrated = false
+
+/**
+ * Idempotent runtime migration: add the notification-state columns to the
+ * `appointments` table on the live DB. Fresh databases created from
+ * db/schema.sql already include them; existing DBs get a guarded ALTER so no
+ * manual `turso db shell` step is required. Runs once per isolate.
+ */
+export async function ensureSchemaMigrations(db: Client): Promise<void> {
+  if (schemaMigrated) return
+  try {
+    const res = await query(db, 'PRAGMA table_info(appointments)', [])
+    const cols = new Set<string>(res.rows.map((r) => String(r['name'] ?? '')))
+    if (!cols.has('notify_status')) {
+      await db.execute({
+        sql: `ALTER TABLE appointments ADD COLUMN notify_status TEXT NOT NULL DEFAULT 'pending'`,
+        args: [],
+      })
+    }
+    if (!cols.has('notify_error')) {
+      await db.execute({
+        sql: 'ALTER TABLE appointments ADD COLUMN notify_error TEXT',
+        args: [],
+      })
+    }
+    schemaMigrated = true
+  } catch (e) {
+    // Keep a retryable state so a transient failure re-runs next request.
+    schemaMigrated = false
+    console.error('[migration] appointments columns failed:', e instanceof Error ? e.message : String(e))
+  }
+}
+
 export function getDb(env: Env): Client {
   const g = globalThis as unknown as Record<symbol, Client | undefined>
   if (!g[dbKey]) {

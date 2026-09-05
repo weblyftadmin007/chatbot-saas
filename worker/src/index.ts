@@ -22,10 +22,9 @@
  */
 import type { Env } from './config'
 import { chatModel, embedModel, similarityThreshold, topK } from './config'
-import { getDb, query, rowString } from './db'
-import { tenantBySlug, buildWidgetConfig, parseJson } from './tenants'
-import { ensureEndUser, bookAppointment, ApptConflict } from './appointments'
-import { notifyBooking } from './email'
+import { getDb, query, rowString, ensureSchemaMigrations } from './db'
+import { tenantBySlug, tenantById, buildWidgetConfig, parseJson } from './tenants'
+import { ensureEndUser, bookAndNotify, ApptConflict } from './appointments'
 import { handleChat, json } from './chat'
 import { classifyIntent, embedSingle, generateText, synthesizeAnswer } from './llm'
 import { blobToVector, cosineSimilarity } from './vec'
@@ -37,7 +36,10 @@ import {
   getAnalytics,
   getKnowledge,
   getTenant,
+  listTenantAppointments,
+  listTenantConversations,
   listTenants,
+  retryAppointmentNotify,
   updateTenant,
   uploadKnowledgeText,
 } from './admin'
@@ -88,6 +90,13 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 2 && tail[0] === 'tenants') return { pattern: 'adminTenant', params: [tail[1]!] }
       if (tail.length === 3 && tail[0] === 'tenants' && tail[2] === 'knowledge')
         return { pattern: 'adminTenantKnowledge', params: [tail[1]!] }
+      if (tail.length === 3 && tail[0] === 'tenants' && tail[2] === 'conversations')
+        return { pattern: 'adminTenantConversations', params: [tail[1]!] }
+      if (tail.length === 3 && tail[0] === 'tenants' && tail[2] === 'appointments')
+        return { pattern: 'adminTenantAppointments', params: [tail[1]!] }
+      if (tail.length === 5 && tail[0] === 'tenants' && tail[2] === 'appointments' && tail[4] === 'notify')
+        // POST /admin/tenants/:id/appointments/:apptId/notify
+        return { pattern: 'adminAppointmentNotify', params: [tail[1]!, tail[3]!] }
       if (tail.length === 4 && tail[0] === 'tenants' && tail[2] === 'knowledge' && tail[3] === 'text')
         // POST /admin/tenants/:id/knowledge/text { source_id, source_type, content }
         return { pattern: 'adminTenantKnowledge', params: [tail[1]!] }
@@ -119,6 +128,8 @@ export default {
     if (!route) return withCors(notFound())
 
     const db = getDb(env)
+    // Idempotent runtime migration (adds notify_status/notify_error if absent).
+    await ensureSchemaMigrations(db)
 
     switch (route.pattern) {
       case 'debugDb': {
@@ -338,26 +349,13 @@ export default {
         )
         const endUserId = await ensureEndUser(db, tenant, email)
         try {
-          const appt = await bookAppointment(db, tenant, {
+          const appt = await bookAndNotify(db, tenant, settings, {
             conversationId,
             endUserId,
             startTime,
             endTime,
             title,
-          })
-          await notifyBooking(settings, {
-            type: 'booking',
-            tenant_slug: slug!,
-            tenant_name: rowString(tenant, 'name'),
-            customer_name: '',
-            customer_email: email,
-            start_time: appt.start_time,
-            end_time: appt.end_time,
-            title,
-            notification_email:
-              typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
-            spreadsheet_id:
-              typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
+            customerEmail: email,
           })
           return withCors(
             json({
@@ -365,6 +363,8 @@ export default {
               status: appt.status,
               start_time: appt.start_time,
               end_time: appt.end_time,
+              notify_status: appt.notify.ok ? 'sent' : 'failed',
+              notify_error: appt.notify.error || null,
               confirmation_message: 'Appointment booked successfully!',
             }),
           )
@@ -448,6 +448,40 @@ export default {
         if (request.method === 'DELETE')
           return withCors(await deleteKnowledge(db, tenantId!, sourceId!))
         return withCors(methodNotAllowed())
+      }
+      case 'adminTenantConversations': {
+        const denied = await authorize(request, env)
+        if (denied) return withCors(denied)
+        const [tenantId] = route.params
+        if (request.method === 'GET')
+          return withCors(await listTenantConversations(db, tenantId!))
+        return withCors(methodNotAllowed())
+      }
+      case 'adminTenantAppointments': {
+        const denied = await authorize(request, env)
+        if (denied) return withCors(denied)
+        const [tenantId] = route.params
+        if (request.method === 'GET')
+          return withCors(await listTenantAppointments(db, tenantId!))
+        return withCors(methodNotAllowed())
+      }
+      case 'adminAppointmentNotify': {
+        const denied = await authorize(request, env)
+        if (denied) return withCors(denied)
+        const [tenantId, apptId] = route.params
+        if (request.method !== 'POST') return withCors(methodNotAllowed())
+        const tenant = await tenantById(db, tenantId!)
+        if (!tenant) return withCors(json({ detail: 'Tenant not found' }, 404))
+        const outcome = await retryAppointmentNotify(db, tenant, apptId!)
+        if (!outcome) return withCors(json({ detail: 'Appointment not found' }, 404))
+        return withCors(
+          json({
+            appointment_id: outcome.id,
+            status: outcome.status,
+            notify_status: outcome.notify.ok ? 'sent' : 'failed',
+            notify_error: outcome.notify.error || null,
+          }),
+        )
       }
       default:
         return withCors(notFound())
