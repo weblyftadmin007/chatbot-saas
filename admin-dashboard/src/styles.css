@@ -654,6 +654,28 @@ code {
   color: #991B1B;
 }
 
+.knowledge-sources {
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.knowledge-sources h3 {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.uploader .form-hint {
+  display: block;
+  margin-top: 10px;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
