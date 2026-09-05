@@ -18,6 +18,7 @@ import { parseJson } from './tenants'
 import {
   notifyBooking,
   notifyCancellation,
+  notifyReminder,
   type BookingNotification,
   type NotifyResult,
 } from './email'
@@ -122,7 +123,7 @@ export function tzOffsetMinutes(utcMs: number, tzName: string): number {
       timeZoneName: 'shortOffset',
     })
     const val = dtf.formatToParts(new Date(utcMs)).find((p) => p.type === 'timeZoneName')?.value || ''
-    const m = val.match(/GMT?([+-])(\d{1,2}):?(\d{2})/)
+    const m = val.match(/GMT?([+-])(\\d{1,2}):?(\\d{2})/)
     if (!m) return 0
     const sign = m[1] === '-' ? -1 : 1
     return sign * (parseInt(m[2] ?? '0', 10) * 60 + parseInt(m[3] ?? '0', 10))
@@ -184,7 +185,7 @@ export async function getAvailability(
   const horizon = bookingHorizon(tenant)
 
   let offsets: number[]
-  if (opts.date && /^\d{4}-\d{2}-\d{2}$/.test(opts.date)) {
+  if (opts.date && /^\\d{4}-\\d{2}-\\d{2}$/.test(opts.date)) {
     const off = isoToDayOffset(opts.date, tzName)
     if (off === null || off < 0 || off > horizon) return []
     offsets = [off]
@@ -571,6 +572,107 @@ export async function ensureEndUser(
   return id
 }
 
+/**
+ * Cron helper: send a 24-hour reminder for one appointment.
+ */
+export async function sendReminder(
+  db: Client,
+  tenant: SqlRow,
+  settings: Record<string, unknown>,
+  appointmentId: string,
+  email: string,
+  customerName: string,
+  startTime: number,
+  endTime: number,
+  title: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const already = await query(
+    db,
+    'SELECT 1 FROM appointments WHERE id = ? AND remind_status = ? LIMIT 1',
+    [appointmentId, 'reminded'],
+  )
+  if (already.rows.length) return { ok: true, error: 'already reminded' }
+
+  const out = await notifyReminder(settings, {
+    type: 'reminder',
+    tenant_slug: rowString(tenant, 'slug'),
+    tenant_name: rowString(tenant, 'name'),
+    customer_name: customerName,
+    customer_email: email,
+    start_time: startTime,
+    end_time: endTime,
+    title,
+    appointment_id: appointmentId,
+    notification_email:
+      typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
+    spreadsheet_id:
+      typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
+    timezone: rowString(tenant, 'timezone', 'UTC'),
+  })
+  if (!out.ok) {
+    const err = JSON.stringify({ error: out.error || 'remind failed', detail: out.detail || null })
+    await query(
+      db,
+      `UPDATE appointments SET remind_status = 'remind_failed', notify_error = ?, updated_at = ? WHERE id = ?`,
+      [err, Math.floor(Date.now() / 1000), appointmentId],
+    )
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  await query(
+    db,
+    `UPDATE appointments SET remind_status = 'reminded', updated_at = ? WHERE id = ?`,
+    [now, appointmentId],
+  )
+  return out.ok ? { ok: true } : { ok: false, error: out.error }
+}
+
+/**
+ * Cron sweep: send 24-hour reminders for upcoming appointments that haven't
+ * been reminded yet.
+ */
+export async function sweepUpcomingReminders(db: Client): Promise<{ attempted: number; sent: number; failed: number }> {
+  const now = Math.floor(Date.now() / 1000)
+  const remindWindowStart = now + 24 * 3600 - 3600
+  const remindWindowEnd = now + 24 * 3600 + 3600
+  const res = await query(
+    db,
+    `SELECT a.id, a.start_time, a.end_time, a.title, a.status,
+            eu.email AS customer_email, eu.name AS customer_name,
+            t.slug AS tenant_slug, t.name AS tenant_name,
+            t.timezone AS tenant_timezone, t.settings AS tenant_settings
+     FROM appointments a
+     JOIN tenants t ON t.id = a.tenant_id AND t.plan != 'deleted'
+     LEFT JOIN end_users eu ON eu.id = a.end_user_id
+     WHERE a.status IN ('pending', 'confirmed')
+       AND a.start_time >= ?
+       AND a.start_time < ?
+     ORDER BY a.start_time
+     LIMIT 30`,
+    [remindWindowStart, remindWindowEnd],
+  )
+
+  let sent = 0
+  let failed = 0
+  for (const r of res.rows) {
+    const email = rowString(r, 'customer_email')
+    if (!email) {
+      failed++
+      continue
+    }
+    const settings = parseJson<Record<string, unknown>>(rowString(r, 'tenant_settings', '{}'), {})
+    const tenantRow = {
+      slug: r['tenant_slug'],
+      name: r['tenant_name'],
+      timezone: r['tenant_timezone'],
+    } as SqlRow
+    const out = await sendReminder(db, tenantRow, settings, rowString(r, 'id'), email, rowString(r, 'customer_name'), Number(r['start_time'] || 0), Number(r['end_time'] || 0), rowString(r, 'title', 'Appointment'))
+    if (out.ok) sent++
+    else failed++
+  }
+  return { attempted: res.rows.length, sent, failed }
+}
+
 export interface NotifySweepResult {
   attempted: number
   sent: number
@@ -591,143 +693,84 @@ const NOTIFY_RETRY_AGE_SEC = 300
  */
 export async function sweepPendingNotifications(db: Client): Promise<NotifySweepResult> {
   const now = Math.floor(Date.now() / 1000)
-  const res = await query(
+  const cutoff = now - NOTIFY_RETRY_AGE_SEC
+  const rows = await query(
     db,
-    `SELECT a.id, a.start_time, a.end_time, a.title,
-            eu.email AS customer_email, eu.name AS customer_name,
-            t.slug AS tenant_slug, t.name AS tenant_name,
-            t.timezone AS tenant_timezone, t.settings AS tenant_settings
-     FROM appointments a
-     JOIN tenants t ON t.id = a.tenant_id AND t.plan != 'deleted'
-     LEFT JOIN end_users eu ON eu.id = a.end_user_id
-     WHERE a.notify_status IN ('pending', 'failed')
-       AND a.updated_at < ?
-       AND (a.start_time >= ? OR a.created_at >= ?)
-     ORDER BY a.created_at
-     LIMIT ${NOTIFY_SWEEP_BATCH}`,
-    [now - NOTIFY_RETRY_AGE_SEC, now, now - 7 * 86400],
+    `SELECT id, start_time, end_time, title, status FROM appointments
+     WHERE notify_status IN ('pending', 'failed')
+       AND updated_at < ?
+     ORDER BY updated_at
+     LIMIT ?`,
+    [cutoff, NOTIFY_SWEEP_BATCH],
   )
 
   let sent = 0
   let failed = 0
-  for (const r of res.rows) {
-    const email = rowString(r, 'customer_email')
+  for (const r of rows.rows) {
+    const id = rowString(r, 'id')
+    if (typeof id !== 'string') {
+      failed++
+      continue
+    }
+    const tenantId = (r as any)['tenant_id']
+    if (!tenantId) {
+      failed++
+      continue
+    }
+    const tenantRes = await query(
+      db,
+      'SELECT * FROM tenants WHERE id = ? AND plan != ?',
+      [tenantId, 'deleted'],
+    )
+    if (!tenantRes.rows.length) {
+      failed++
+      continue
+    }
+    const tenant = tenantRes.rows[0]!
+    const emailRes = await query(
+      db,
+      `SELECT email, name FROM end_users WHERE id = (
+        SELECT end_user_id FROM appointments WHERE id = ? LIMIT 1
+      )`,
+      [id],
+    )
+    let email = ''
+    let name = ''
+    if (emailRes.rows.length) {
+      email = rowString(emailRes.rows[0]!, 'email')
+      name = rowString(emailRes.rows[0]!, 'name')
+    }
     if (!email) {
       failed++
       continue
     }
-    const settings = parseJson<Record<string, unknown>>(rowString(r, 'tenant_settings', '{}'), {})
-    const tenantRow = {
-      slug: r['tenant_slug'],
-      name: r['tenant_name'],
-      timezone: r['tenant_timezone'],
-    } as SqlRow
-    const out = await notifyAppointment(db, tenantRow, settings, {
-      appointmentId: rowString(r, 'id'),
+    const settings = parseJson<Record<string, unknown>>(rowString(tenant, 'settings', '{}'), {})
+    const out = await notifyAppointment(db, tenant, settings, {
+      appointmentId: id,
       email,
-      name: rowString(r, 'customer_name'),
-      startTime: Number(r['start_time'] || 0),
-      endTime: Number(r['end_time'] || 0),
+      name,
+      startTime: Number(rowString(r, 'start_time') || 0),
+      endTime: Number(rowString(r, 'end_time') || 0),
       title: rowString(r, 'title', 'Appointment'),
     })
     if (out.ok) sent++
     else failed++
   }
-  return { attempted: res.rows.length, sent, failed }
+  return { attempted: rows.rows.length, sent, failed }
 }
 
 /**
- * Cron helper: flip past 'confirmed' appointments to 'completed' so the
- * status lifecycle actually advances and analytics stay honest. Returns the
- * number of rows updated.
+ * Cron helper: mark past confirmed/pending appointments as completed so the
+ * dashboard doesn't keep showing stale slots.
  */
 export async function completePastAppointments(db: Client): Promise<number> {
   const now = Math.floor(Date.now() / 1000)
   const res = await query(
     db,
     `UPDATE appointments SET status = 'completed', updated_at = ?
-     WHERE status = 'confirmed' AND end_time < ?`,
+     WHERE status IN ('pending', 'confirmed')
+       AND end_time < ?`,
     [now, now],
   )
-  return res.rowsAffected
-}
-
-export interface CancelOutcome {
-  appointment: BookedAppointment
-  notify: NotifyResult
-}
-
-/**
- * Cancel a customer's upcoming appointment by email (optionally narrowed to a
- * calendar date in the tenant's timezone). Sets status='cancelled' — which
- * frees the slot, since cancelled rows are excluded from conflict checks —
- * and sends a cancellation notice via GAS. Resolves null when no matching
- * upcoming appointment exists.
- */
-export async function cancelAppointment(
-  db: Client,
-  tenant: SqlRow,
-  settings: Record<string, unknown>,
-  opts: { email: string; dateIso?: string | null },
-): Promise<CancelOutcome | null> {
-  const tenantId = rowString(tenant, 'id')
-  const email = opts.email.trim().toLowerCase()
-  const now = Math.floor(Date.now() / 1000)
-
-  const args: SqlValue[] = [tenantId, email, now]
-  let dateFilter = ''
-  if (opts.dateIso) {
-    const midnight = localMidnightEpoch(opts.dateIso, rowString(tenant, 'timezone', 'UTC'))
-    if (Number.isFinite(midnight)) {
-      dateFilter = 'AND a.start_time >= ? AND a.start_time < ?'
-      args.push(midnight, midnight + 86400)
-    }
-  }
-
-  const res = await query(
-    db,
-    `SELECT a.id, a.start_time, a.end_time, a.status, a.title, eu.name AS customer_name
-     FROM appointments a
-     JOIN end_users eu ON eu.id = a.end_user_id
-     WHERE a.tenant_id = ? AND lower(eu.email) = ?
-       AND a.status IN ('pending', 'confirmed') AND a.start_time >= ? ${dateFilter}
-     ORDER BY a.start_time
-     LIMIT 1`,
-    args,
-  )
-  if (!res.rows.length) return null
-  const appt = res.rows[0]!
-  const id = rowString(appt, 'id')
-  await query(
-    db,
-    `UPDATE appointments SET status = 'cancelled', updated_at = ? WHERE id = ? AND tenant_id = ?`,
-    [now, id, tenantId],
-  )
-
-  const notify = await notifyCancellation(settings, {
-    type: 'cancellation',
-    tenant_slug: rowString(tenant, 'slug'),
-    tenant_name: rowString(tenant, 'name'),
-    customer_name: rowString(appt, 'customer_name'),
-    customer_email: email,
-    start_time: Number(appt['start_time'] || 0),
-    end_time: Number(appt['end_time'] || 0),
-    title: rowString(appt, 'title', 'Appointment'),
-    appointment_id: id,
-    notification_email:
-      typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
-    spreadsheet_id:
-      typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
-    timezone: rowString(tenant, 'timezone', 'UTC'),
-  })
-
-  return {
-    appointment: {
-      id,
-      status: 'cancelled',
-      start_time: Number(appt['start_time'] || 0),
-      end_time: Number(appt['end_time'] || 0),
-    },
-    notify,
-  }
+  return Number(res.rowsAffected ?? 0)
 }

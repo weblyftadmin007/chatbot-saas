@@ -25,7 +25,6 @@ import {
 import {
   getAvailability,
   bookAndNotify,
-  cancelAppointment,
   ensureEndUser,
   ApptConflict,
   ApptClosed,
@@ -36,6 +35,7 @@ import {
   localIsoDate,
   isoToDayOffset,
 } from './appointments'
+import { cancelAppointment } from './cancel'
 import { formatSlot } from './email'
 
 const encoder = new TextEncoder()
@@ -457,7 +457,7 @@ async function handleCancel(
     })
     return
   }
-  const outcome = await cancelAppointment(db, tenant, settings, { email, dateIso })
+  const outcome = await cancelAppointment(db, tenant, settings, { email: email || '', dateIso: dateIso ?? undefined })
   if (!outcome) {
     send({
       type: 'content',

@@ -32,12 +32,14 @@ import {
   bookingHorizon,
   slotDuration,
   sweepPendingNotifications,
+  sweepUpcomingReminders,
   completePastAppointments,
   ApptConflict,
   ApptClosed,
   ApptHorizon,
   type AvailabilityOptions,
 } from './appointments'
+import { cancelAppointment } from './cancel'
 import { handleChat, json } from './chat'
 import { classifyIntent, embedSingle, generateText, synthesizeAnswer } from './llm'
 import { blobToVector, cosineSimilarity } from './vec'
@@ -641,7 +643,13 @@ export default {
       const swept = await sweepPendingNotifications(db)
       if (swept.attempted) {
         console.log(
-          `[cron] notify sweep: ${swept.attempted} attempted, ${swept.sent} sent, ${swept.failed} failed`,
+          `[cron] notify retry: ${swept.attempted} attempted, ${swept.sent} sent, ${swept.failed} failed`,
+        )
+      }
+      const reminded = await sweepUpcomingReminders(db)
+      if (reminded.attempted) {
+        console.log(
+          `[cron] reminders: ${reminded.attempted} attempted, ${reminded.sent} sent, ${reminded.failed} failed`,
         )
       }
       const completed = await completePastAppointments(db)

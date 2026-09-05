@@ -24,7 +24,7 @@ export interface NotifyResult {
 }
 
 export interface BookingNotification {
-  type: 'booking' | 'cancellation'
+  type: 'booking' | 'cancellation' | 'reminder'
   tenant_slug: string
   tenant_name: string
   customer_name: string
@@ -135,6 +135,9 @@ export async function notifyCancellation(settings: Record<string, unknown>, payl
   if (!gasUrlStr) {
     return { ok: false, error: 'no gas_url configured' }
   }
+  if (payload.type !== 'cancellation' && payload.type !== 'reminder') {
+    return { ok: false, error: 'invalid notification type' }
+  }
   try {
     const res = await fetch(gasUrlStr, {
       method: 'POST',
@@ -158,6 +161,43 @@ export async function notifyCancellation(settings: Record<string, unknown>, payl
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error(`[notifyCancellation] GAS fetch error for ${payload.tenant_slug}: ${msg}`)
+    return { ok: false, error: 'gas fetch failed', detail: msg }
+  }
+}
+
+/**
+ * Send a reminder for an upcoming appointment (customer + business email;
+ * no Sheet write). Non-blocking — callers persist notify_status like other
+ * notifications.
+ */
+export async function notifyReminder(settings: Record<string, unknown>, payload: BookingNotification): Promise<NotifyResult> {
+  const gasUrlStr = gasUrl(settings)
+  if (!gasUrlStr) {
+    return { ok: false, error: 'no gas_url configured' }
+  }
+  try {
+    const res = await fetch(gasUrlStr, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(withSecret(settings, payload)),
+    })
+    const text = await res.text().catch(() => '')
+    let data: Record<string, unknown> | null = null
+    try {
+      data = text ? (JSON.parse(text) as Record<string, unknown>) : null
+    } catch {
+      data = null
+    }
+    if (!res.ok) {
+      const error = typeof data?.error === 'string' ? data.error : `GAS HTTP ${res.status}`
+      return { ok: false, error, detail: text.slice(0, 300) }
+    }
+    const parsed = parseGasResult(data)
+    if (!parsed.ok) return { ok: false, error: parsed.error, detail: text.slice(0, 300) }
+    return { ok: true, detail: data && typeof data === 'object' ? JSON.stringify(data) : undefined }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error(`[notifyReminder] GAS fetch error for ${payload.tenant_slug}: ${msg}`)
     return { ok: false, error: 'gas fetch failed', detail: msg }
   }
 }
