@@ -24,7 +24,7 @@ import type { Env } from './config'
 import { getDb, query, rowString } from './db'
 import { tenantBySlug, buildWidgetConfig } from './tenants'
 import { handleChat, json } from './chat'
-import { classifyIntent, generateText } from './llm'
+import { classifyIntent, generateText, synthesizeAnswer } from './llm'
 import {
   authorize,
   createTenant,
@@ -90,6 +90,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
     case '/debug': {
       if (tail.length === 1 && tail[0] === 'db') return { pattern: 'debugDb', params: [] }
       if (tail.length === 1 && tail[0] === 'classify') return { pattern: 'debugClassify', params: [] }
+      if (tail.length === 1 && tail[0] === 'answer') return { pattern: 'debugAnswer', params: [] }
       return null
     }
     default:
@@ -163,6 +164,31 @@ export default {
             resolved_intent: resolvedIntent,
             timestamp: Math.floor(Date.now() / 1000),
             note: 'No secrets, no customer data. Just the classifyIntent test.',
+          }),
+        )
+      }
+
+      case 'debugAnswer': {
+        if (request.method !== 'GET') return withCors(methodNotAllowed())
+        const text = (new URL(request.url).searchParams.get('text') || 'Hello').slice(0, 500)
+        const chunks: string[] = []
+        let error: string | null = null
+        try {
+          const gen = synthesizeAnswer(env, text, [
+            'Sample context chunk about Weblyft Design, a web agency in New Delhi, India.',
+          ])
+          for await (const c of gen) chunks.push(c)
+        } catch (e) {
+          error = (e instanceof Error ? e.stack || e.message : String(e)).slice(0, 800)
+        }
+        return withCors(
+          json({
+            ok: error === null,
+            input: text,
+            chunks,
+            error,
+            timestamp: Math.floor(Date.now() / 1000),
+            note: 'Runs synthesizeAnswer stream; surfaces the raw error for debugging.',
           }),
         )
       }
