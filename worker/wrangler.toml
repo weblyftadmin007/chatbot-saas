@@ -21,6 +21,13 @@ CHUNK_SIZE = "500"
 CHUNK_OVERLAP = "50"
 # Optional self-throttle for chat LLM calls (requests/minute/tenant).
 LLM_CHAT_RPM = "10"
+# Max booking requests per IP per minute on public booking endpoints (0 disables).
+RATE_LIMIT_BOOKING = "10"
+
+# Cron: retry failed/stuck booking notifications (idempotent — GAS dedupes by
+# appointment_id) and mark past confirmed appointments as completed.
+[triggers]
+crons = ["*/15 * * * *"]
 
 # Secrets — set these with `wrangler secret put` (or GitHub Actions):
 #   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, GEMINI_API_KEY,

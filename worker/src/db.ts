@@ -7,6 +7,7 @@ import { createClient, type Client } from '@libsql/client/web'
 import type { Env } from './config'
 
 type SqlValue = string | number | bigint | Uint8Array | null | boolean
+export type { SqlValue }
 export type SqlRow = Record<string, SqlValue>
 
 export interface SqlResult {

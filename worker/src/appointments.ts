@@ -3,12 +3,24 @@
  *
  * Slots are generated from the tenant's business_hours / timezone / slot_duration
  * / buffer_minutes and exclude already-booked (pending/confirmed) rows. Booking
- * conflict-checks first so two requests can't take the same slot.
+ * claims a slot atomically (the conflict check lives inside the INSERT, so two
+ * concurrent requests can never both take the same slot) and validates the slot
+ * against the tenant's hours, booking horizon and slot grid.
+ *
+ * Notifications retry inline (3 attempts) and anything still failing or stuck
+ * 'pending' is swept by the Worker cron (sweepPendingNotifications), so failed
+ * deliveries self-heal without the dashboard's manual Retry button.
+ * cancelAppointment frees a slot and notifies the customer via GAS.
  */
 import type { Client } from '@libsql/client/web'
-import { query, rowString, type SqlRow } from './db'
+import { query, rowString, type SqlRow, type SqlValue } from './db'
 import { parseJson } from './tenants'
-import { notifyBooking, type BookingNotification, type NotifyResult } from './email'
+import {
+  notifyBooking,
+  notifyCancellation,
+  type BookingNotification,
+  type NotifyResult,
+} from './email'
 
 export interface Slot {
   start_time: number
@@ -70,6 +82,11 @@ export function bookingHorizon(tenant: SqlRow): number {
   const raw = Number(settings['booking_horizon_days'])
   if (Number.isFinite(raw) && raw > 0) return Math.min(Math.floor(raw), 365)
   return 60
+}
+
+/** The tenant's slot length in minutes (tenant setting, default 30). */
+export function slotDuration(tenant: SqlRow): number {
+  return Number(tenant['slot_duration'] ?? 30) || 30
 }
 
 /** Calendar date (YYYY-MM-DD) of "now + offsetDays" in the given timezone. */
@@ -228,6 +245,10 @@ export async function getAvailability(
 
 /**
  * Book an appointment. Throws ApptConflict if the slot is already taken.
+ *
+ * The conflict check lives inside the INSERT (atomic claim), so concurrent
+ * requests for the same slot cannot both succeed — the loser inserts 0 rows.
+ * The check is buffer-aware, matching how availability pads slots.
  */
 export async function bookAppointment(
   db: Client,
@@ -243,26 +264,21 @@ export async function bookAppointment(
 ): Promise<BookedAppointment> {
   const tenantId = rowString(tenant, 'id')
   const now = Math.floor(Date.now() / 1000)
-
-  const conflictRes = await query(
-    db,
-    `SELECT id FROM appointments
-     WHERE tenant_id = ? AND status IN ('pending', 'confirmed')
-     AND start_time < ? AND end_time > ?`,
-    [tenantId, opts.endTime, opts.startTime],
-  )
-  if (conflictRes.rows.length) {
-    throw new ApptConflict('Time slot no longer available')
-  }
   assertBookable(tenant, opts.startTime, opts.endTime)
 
+  const bufferSec = (Number(tenant['buffer_minutes'] ?? 15) || 0) * 60
   const id = crypto.randomUUID()
-  await query(
+  const res = await query(
     db,
     `INSERT INTO appointments
        (id, tenant_id, conversation_id, end_user_id, start_time, end_time,
         status, title, notes, notify_status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, 'pending', ?, ?)`,
+     SELECT ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, 'pending', ?, ?
+     WHERE NOT EXISTS (
+       SELECT 1 FROM appointments
+       WHERE tenant_id = ? AND status IN ('pending', 'confirmed')
+         AND start_time < ? AND end_time > ?
+     )`,
     [
       id,
       tenantId,
@@ -274,8 +290,14 @@ export async function bookAppointment(
       opts.notes || null,
       now,
       now,
+      tenantId,
+      opts.endTime + bufferSec,
+      opts.startTime - bufferSec,
     ],
   )
+  if (!res.rowsAffected) {
+    throw new ApptConflict('Time slot no longer available')
+  }
 
   return { id, status: 'confirmed', start_time: opts.startTime, end_time: opts.endTime }
 }
@@ -301,6 +323,14 @@ function assertBookable(tenant: SqlRow, start: number, end: number): void {
   if (!startInfo || !endInfo) throw new ApptClosed('Unable to verify business hours')
   if (endInfo.minutes < startInfo.minutes) throw new ApptClosed('That time is not valid')
 
+  // Slot-shape validation: bookings must match the tenant's slot grid so a
+  // single request can't claim a whole day with one arbitrary-time row.
+  const slotDuration = Number(tenant['slot_duration'] ?? 30) || 30
+  const bufferMinutes = Number(tenant['buffer_minutes'] ?? 15) || 0
+  if (end - start !== slotDuration * 60) {
+    throw new ApptClosed(`Bookings are ${slotDuration}-minute appointments`)
+  }
+
   const hours = businessHours(tenant)
   const dayName = DAY_NAMES[new Date(`${startInfo.dayIso}T00:00:00`).getDay()] ?? 'sunday'
   const day = hours[dayName] || (Object.keys(hours).length ? undefined : (DEFAULT_HOURS as any)[dayName])
@@ -314,6 +344,13 @@ function assertBookable(tenant: SqlRow, start: number, end: number): void {
   if (startInfo.minutes < openMin || endInfo.minutes > closeMin) {
     throw new ApptClosed('The business is closed at that time')
   }
+  // Start must align to the generated grid: open + k * (slotDuration + buffer).
+  // Widget bookings come from the availability endpoint so they always align;
+  // this check rejects hand-crafted API requests at off-grid times.
+  const step = slotDuration + bufferMinutes
+  if (step > 0 && (startInfo.minutes - openMin) % step !== 0) {
+    throw new ApptClosed('Please choose one of the available start times')
+  }
 }
 
 /**
@@ -321,8 +358,10 @@ function assertBookable(tenant: SqlRow, start: number, end: number): void {
  * GAS web app), persisting the outcome to notify_status/notify_error.
  *
  * Retry policy: up to MAX_NOTIFY_ATTEMPTS inline attempts with short backoff,
- * so transient GAS blips self-heal. Anything still failing is surfaced in the
- * dashboard for a manual Retry (which is safe thanks to GAS idempotency).
+ * so transient GAS blips self-heal. Anything still failing (or stuck 'pending',
+ * e.g. the Worker died mid-notify) is retried by the cron sweep — see
+ * sweepPendingNotifications. The dashboard Retry remains as a manual fallback;
+ * both are safe thanks to GAS idempotency.
  */
 const MAX_NOTIFY_ATTEMPTS = 3
 
@@ -349,6 +388,7 @@ export async function notifyAppointment(
     type: 'booking',
     tenant_slug: rowString(tenant, 'slug'),
     tenant_name: rowString(tenant, 'name'),
+    timezone: rowString(tenant, 'timezone', 'UTC'),
     customer_name: ctx.name || '',
     customer_email: ctx.email,
     start_time: ctx.startTime,
@@ -438,6 +478,17 @@ export async function retryAppointmentNotify(
   if (!apptRes.rows.length) return null
   const appt = apptRes.rows[0]!
 
+  // Already delivered — nothing to do (guards accidental double-sends).
+  if (rowString(appt, 'notify_status', 'pending') === 'sent') {
+    return {
+      id: apptId,
+      status: rowString(appt, 'status', 'pending'),
+      start_time: Number(appt['start_time'] || 0),
+      end_time: Number(appt['end_time'] || 0),
+      notify: { ok: true, detail: 'already sent' },
+    }
+  }
+
   let email = ''
   let name = ''
   const endUserId = rowString(appt, 'end_user_id')
@@ -486,7 +537,8 @@ export async function retryAppointmentNotify(
 
 /**
  * Find or create the end_user for an email within a tenant (dedupe by
- * email + tenant, mirroring the FastAPI behavior).
+ * email + tenant, mirroring the FastAPI behavior). Emails are lowercased so
+ * chat (raw case) and REST (pre-lowercased) dedupe to the same row.
  */
 export async function ensureEndUser(
   db: Client,
@@ -496,10 +548,11 @@ export async function ensureEndUser(
 ): Promise<string> {
   const tenantId = rowString(tenant, 'id')
   const now = Math.floor(Date.now() / 1000)
+  const normEmail = email.trim().toLowerCase()
   const existing = await query(
     db,
-    'SELECT id, name FROM end_users WHERE tenant_id = ? AND email = ? LIMIT 1',
-    [tenantId, email],
+    'SELECT id, name FROM end_users WHERE tenant_id = ? AND lower(email) = ? LIMIT 1',
+    [tenantId, normEmail],
   )
   if (existing.rows.length) {
     const row = existing.rows[0]!
@@ -513,7 +566,168 @@ export async function ensureEndUser(
     db,
     `INSERT INTO end_users (id, tenant_id, email, name, created_at)
      VALUES (?, ?, ?, ?, ?)`,
-    [id, tenantId, email, name || '', now],
+    [id, tenantId, normEmail, name || '', now],
   )
   return id
+}
+
+export interface NotifySweepResult {
+  attempted: number
+  sent: number
+  failed: number
+}
+
+/** Max notifications retried per cron run (keeps the invocation short). */
+const NOTIFY_SWEEP_BATCH = 20
+/** Seconds after which a pending/failed notification is eligible for re-send. */
+const NOTIFY_RETRY_AGE_SEC = 300
+
+/**
+ * Cron helper: retry the notify pipeline for bookings whose emails/sheet
+ * update failed (notify_status 'failed') or never completed ('pending' rows
+ * left behind when a Worker died mid-notify). Fully idempotent — GAS dedupes
+ * by appointment_id — and bounded to upcoming appointments (or recent
+ * bookings) so permanently-broken endpoints don't retry forever.
+ */
+export async function sweepPendingNotifications(db: Client): Promise<NotifySweepResult> {
+  const now = Math.floor(Date.now() / 1000)
+  const res = await query(
+    db,
+    `SELECT a.id, a.start_time, a.end_time, a.title,
+            eu.email AS customer_email, eu.name AS customer_name,
+            t.slug AS tenant_slug, t.name AS tenant_name,
+            t.timezone AS tenant_timezone, t.settings AS tenant_settings
+     FROM appointments a
+     JOIN tenants t ON t.id = a.tenant_id AND t.plan != 'deleted'
+     LEFT JOIN end_users eu ON eu.id = a.end_user_id
+     WHERE a.notify_status IN ('pending', 'failed')
+       AND a.updated_at < ?
+       AND (a.start_time >= ? OR a.created_at >= ?)
+     ORDER BY a.created_at
+     LIMIT ${NOTIFY_SWEEP_BATCH}`,
+    [now - NOTIFY_RETRY_AGE_SEC, now, now - 7 * 86400],
+  )
+
+  let sent = 0
+  let failed = 0
+  for (const r of res.rows) {
+    const email = rowString(r, 'customer_email')
+    if (!email) {
+      failed++
+      continue
+    }
+    const settings = parseJson<Record<string, unknown>>(rowString(r, 'tenant_settings', '{}'), {})
+    const tenantRow = {
+      slug: r['tenant_slug'],
+      name: r['tenant_name'],
+      timezone: r['tenant_timezone'],
+    } as SqlRow
+    const out = await notifyAppointment(db, tenantRow, settings, {
+      appointmentId: rowString(r, 'id'),
+      email,
+      name: rowString(r, 'customer_name'),
+      startTime: Number(r['start_time'] || 0),
+      endTime: Number(r['end_time'] || 0),
+      title: rowString(r, 'title', 'Appointment'),
+    })
+    if (out.ok) sent++
+    else failed++
+  }
+  return { attempted: res.rows.length, sent, failed }
+}
+
+/**
+ * Cron helper: flip past 'confirmed' appointments to 'completed' so the
+ * status lifecycle actually advances and analytics stay honest. Returns the
+ * number of rows updated.
+ */
+export async function completePastAppointments(db: Client): Promise<number> {
+  const now = Math.floor(Date.now() / 1000)
+  const res = await query(
+    db,
+    `UPDATE appointments SET status = 'completed', updated_at = ?
+     WHERE status = 'confirmed' AND end_time < ?`,
+    [now, now],
+  )
+  return res.rowsAffected
+}
+
+export interface CancelOutcome {
+  appointment: BookedAppointment
+  notify: NotifyResult
+}
+
+/**
+ * Cancel a customer's upcoming appointment by email (optionally narrowed to a
+ * calendar date in the tenant's timezone). Sets status='cancelled' — which
+ * frees the slot, since cancelled rows are excluded from conflict checks —
+ * and sends a cancellation notice via GAS. Resolves null when no matching
+ * upcoming appointment exists.
+ */
+export async function cancelAppointment(
+  db: Client,
+  tenant: SqlRow,
+  settings: Record<string, unknown>,
+  opts: { email: string; dateIso?: string | null },
+): Promise<CancelOutcome | null> {
+  const tenantId = rowString(tenant, 'id')
+  const email = opts.email.trim().toLowerCase()
+  const now = Math.floor(Date.now() / 1000)
+
+  const args: SqlValue[] = [tenantId, email, now]
+  let dateFilter = ''
+  if (opts.dateIso) {
+    const midnight = localMidnightEpoch(opts.dateIso, rowString(tenant, 'timezone', 'UTC'))
+    if (Number.isFinite(midnight)) {
+      dateFilter = 'AND a.start_time >= ? AND a.start_time < ?'
+      args.push(midnight, midnight + 86400)
+    }
+  }
+
+  const res = await query(
+    db,
+    `SELECT a.id, a.start_time, a.end_time, a.status, a.title, eu.name AS customer_name
+     FROM appointments a
+     JOIN end_users eu ON eu.id = a.end_user_id
+     WHERE a.tenant_id = ? AND lower(eu.email) = ?
+       AND a.status IN ('pending', 'confirmed') AND a.start_time >= ? ${dateFilter}
+     ORDER BY a.start_time
+     LIMIT 1`,
+    args,
+  )
+  if (!res.rows.length) return null
+  const appt = res.rows[0]!
+  const id = rowString(appt, 'id')
+  await query(
+    db,
+    `UPDATE appointments SET status = 'cancelled', updated_at = ? WHERE id = ? AND tenant_id = ?`,
+    [now, id, tenantId],
+  )
+
+  const notify = await notifyCancellation(settings, {
+    type: 'cancellation',
+    tenant_slug: rowString(tenant, 'slug'),
+    tenant_name: rowString(tenant, 'name'),
+    customer_name: rowString(appt, 'customer_name'),
+    customer_email: email,
+    start_time: Number(appt['start_time'] || 0),
+    end_time: Number(appt['end_time'] || 0),
+    title: rowString(appt, 'title', 'Appointment'),
+    appointment_id: id,
+    notification_email:
+      typeof settings['notification_email'] === 'string' ? settings['notification_email'] : undefined,
+    spreadsheet_id:
+      typeof settings['spreadsheet_id'] === 'string' ? settings['spreadsheet_id'] : undefined,
+    timezone: rowString(tenant, 'timezone', 'UTC'),
+  })
+
+  return {
+    appointment: {
+      id,
+      status: 'cancelled',
+      start_time: Number(appt['start_time'] || 0),
+      end_time: Number(appt['end_time'] || 0),
+    },
+    notify,
+  }
 }

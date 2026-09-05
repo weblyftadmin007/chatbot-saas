@@ -25,15 +25,18 @@ import {
 import {
   getAvailability,
   bookAndNotify,
+  cancelAppointment,
   ensureEndUser,
   ApptConflict,
   ApptClosed,
   ApptHorizon,
   bookingHorizon,
+  slotDuration,
   localMidnightEpoch,
   localIsoDate,
   isoToDayOffset,
 } from './appointments'
+import { formatSlot } from './email'
 
 const encoder = new TextEncoder()
 
@@ -227,12 +230,7 @@ export async function handleChat(
             })
           }
         } else if (intent === 'cancel_appointment') {
-          // Phase 2b (cancel flow) not yet ported — friendly note.
-          send({
-            type: 'content',
-            content:
-              "I can help you with that — please reply with the email you used to book and the appointment date, and we'll sort out the cancellation.",
-          })
+          await handleCancel(db, row, message, send, settings)
         } else if (intent === 'transfer_human') {
           send({
             type: 'content',
@@ -334,6 +332,21 @@ function weekdayNum(word: string): number {
  * Accepts YYYY-MM-DD, "July 15 (2026)", "15 July", "15/7", "7/15/2026",
  * weekday names (next occurrence), "tomorrow", "today".
  */
+/**
+ * Roll a parsed month/day forward to the next occurrence when no year was
+ * given (handles "July 15" said in December). Explicit years are kept as-is
+ * so past dates fail with a clear 'already passed' instead of silently
+ * moving a year.
+ */
+function rollForward(y: number, m: number, d: number, tzName: string, explicitYear: boolean): string | null {
+  const base = isoFromYMD(y, m, d)
+  if (!base) return null
+  if (explicitYear || base >= localIsoDate(0, tzName)) return base
+  // No year given and the date is past — try next year (Feb 29 handled by
+  // isoFromYMD's validity check).
+  return isoFromYMD(y + 1, m, d) ?? base
+}
+
 function resolveDateIso(message: string, tzName: string): string | null {
   const iso = message.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
   if (iso) return isoFromYMD(+iso[1]!, +iso[2]!, +iso[3]!)
@@ -342,7 +355,7 @@ function resolveDateIso(message: string, tzName: string): string | null {
   if (monthFirst) {
     const mi = monthNum(monthFirst[1]!)
     if (mi) {
-      const iso2 = isoFromYMD(monthFirst[3] ? +monthFirst[3] : new Date().getFullYear(), mi, +monthFirst[2]!)
+      const iso2 = rollForward(monthFirst[3] ? +monthFirst[3] : new Date().getFullYear(), mi, +monthFirst[2]!, tzName, Boolean(monthFirst[3]))
       if (iso2) return iso2
     }
   }
@@ -350,7 +363,7 @@ function resolveDateIso(message: string, tzName: string): string | null {
   if (dayFirst) {
     const mi = monthNum(dayFirst[2]!)
     if (mi) {
-      const iso2 = isoFromYMD(dayFirst[3] ? +dayFirst[3] : new Date().getFullYear(), mi, +dayFirst[1]!)
+      const iso2 = rollForward(dayFirst[3] ? +dayFirst[3] : new Date().getFullYear(), mi, +dayFirst[1]!, tzName, Boolean(dayFirst[3]))
       if (iso2) return iso2
     }
   }
@@ -359,9 +372,9 @@ function resolveDateIso(message: string, tzName: string): string | null {
     const p1 = +slash[1]!
     const p2 = +slash[2]!
     const y = slash[3] ? +slash[3] : new Date().getFullYear()
-    if (p1 > 12) return isoFromYMD(y, p2, p1) // day-first (dd/mm)
-    if (p2 > 12) return isoFromYMD(y, p1, p2) // month-first (mm/dd)
-    return isoFromYMD(y, p1, p2) // ambiguous -> month-first (matches widget format)
+    if (p1 > 12) return rollForward(y, p2, p1, tzName, Boolean(slash[3])) // day-first (dd/mm)
+    if (p2 > 12) return rollForward(y, p1, p2, tzName, Boolean(slash[3])) // month-first (mm/dd)
+    return rollForward(y, p1, p2, tzName, Boolean(slash[3])) // ambiguous -> month-first (matches widget format)
   }
   const wd = message.match(
     /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i,
@@ -403,11 +416,13 @@ function resolveTime(message: string): { hour: number; minute: number } | null {
 
 /**
  * Parse a booking message like "Book 11/5/2026 at 13:00 person@example.com",
- * "book friday 2pm a@b.com", or "book July 15 at 3pm for Alex".
+ * "book friday 2pm a@b.com", or "book July 15 at 3pm for Alex". Durations
+ * follow the tenant's slot_duration — not a hardcoded 30 minutes.
  */
 function parseBooking(
   message: string,
   tzName: string,
+  slotDurationMin: number,
 ): { start: number; end: number; email: string | null; name: string } | null {
   const emailMatch = message.match(EMAIL_RE)
   const email = emailMatch ? emailMatch[0] : null
@@ -417,9 +432,48 @@ function parseBooking(
   const time = resolveTime(message)
   if (!iso || !time) return null
   const start = localMidnightEpoch(iso, tzName) + time.hour * 3600 + time.minute * 60
-  const end = start + 30 * 60
+  const end = start + slotDurationMin * 60
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null
   return { start, end, email, name }
+}
+
+async function handleCancel(
+  db: Client,
+  tenant: Awaited<ReturnType<typeof tenantBySlug>>,
+  message: string,
+  send: (payload: Record<string, unknown>) => void,
+  settings: Record<string, unknown>,
+): Promise<void> {
+  if (!tenant) return
+  const tzName = rowString(tenant, 'timezone', 'UTC')
+  const emailMatch = message.match(EMAIL_RE)
+  const email = emailMatch ? emailMatch[0] : null
+  const dateIso = resolveDateIso(message, tzName)
+  if (!email) {
+    send({
+      type: 'content',
+      content:
+        'I can help you cancel — which email did you book with? (I\'ll cancel the next upcoming appointment on it.)',
+    })
+    return
+  }
+  const outcome = await cancelAppointment(db, tenant, settings, { email, dateIso })
+  if (!outcome) {
+    send({
+      type: 'content',
+      content:
+        "I couldn't find an upcoming appointment for that email. Double-check the address, or contact the team directly.",
+    })
+    return
+  }
+  const when = formatSlot(outcome.appointment.start_time, tzName)
+  const emailNote = outcome.notify.ok
+    ? 'A cancellation confirmation is on its way.'
+    : 'We were unable to email a cancellation confirmation — the team has been notified.'
+  send({
+    type: 'content',
+    content: `Your ${when} appointment has been cancelled. ${emailNote}`,
+  })
 }
 
 async function handleBook(
@@ -435,7 +489,7 @@ async function handleBook(
     return
   }
   const tzName = rowString(tenant, 'timezone', 'UTC')
-  const parsed = parseBooking(message, tzName)
+  const parsed = parseBooking(message, tzName, slotDuration(tenant))
   const emailMatch = message.match(EMAIL_RE)
   const email = parsed?.email || (emailMatch ? emailMatch[0] : null)
 
@@ -455,7 +509,23 @@ async function handleBook(
     return
   }
 
-  const tenantId = rowString(tenant, 'id')
+  // Chat times are free-form ("Friday 2pm") and may fall off the tenant's slot
+  // grid or already be taken — check against real availability first and offer
+  // the day's actual slots instead of attempting a booking that would fail.
+  const dateIso = resolveDateIso(message, tzName)
+  const daySlots = dateIso ? await getAvailability(db, tenant, { date: dateIso }) : []
+  const exactMatch = daySlots.some((s) => s.start_time === parsed.start)
+  if (!exactMatch) {
+    if (daySlots.length) send({ type: 'slots', slots: daySlots })
+    send({
+      type: 'content',
+      content: daySlots.length
+        ? 'That exact time isn\'t open. Here\'s what\'s available that day — tap a time or tell me another.'
+        : "I couldn't find any open times that day — it may be a day we're closed. Tell me another day and I'll check.",
+    })
+    return
+  }
+
   const endUserId = await ensureEndUser(db, tenant, email, parsed.name || undefined)
   try {
     const appt = await bookAndNotify(db, tenant, settings, {
@@ -467,7 +537,8 @@ async function handleBook(
       customerEmail: email,
       customerName: parsed.name || '',
     })
-    const when = new Date(parsed.start * 1000).toLocaleString()
+    // Confirm in the BUSINESS's timezone so the customer sees the local time.
+    const when = formatSlot(parsed.start, tzName)
     send({
       type: 'content',
       content:
@@ -477,10 +548,14 @@ async function handleBook(
     })
   } catch (e) {
     if (e instanceof ApptConflict) {
+      const slots = dateIso
+        ? await getAvailability(db, tenant, { date: dateIso })
+        : await getAvailability(db, tenant, { days: 7 })
+      if (slots.length) send({ type: 'slots', slots })
       send({
         type: 'content',
         content:
-          'Sorry, that time was just taken. Tap to pick an available slot, or tell me another day/time.',
+          'Sorry, that time was just taken. Pick an available slot below, or tell me another day/time.',
       })
     } else if (e instanceof ApptHorizon) {
       send({

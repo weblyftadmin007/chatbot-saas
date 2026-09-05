@@ -19,6 +19,8 @@ export interface Env {
   ADMIN_BOOTSTRAP_TOKEN?: string
   // Vars
   ENVIRONMENT?: string
+  /** Max booking requests per IP per minute on public booking endpoints (0 disables). */
+  RATE_LIMIT_BOOKING?: string
   CHAT_MODEL?: string
   EMBED_MODEL?: string
   EMBED_DIMENSIONS?: string

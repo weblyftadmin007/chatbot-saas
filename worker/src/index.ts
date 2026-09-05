@@ -26,9 +26,13 @@ import { getDb, query, rowString, ensureSchemaMigrations } from './db'
 import { tenantBySlug, tenantById, buildWidgetConfig, parseJson } from './tenants'
 import {
   ensureEndUser,
-  bookAndNotify,
+  bookAppointment,
+  notifyAppointment,
   getAvailability,
   bookingHorizon,
+  slotDuration,
+  sweepPendingNotifications,
+  completePastAppointments,
   ApptConflict,
   ApptClosed,
   ApptHorizon,
@@ -77,6 +81,32 @@ function methodNotAllowed(): Response {
   return json({ detail: 'Method not allowed' }, 405)
 }
 
+/**
+ * Minimal fixed-window rate limiter for public booking endpoints. Per-isolate
+ * only (resets on deploy) — enough to blunt trivial spam without KV/DO infra.
+ * Set RATE_LIMIT_BOOKING=0 to disable.
+ */
+const bookingHits = new Map<string, { start: number; count: number }>()
+function bookingAllowed(request: Request, env: Env): boolean {
+  const max = parseInt(env.RATE_LIMIT_BOOKING || '10', 10)
+  if (!max || max <= 0) return true
+  const ip =
+    request.headers.get('CF-Connecting-IP') ||
+    request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+    'unknown'
+  const window = Math.floor(Date.now() / 60_000) * 60_000
+  const cur = bookingHits.get(`${ip}:${window}`)
+  const next = cur && cur.start === window ? cur.count + 1 : 1
+  bookingHits.set(`${ip}:${window}`, { start: window, count: next })
+  // Opportunistic cleanup so the map can't grow unbounded.
+  if (bookingHits.size > 10_000) {
+    for (const k of bookingHits.keys()) {
+      if (!k.endsWith(`:${window}`)) bookingHits.delete(k)
+    }
+  }
+  return next <= max
+}
+
 function matchRoute(pathname: string): { pattern: string; params: string[] } | null {
   // /widget/config/:slug etc.
   const segs = pathname.split('/').filter(Boolean)
@@ -93,6 +123,8 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 2 && tail[0] === 'appointments') return { pattern: 'widgetAppointments', params: [tail[1]!] }
       if (tail.length === 3 && tail[0] === 'appointments' && tail[2] === 'availability')
         return { pattern: 'widgetAvailability', params: [tail[1]!] }
+      if (tail.length === 3 && tail[0] === 'appointments' && tail[2] === 'mine')
+        return { pattern: 'widgetMyAppointments', params: [tail[1]!] }
       return null
     }
     case '/admin': {
@@ -128,7 +160,7 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS })
     }
@@ -358,6 +390,9 @@ export default {
       }
       case 'widgetAppointments': {
         if (request.method !== 'POST') return withCors(methodNotAllowed())
+        if (!bookingAllowed(request, env)) {
+          return withCors(json({ detail: 'Too many requests — please try again shortly' }, 429))
+        }
         const [slug] = route.params
         const tenant = await tenantBySlug(db, slug!)
         if (!tenant) return withCors(json({ detail: 'Tenant not found' }, 404))
@@ -374,6 +409,14 @@ export default {
         if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime >= endTime) {
           return withCors(json({ detail: 'start_time and end_time are required' }, 400))
         }
+        // Bookings must match the tenant's slot grid — arbitrary long/short
+        // epochs would let one request block a whole day.
+        const durationSec = slotDuration(tenant) * 60
+        if (endTime - startTime !== durationSec) {
+          return withCors(
+            json({ detail: `Appointments are ${slotDuration(tenant)} minutes long` }, 400),
+          )
+        }
         const settings = parseJson<Record<string, unknown>>(rowString(tenant, 'settings', '{}'), {})
         const conversationId = crypto.randomUUID()
         const now = Math.floor(Date.now() / 1000)
@@ -385,23 +428,44 @@ export default {
         )
         const endUserId = await ensureEndUser(db, tenant, email, name || undefined)
         try {
-          const appt = await bookAndNotify(db, tenant, settings, {
+          // Record the booking immediately; deliver GAS emails/sheet updates
+          // in the background via waitUntil so slow GAS endpoints never block
+          // (or time out) the customer's confirmation. The cron sweep picks up
+          // the 'pending' row if background delivery fails.
+          const appt = await bookAppointment(db, tenant, {
             conversationId,
             endUserId,
             startTime,
             endTime,
             title,
-            customerEmail: email,
-            customerName: name || '',
           })
+          const notifyPromise = notifyAppointment(db, tenant, settings, {
+            appointmentId: appt.id,
+            email,
+            name: name || '',
+            startTime: appt.start_time,
+            endTime: appt.end_time,
+            title,
+          })
+            .then((n) =>
+              console.log(
+                `[notify] appointment ${appt.id}: ${n.ok ? 'sent' : `failed (${n.error})`}`,
+              ),
+            )
+            .catch((e) =>
+              console.error(
+                `[notify] appointment ${appt.id} crashed:`,
+                e instanceof Error ? e.stack || e.message : String(e),
+              ),
+            )
+          ctx.waitUntil(notifyPromise)
           return withCors(
             json({
               appointment_id: appt.id,
               status: appt.status,
               start_time: appt.start_time,
               end_time: appt.end_time,
-              notify_status: appt.notify.ok ? 'sent' : 'failed',
-              notify_error: appt.notify.error || null,
+              notify_status: 'pending',
               confirmation_message: 'Appointment booked successfully!',
             }),
           )
@@ -414,6 +478,40 @@ export default {
           }
           throw e
         }
+      }
+      case 'widgetMyAppointments': {
+        // GET /widget/appointments/:slug/mine?email= — customer-facing "what
+        // did I book?" lookup. Only upcoming appointments are returned.
+        if (request.method !== 'GET') return withCors(methodNotAllowed())
+        const [slug] = route.params
+        const tenant = await tenantBySlug(db, slug!)
+        if (!tenant) return withCors(json({ detail: 'Tenant not found' }, 404))
+        const email = (url.searchParams.get('email') || '').trim().toLowerCase()
+        if (!email || !EMAIL_REVALIDATE(email)) {
+          return withCors(json({ detail: 'A valid email is required' }, 400))
+        }
+        const now = Math.floor(Date.now() / 1000)
+        const res = await query(
+          db,
+          `SELECT a.id, a.start_time, a.end_time, a.status, a.title
+           FROM appointments a
+           JOIN end_users eu ON eu.id = a.end_user_id
+           WHERE a.tenant_id = ? AND lower(eu.email) = ?
+             AND a.status IN ('pending', 'confirmed') AND a.start_time >= ?
+           ORDER BY a.start_time`,
+          [rowString(tenant, 'id'), email, now],
+        )
+        return withCors(
+          json({
+            appointments: res.rows.map((r) => ({
+              id: rowString(r, 'id'),
+              start_time: Number(r['start_time'] || 0),
+              end_time: Number(r['end_time'] || 0),
+              status: rowString(r, 'status'),
+              title: rowString(r, 'title', 'Appointment'),
+            })),
+          }),
+        )
       }
       case 'widgetHistory': {
         if (request.method !== 'GET') return withCors(methodNotAllowed())
@@ -527,5 +625,29 @@ export default {
         return withCors(notFound())
     }
   },
+
+  /**
+   * Cron: self-heal failed/stuck booking notifications and advance the
+   * appointment status lifecycle. Configure the trigger in wrangler.toml.
+   */
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    const db = getDb(env)
+    await ensureSchemaMigrations(db)
+    try {
+      const swept = await sweepPendingNotifications(db)
+      if (swept.attempted) {
+        console.log(
+          `[cron] notify sweep: ${swept.attempted} attempted, ${swept.sent} sent, ${swept.failed} failed`,
+        )
+      }
+      const completed = await completePastAppointments(db)
+      if (completed) console.log(`[cron] completed ${completed} past appointments`)
+    } catch (e) {
+      console.error('[cron] sweep failed:', e instanceof Error ? e.stack || e.message : String(e))
+    }
+  },
 }
-// trigger deploy
