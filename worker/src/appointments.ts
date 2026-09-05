@@ -105,7 +105,7 @@ export function tzOffsetMinutes(utcMs: number, tzName: string): number {
       timeZoneName: 'shortOffset',
     })
     const val = dtf.formatToParts(new Date(utcMs)).find((p) => p.type === 'timeZoneName')?.value || ''
-    const m = val.match(/GMT?([+-])(\d{2}):?(\d{2})/)
+    const m = val.match(/GMT?([+-])(\d{1,2}):?(\d{2})/)
     if (!m) return 0
     const sign = m[1] === '-' ? -1 : 1
     return sign * (parseInt(m[2] ?? '0', 10) * 60 + parseInt(m[3] ?? '0', 10))

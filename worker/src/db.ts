@@ -42,6 +42,29 @@ export async function ensureSchemaMigrations(db: Client): Promise<void> {
         args: [],
       })
     }
+    try {
+      const endUserRes = await query(db, 'PRAGMA table_info(end_users)', [])
+      if (!endUserRes.rows.length) {
+        await db.execute({
+          sql: `CREATE TABLE end_users (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT REFERENCES tenants(id),
+            clerk_user_id TEXT UNIQUE,
+            email TEXT,
+            name TEXT,
+            metadata TEXT DEFAULT '{}',
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          )`,
+          args: [],
+        })
+        await db.execute({
+          sql: 'CREATE INDEX IF NOT EXISTS idx_enduser_tenant ON end_users(tenant_id)',
+          args: [],
+        })
+      }
+    } catch (e) {
+      console.error('[migration] end_users table failed:', e instanceof Error ? e.message : String(e))
+    }
     schemaMigrated = true
   } catch (e) {
     // Keep a retryable state so a transient failure re-runs next request.
