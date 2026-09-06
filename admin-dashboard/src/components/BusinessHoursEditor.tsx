@@ -12,6 +12,7 @@ interface BusinessHoursEditorProps {
   quickReplies?: string[]
   bookingHorizon?: number
   sessionTimeout?: number
+  cardsEnabled?: boolean
   onSave: (settings: any) => void
 }
 
@@ -29,6 +30,7 @@ export function BusinessHoursEditor({
   quickReplies,
   bookingHorizon,
   sessionTimeout,
+  cardsEnabled = true,
   onSave
 }: BusinessHoursEditorProps) {
   const [hours, setHours] = useState<Record<string, { open: string; close: string }>>(
@@ -54,6 +56,7 @@ export function BusinessHoursEditor({
   )
   const [horizonDays, setHorizonDays] = useState(bookingHorizon || 60)
   const [sessionTimeoutMin, setSessionTimeoutMin] = useState(sessionTimeout || 30)
+  const [cardsEnabledVal, setCardsEnabledVal] = useState(cardsEnabled)
 
   const handleSave = () => {
     const qr = quickRepliesVal
@@ -72,7 +75,8 @@ export function BusinessHoursEditor({
         gas_secret: gasSecretVal.trim() || undefined,
         quick_replies: qr.length ? qr : undefined,
         booking_horizon_days: horizonDays,
-        session_timeout_minutes: sessionTimeoutMin
+        session_timeout_minutes: sessionTimeoutMin,
+        cards_enabled: cardsEnabledVal
       }
     })
   }
@@ -248,6 +252,24 @@ export function BusinessHoursEditor({
               onChange={(e) => setSessionTimeoutMin(Number(e.target.value))}
             />
             <p className="form-hint">Inactivity before the widget starts a fresh conversation.</p>
+          </div>
+
+          <div className="form-group">
+            <label>Interactive Cards</label>
+            <div className="toggle-row">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={cardsEnabledVal}
+                  onChange={(e) => setCardsEnabledVal(e.target.checked)}
+                />
+                <span className="toggle-track"><span className="toggle-thumb" /></span>
+                <span className="toggle-label">{cardsEnabledVal ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+            <p className="form-hint">
+              Quick-reply chips, contact cards, and booking/cancel prompts in the chat widget.
+            </p>
           </div>
         </div>
       </div>

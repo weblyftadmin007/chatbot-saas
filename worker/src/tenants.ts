@@ -45,6 +45,8 @@ export interface WidgetConfig {
   booking_horizon_days: number
   /** Minutes of inactivity before the widget starts a fresh conversation (default 30). */
   session_timeout_minutes: number
+  /** Interactive cards (quick replies, contact, booking/cancel prompts) on/off. */
+  cards_enabled: boolean
 }
 
 /** Build the /widget/config payload exactly as the FastAPI backend did. */
@@ -78,6 +80,7 @@ export function buildWidgetConfig(row: SqlRow): WidgetConfig {
       Number(settings['session_timeout_minutes'] ?? 30) || 30,
       1,
     ),
+    cards_enabled: settings['cards_enabled'] !== false,
     business_hours: businessHours,
   }
 }

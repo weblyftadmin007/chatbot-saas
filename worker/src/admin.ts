@@ -326,6 +326,11 @@ interface AnalyticsData {
   messages_last_7_days: number
   appointments_last_7_days: number
   top_tenants: Array<{ name: string; slug: string; conversations: number }>
+  cards: {
+    total_sent: number
+    sent_last_7_days: number
+    by_kind: Array<{ kind: string; count: number }>
+  }
 }
 
 /** Platform analytics for the admin dashboard (GET /admin/analytics). */
@@ -371,6 +376,34 @@ export async function getAnalytics(db: Client): Promise<Response> {
     conversations: Number(r['conversations'] ?? 0),
   }))
 
+  // Interactive-card analytics (event_type 'card_sent', kind in metadata).
+  const total_sent = await count("SELECT COUNT(*) AS c FROM usage_logs WHERE event_type = 'card_sent'")
+  const sent_last_7_days = await count(
+    "SELECT COUNT(*) AS c FROM usage_logs WHERE event_type = 'card_sent' AND created_at >= ?",
+    [now - 7 * day],
+  )
+  const kindsRaw = await query(
+    db,
+    `SELECT metadata FROM usage_logs WHERE event_type = 'card_sent' ORDER BY created_at DESC LIMIT 5000`,
+  )
+  const kindCounts = new Map<string, number>()
+  for (const r of kindsRaw.rows) {
+    try {
+      const meta = JSON.parse(rowString(r, 'metadata', '{}')) as Record<string, unknown>
+      const kind = typeof meta['kind'] === 'string' ? meta['kind'] : 'unknown'
+      kindCounts.set(kind, (kindCounts.get(kind) ?? 0) + 1)
+    } catch {
+      kindCounts.set('unknown', (kindCounts.get('unknown') ?? 0) + 1)
+    }
+  }
+  const cards = {
+    total_sent,
+    sent_last_7_days,
+    by_kind: [...kindCounts.entries()]
+      .map(([kind, count]) => ({ kind, count }))
+      .sort((a, b) => b.count - a.count),
+  }
+
   const data: AnalyticsData = {
     total_tenants,
     active_tenants,
@@ -380,6 +413,7 @@ export async function getAnalytics(db: Client): Promise<Response> {
     messages_last_7_days,
     appointments_last_7_days,
     top_tenants,
+    cards,
   }
   return json(data)
 }

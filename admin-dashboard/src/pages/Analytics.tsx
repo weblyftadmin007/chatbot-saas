@@ -10,6 +10,11 @@ interface AnalyticsData {
   messages_last_7_days: number
   appointments_last_7_days: number
   top_tenants: Array<{ name: string; slug: string; conversations: number }>
+  cards?: {
+    total_sent: number
+    sent_last_7_days: number
+    by_kind: Array<{ kind: string; count: number }>
+  }
 }
 
 function toNum(v: unknown): number {
@@ -40,6 +45,10 @@ export function Analytics() {
           return
         }
         const top = Array.isArray(json.top_tenants) ? json.top_tenants : []
+        const rawCards =
+          json.cards && typeof json.cards === 'object'
+            ? (json.cards as { total_sent?: unknown; sent_last_7_days?: unknown; by_kind?: unknown })
+            : null
         if (!cancelled) {
           setData({
             total_tenants: toNum(json.total_tenants),
@@ -54,6 +63,18 @@ export function Analytics() {
               slug: String((t as { slug?: unknown }).slug ?? ''),
               conversations: toNum((t as { conversations?: unknown }).conversations),
             })),
+            cards: rawCards
+              ? {
+                  total_sent: toNum(rawCards.total_sent),
+                  sent_last_7_days: toNum(rawCards.sent_last_7_days),
+                  by_kind: Array.isArray(rawCards.by_kind)
+                    ? (rawCards.by_kind as Array<{ kind?: unknown; count?: unknown }>).map((k) => ({
+                        kind: String(k.kind ?? 'unknown'),
+                        count: toNum(k.count),
+                      }))
+                    : [],
+                }
+              : undefined,
           })
         }
       } catch (e) {
@@ -106,6 +127,66 @@ export function Analytics() {
         <StatCard title="Messages (7d)" value={data.messages_last_7_days} />
         <StatCard title="Appointments (7d)" value={data.appointments_last_7_days} />
       </div>
+
+      {data.cards && (
+        <div className="card">
+          <h2>Interactive Cards</h2>
+          <div className="stats-grid" style={{ marginBottom: 16 }}>
+            <StatCard title="Cards Sent (total)" value={data.cards.total_sent} />
+            <StatCard title="Cards Sent (7d)" value={data.cards.sent_last_7_days} />
+          </div>
+          {data.cards.by_kind.length > 0 ? (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Card kind</th>
+                    <th>Sent</th>
+                    <th>Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.cards.by_kind.map((k) => {
+                    const total = data.cards!.by_kind.reduce((s, x) => s + x.count, 0) || 1
+                    const pct = Math.round((k.count / total) * 100)
+                    return (
+                      <tr key={k.kind}>
+                        <td><code>{k.kind}</code></td>
+                        <td>{k.count.toLocaleString()}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div
+                              style={{
+                                width: 120,
+                                height: 6,
+                                borderRadius: 3,
+                                background: '#E2E8F0',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${pct}%`,
+                                  height: '100%',
+                                  background: '#3B82F6',
+                                }}
+                              />
+                            </div>
+                            <span style={{ fontSize: 12, color: '#64748B' }}>{pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>No cards sent yet — they appear once a tenant's widget shows quick replies or prompts.</p>
+          )
+          }
+        </div>
+      )}
 
       <div className="card">
         <h2>Top Tenants by Conversations</h2>
