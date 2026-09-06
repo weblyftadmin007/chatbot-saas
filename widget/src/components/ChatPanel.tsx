@@ -15,6 +15,7 @@ interface ChatPanelProps {
   pendingAction: string | null
   selectSlot: (slot: any, email?: string, name?: string) => void
   onDateChange: (dateIso: string | null) => void
+  onClosePicker: () => void
   horizonDays: number
   busy?: boolean
   error?: string | null
@@ -32,6 +33,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   pendingAction,
   selectSlot,
   onDateChange,
+  onClosePicker,
   horizonDays,
   busy = false,
   error = null
@@ -92,6 +94,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           slots={slots}
           onSelect={selectSlot}
           onDateChange={onDateChange}
+          onClose={onClosePicker}
           horizonDays={horizonDays}
           busy={busy}
           error={error}

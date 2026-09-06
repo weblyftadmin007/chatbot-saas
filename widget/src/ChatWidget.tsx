@@ -125,6 +125,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
           pendingAction={chat.pendingAction}
           selectSlot={handleSelectSlot}
           onDateChange={handleDateChange}
+          onClosePicker={chat.closePicker}
           horizonDays={config.data.booking_horizon_days ?? 60}
           busy={bookingBusy}
           error={bookingError}

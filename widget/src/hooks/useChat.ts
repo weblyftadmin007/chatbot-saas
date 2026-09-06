@@ -143,11 +143,20 @@ export function useChat(
     }
   }
 
+  /**
+   * Dismiss the slot picker (header ✕ button). The next availability question
+   * re-opens it with fresh slots, so dropping the cached week slots is safe.
+   */
+  const closePicker = useCallback(() => {
+    setSlots([])
+    setPendingAction(null)
+    weekSlotsRef.current = []
+  }, [])
+
   const selectSlot = useCallback(async (slot: Slot | null, email?: string) => {
-    // SlotPicker's close button calls onSelect(null) — just dismiss it then.
+    // Defensive: a null slot just dismisses the picker.
     if (!slot) {
-      setSlots([])
-      setPendingAction(null)
+      closePicker()
       return
     }
     // Send slot selection as a message
@@ -159,7 +168,7 @@ export function useChat(
     await sendMessage(
       `Book ${dateStr} at ${timeStr}${email ? ` ${email}` : ''}`
     )
-  }, [sendMessage])
+  }, [sendMessage, closePicker])
 
   /** Start a fresh conversation (used by the 30-min inactivity expiry). */
   const reset = useCallback(() => {
@@ -270,6 +279,7 @@ export function useChat(
     pendingAction,
     sendMessage,
     selectSlot,
+    closePicker,
     setConversationId,
     reset,
     fetchAvailableDate,

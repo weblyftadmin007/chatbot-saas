@@ -11,6 +11,8 @@ interface SlotPickerProps {
   onSelect: (slot: Slot, email: string, name: string) => void
   /** date == null → rolling-week view; otherwise the YYYY-MM-DD to fetch. */
   onDateChange: (dateIso: string | null) => void
+  /** Dismiss the picker entirely (header ✕). Wire this or the ✕ only resets the date filter. */
+  onClose?: () => void
   horizonDays: number
   busy?: boolean
   error?: string | null
@@ -24,6 +26,7 @@ export const SlotPicker: React.FC<SlotPickerProps> = ({
   slots,
   onSelect,
   onDateChange,
+  onClose,
   horizonDays,
   busy = false,
   error = null,
@@ -76,7 +79,11 @@ export const SlotPicker: React.FC<SlotPickerProps> = ({
     <div className="chatbot-slot-picker">
       <div className="chatbot-slot-header">
         <span>Pick a time</span>
-        <button className="chatbot-slot-close" onClick={() => onDateChange(null)}>
+        <button
+          className="chatbot-slot-close"
+          onClick={() => (onClose ? onClose() : onDateChange(null))}
+          aria-label="Close booking options"
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <line x1={18} y1={6} x2={6} y2={18} />
             <line x1={6} y1={6} x2={18} y2={18} />
