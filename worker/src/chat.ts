@@ -612,6 +612,47 @@ export function json(data: unknown, status = 200): Response {
   })
 }
 
+/** Events the widget may self-report; anything else is rejected. */
+const TELEMETRY_EVENTS = new Set(['card_clicked', 'picker_opened', 'slot_chosen'])
+
+/**
+ * POST /widget/telemetry/:slug — engagement events from the widget (card chip
+ * clicks, picker opens, slot choices). Written to usage_logs so the admin
+ * analytics can compute per-kind click-through. Best-effort: always 204,
+ * never blocks the widget.
+ */
+export async function handleTelemetry(
+  db: Client,
+  slug: string,
+  body: Record<string, unknown> | null,
+): Promise<Response> {
+  const tenant = await tenantBySlug(db, slug)
+  if (!tenant) return json({ detail: 'Tenant not found' }, 404)
+  const tenantId = rowString(tenant, 'id')
+  const event = typeof body?.['event'] === 'string' ? body['event'] : ''
+  if (!TELEMETRY_EVENTS.has(event)) {
+    return json({ detail: 'unknown event' }, 400)
+  }
+  const kind = typeof body?.['kind'] === 'string' ? (body['kind'] as string).slice(0, 60) : null
+  const label = typeof body?.['label'] === 'string' ? (body['label'] as string).slice(0, 120) : null
+  const source = typeof body?.['source'] === 'string' ? (body['source'] as string).slice(0, 40) : null
+  const meta: Record<string, unknown> = { event }
+  if (kind) meta['kind'] = kind
+  if (label) meta['label'] = label
+  if (source) meta['source'] = source
+  try {
+    await query(
+      db,
+      `INSERT INTO usage_logs (id, tenant_id, event_type, metadata, created_at)
+       VALUES (?, ?, 'widget_event', ?, ?)`,
+      [crypto.randomUUID(), tenantId, JSON.stringify(meta), Math.floor(Date.now() / 1000)],
+    )
+  } catch (e) {
+    console.error('[telemetry] insert failed:', e instanceof Error ? e.message : String(e))
+  }
+  return new Response(null, { status: 204 })
+}
+
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
 
 function pad2(n: number): string {

@@ -13,8 +13,10 @@ interface AnalyticsData {
   cards?: {
     total_sent: number
     sent_last_7_days: number
-    by_kind: Array<{ kind: string; count: number }>
+    by_kind: Array<{ kind: string; count: number; clicks: number; conversion: number }>
   }
+  picker_opens?: number
+  slot_picks?: number
 }
 
 function toNum(v: unknown): number {
@@ -47,8 +49,14 @@ export function Analytics() {
         const top = Array.isArray(json.top_tenants) ? json.top_tenants : []
         const rawCards =
           json.cards && typeof json.cards === 'object'
-            ? (json.cards as { total_sent?: unknown; sent_last_7_days?: unknown; by_kind?: unknown })
+            ? (json.cards as {
+                total_sent?: unknown
+                sent_last_7_days?: unknown
+                by_kind?: unknown
+              })
             : null
+        const pickerOpens = toNum(json.picker_opens)
+        const slotPicks = toNum(json.slot_picks)
         if (!cancelled) {
           setData({
             total_tenants: toNum(json.total_tenants),
@@ -68,13 +76,22 @@ export function Analytics() {
                   total_sent: toNum(rawCards.total_sent),
                   sent_last_7_days: toNum(rawCards.sent_last_7_days),
                   by_kind: Array.isArray(rawCards.by_kind)
-                    ? (rawCards.by_kind as Array<{ kind?: unknown; count?: unknown }>).map((k) => ({
+                    ? (rawCards.by_kind as Array<{
+                        kind?: unknown
+                        count?: unknown
+                        clicks?: unknown
+                        conversion?: unknown
+                      }>).map((k) => ({
                         kind: String(k.kind ?? 'unknown'),
                         count: toNum(k.count),
+                        clicks: toNum(k.clicks),
+                        conversion: toNum(k.conversion),
                       }))
                     : [],
                 }
               : undefined,
+            picker_opens: pickerOpens,
+            slot_picks: slotPicks,
           })
         }
       } catch (e) {
@@ -134,6 +151,8 @@ export function Analytics() {
           <div className="stats-grid" style={{ marginBottom: 16 }}>
             <StatCard title="Cards Sent (total)" value={data.cards.total_sent} />
             <StatCard title="Cards Sent (7d)" value={data.cards.sent_last_7_days} />
+            <StatCard title="Slot Picker Opens (30d)" value={data.picker_opens ?? 0} />
+            <StatCard title="Slots Chosen (30d)" value={data.slot_picks ?? 0} />
           </div>
           {data.cards.by_kind.length > 0 ? (
             <div className="table-container">
@@ -142,6 +161,8 @@ export function Analytics() {
                   <tr>
                     <th>Card kind</th>
                     <th>Sent</th>
+                    <th>Clicks</th>
+                    <th>Click-through</th>
                     <th>Share</th>
                   </tr>
                 </thead>
@@ -153,6 +174,8 @@ export function Analytics() {
                       <tr key={k.kind}>
                         <td><code>{k.kind}</code></td>
                         <td>{k.count.toLocaleString()}</td>
+                        <td>{k.clicks.toLocaleString()}</td>
+                        <td>{k.conversion > 0 ? `${k.conversion}%` : '\u2014'}</td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div

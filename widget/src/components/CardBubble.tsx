@@ -1,4 +1,5 @@
 import React from 'react'
+import { trackEvent } from '../hooks/useChat'
 
 export interface CardAction {
   label: string
@@ -44,6 +45,9 @@ interface CardBubbleProps {
   /** History cards re-render read-only (no click handlers). */
   interactive?: boolean
   onAction?: (action: CardAction) => void
+  /** Widget slug, for engagement telemetry. */
+  tenantSlug?: string
+  apiBase?: string
 }
 
 /**
@@ -59,11 +63,23 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
   withAvatar,
   interactive = true,
   onAction,
+  tenantSlug,
+  apiBase = '',
 }) => {
   const [inputValue, setInputValue] = React.useState('')
 
+  const track = (action: CardAction) => {
+    if (tenantSlug) {
+      trackEvent(apiBase, tenantSlug, 'card_clicked', {
+        kind: card.kind,
+        label: action.label,
+      })
+    }
+  }
+
   const handle = (action: CardAction) => {
     if (!interactive) return
+    track(action)
     if (action.open_slots) {
       onAction?.(action)
       return
@@ -82,6 +98,7 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
   const submitInput = (action: CardAction) => {
     const value = inputValue.trim()
     if (!interactive || !value) return
+    track(action)
     const text = (action.send_template || '{value}').replace('{value}', value)
     onAction?.({ label: action.label, send_message: text })
     setInputValue('')

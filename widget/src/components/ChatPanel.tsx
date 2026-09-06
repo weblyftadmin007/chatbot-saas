@@ -18,6 +18,9 @@ interface ChatPanelProps {
   onClosePicker: () => void
   /** Card booking chips: opens the slot picker. */
   onOpenSlots: () => void
+  /** Widget slug, for engagement telemetry. */
+  tenantSlug: string
+  apiBase?: string
   horizonDays: number
   busy?: boolean
   error?: string | null
@@ -37,6 +40,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   onDateChange,
   onClosePicker,
   onOpenSlots,
+  tenantSlug,
+  apiBase = '',
   horizonDays,
   busy = false,
   error = null
@@ -89,6 +94,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           config={config}
           onSend={onSendMessage}
           onOpenSlots={onOpenSlots}
+          tenantSlug={tenantSlug}
+          apiBase={apiBase}
         />
         <div ref={messagesEndRef} />
       </div>

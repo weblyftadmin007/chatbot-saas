@@ -329,8 +329,10 @@ interface AnalyticsData {
   cards: {
     total_sent: number
     sent_last_7_days: number
-    by_kind: Array<{ kind: string; count: number }>
+    by_kind: Array<{ kind: string; count: number; clicks: number; conversion: number }>
   }
+  picker_opens: number
+  slot_picks: number
 }
 
 /** Platform analytics for the admin dashboard (GET /admin/analytics). */
@@ -396,11 +398,43 @@ export async function getAnalytics(db: Client): Promise<Response> {
       kindCounts.set('unknown', (kindCounts.get('unknown') ?? 0) + 1)
     }
   }
+  // Widget engagement: card clicks and picker interactions (event_type
+  // 'widget_event', written by POST /widget/telemetry/:slug).
+  const widgetEvents = await query(
+    db,
+    `SELECT metadata FROM usage_logs
+     WHERE event_type = 'widget_event' AND created_at >= ?
+     ORDER BY created_at DESC LIMIT 20000`,
+    [now - 30 * day],
+  )
+  const clickByKind = new Map<string, number>()
+  let picker_opens = 0
+  let slot_picks = 0
+  for (const r of widgetEvents.rows) {
+    try {
+      const meta = JSON.parse(rowString(r, 'metadata', '{}')) as Record<string, unknown>
+      if (meta['event'] === 'card_clicked') {
+        const kind = typeof meta['kind'] === 'string' ? meta['kind'] : 'unknown'
+        clickByKind.set(kind, (clickByKind.get(kind) ?? 0) + 1)
+      } else if (meta['event'] === 'picker_opened') {
+        picker_opens += 1
+      } else if (meta['event'] === 'slot_chosen') {
+        slot_picks += 1
+      }
+    } catch {
+      // skip unreadable rows
+    }
+  }
   const cards = {
     total_sent,
     sent_last_7_days,
     by_kind: [...kindCounts.entries()]
-      .map(([kind, count]) => ({ kind, count }))
+      .map(([kind, count]) => ({
+        kind,
+        count,
+        clicks: clickByKind.get(kind) ?? 0,
+        conversion: count > 0 ? Math.round(((clickByKind.get(kind) ?? 0) / count) * 1000) / 10 : 0,
+      }))
       .sort((a, b) => b.count - a.count),
   }
 
@@ -414,6 +448,8 @@ export async function getAnalytics(db: Client): Promise<Response> {
     appointments_last_7_days,
     top_tenants,
     cards,
+    picker_opens,
+    slot_picks,
   }
   return json(data)
 }

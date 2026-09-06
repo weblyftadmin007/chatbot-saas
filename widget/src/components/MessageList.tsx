@@ -9,6 +9,9 @@ interface MessageListProps {
   onSend: (content: string) => void
   /** Card booking chips: opens the slot picker instead of chatting. */
   onOpenSlots: () => void
+  /** Widget slug, for engagement telemetry. */
+  tenantSlug?: string
+  apiBase?: string
 }
 
 const DEFAULT_CHIPS = [
@@ -22,7 +25,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   isLoading,
   config,
   onSend,
-  onOpenSlots
+  onOpenSlots,
+  tenantSlug,
+  apiBase = ''
 }) => {
   if (messages.length === 0 && !isLoading) {
     const chips = (config.quick_replies && config.quick_replies.length
@@ -66,6 +71,8 @@ export const MessageList: React.FC<MessageListProps> = ({
               config={config}
               withAvatar={withAvatar}
               interactive={message.interactive !== false}
+              tenantSlug={tenantSlug}
+              apiBase={apiBase}
               onAction={(action) => {
                 // Booking chips open the slot picker instead of chatting.
                 if (action.open_slots) {

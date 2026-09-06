@@ -80,6 +80,16 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
     chat.fetchAvailableDate(iso)
   }, [chat])
 
+  // Card booking chips open the slot picker directly. Firing on the request
+  // id guarantees a re-open even if the picker was just closed.
+  const lastPickerRequestRef = useRef(0)
+  useEffect(() => {
+    if (chat.pickerRequestId > lastPickerRequestRef.current) {
+      lastPickerRequestRef.current = chat.pickerRequestId
+      setIsOpen(true)
+    }
+  }, [chat.pickerRequestId])
+
   const handleSelectSlot = useCallback(async (slot: any, email?: string, name?: string) => {
     session.markActive()
     if (!email) return
@@ -126,6 +136,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
           selectSlot={handleSelectSlot}
           onDateChange={handleDateChange}
           onClosePicker={chat.closePicker}
+          onOpenSlots={chat.openSlotPicker}
+          tenantSlug={tenantSlug}
+          apiBase={apiBase}
           horizonDays={config.data.booking_horizon_days ?? 60}
           busy={bookingBusy}
           error={bookingError}

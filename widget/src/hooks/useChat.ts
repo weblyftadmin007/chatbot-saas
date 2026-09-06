@@ -27,6 +27,31 @@ function apiUrl(apiBase: string, path: string): string {
   return apiBase ? `${apiBase.replace(/\/+$/, '')}${path}` : path
 }
 
+/**
+ * Fire-and-forget engagement event to POST /widget/telemetry/:slug. Never
+ * throws, never blocks the UI; failures are silently dropped.
+ */
+export function trackEvent(
+  apiBase: string,
+  tenantSlug: string,
+  event: 'card_clicked' | 'picker_opened' | 'slot_chosen',
+  meta: { kind?: string; label?: string; source?: string } = {},
+): void {
+  try {
+    const body = JSON.stringify({ event, ...meta })
+    fetch(apiUrl(apiBase, `/widget/telemetry/${tenantSlug}`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {
+      /* telemetry is best-effort */
+    })
+  } catch {
+    /* telemetry is best-effort */
+  }
+}
+
 export function useChat(
   tenantSlug: string,
   initialConversationId: string | null,
@@ -183,7 +208,8 @@ export function useChat(
   }, [])
 
   /** Open the slot picker on request from a card action (booking chips). */
-  const openSlotPicker = useCallback(async () => {
+  const openSlotPicker = useCallback(async (source = 'card') => {
+    trackEvent(apiBase, tenantSlug, 'picker_opened', { source })
     if (!weekSlotsRef.current.length) {
       try {
         const response = await fetch(
@@ -196,10 +222,9 @@ export function useChat(
       } catch {
         // picker shows empty state; user can still pick a date
       }
-    }
-    setSlots(weekSlotsRef.current || [])
-    setPendingAction('pick_slot')
-    setPickerRequestId((n) => n + 1)
+    }      setSlots(weekSlotsRef.current || [])
+      setPendingAction('pick_slot')
+      setPickerRequestId((n) => n + 1)
   }, [tenantSlug, apiBase])
 
   const selectSlot = useCallback(async (slot: Slot | null, email?: string) => {
@@ -257,6 +282,7 @@ export function useChat(
 
   /** Book a slot directly via the REST endpoint (exact epochs, no text reparse). */
   const bookSlot = useCallback(async (slot: Slot, email: string, name: string) => {
+    trackEvent(apiBase, tenantSlug, 'slot_chosen', { source: 'picker' })
     try {
       const response = await fetch(apiUrl(apiBase, `/widget/appointments/${tenantSlug}`), {
         method: 'POST',

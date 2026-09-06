@@ -40,7 +40,7 @@ import {
   type AvailabilityOptions,
 } from './appointments'
 import { cancelAppointment } from './cancel'
-import { handleChat, json } from './chat'
+import { handleChat, handleTelemetry, json } from './chat'
 import { classifyIntent, embedSingle, generateText, synthesizeAnswer } from './llm'
 import { blobToVector, cosineSimilarity } from './vec'
 import {
@@ -125,6 +125,8 @@ function matchRoute(pathname: string): { pattern: string; params: string[] } | n
       if (tail.length === 2 && tail[0] === 'appointments') return { pattern: 'widgetAppointments', params: [tail[1]!] }
       if (tail.length === 3 && tail[0] === 'appointments' && tail[2] === 'availability')
         return { pattern: 'widgetAvailability', params: [tail[1]!] }
+      if (tail.length === 2 && tail[0] === 'telemetry')
+        return { pattern: 'widgetTelemetry', params: [tail[1]!] }
       if (tail.length === 3 && tail[0] === 'appointments' && tail[2] === 'mine')
         return { pattern: 'widgetMyAppointments', params: [tail[1]!] }
       return null
@@ -365,6 +367,12 @@ export default {
             session_id: typeof body?.session_id === 'string' ? body.session_id : null,
           }),
         )
+      }
+      case 'widgetTelemetry': {
+        if (request.method !== 'POST') return withCors(methodNotAllowed())
+        const [slug] = route.params
+        const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+        return withCors(await handleTelemetry(db, slug!, body))
       }
       case 'widgetAvailability': {
         if (request.method !== 'GET') return withCors(methodNotAllowed())
