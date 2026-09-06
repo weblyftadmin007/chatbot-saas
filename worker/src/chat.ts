@@ -62,6 +62,8 @@ export interface CardAction {
   send_message?: string
   /** Opens the user's email client (mailto:). */
   mailto?: string
+  /** Opens this URL in a new tab (e.g. add-to-calendar links). */
+  url?: string
   /** Renders a text input; on submit {value} is substituted into send_template. */
   input?: boolean
   /** Placeholder for the input action. */
@@ -72,11 +74,21 @@ export interface CardAction {
 
 export interface Card {
   id: string
-  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup'
+  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup' | 'booking_confirm' | 'cancel_confirm'
   title?: string
   subtitle?: string
   chips?: string[]
   actions?: CardAction[]
+  /** booking_confirm: appointment date+time, tenant-timezone formatted. */
+  when?: string
+  /** booking_confirm: customer-facing email used for the booking. */
+  email?: string
+  /** booking_confirm: what was booked (currently always 'Appointment'). */
+  service?: string
+  /** cancel_confirm: the cancelled slot's date+time, tenant-timezone formatted. */
+  cancelled_when?: string
+  /** booking_confirm: add-to-calendar URL (Google Calendar). */
+  calendar_url?: string
   /** Persisted as its own assistant row so history can re-render read-only. */
   _persist?: boolean
 }
@@ -140,6 +152,61 @@ function cancelLookupCard(): Card {
         placeholder: 'you@email.com',
         send_template: 'Cancel my appointment {value}',
       },
+    ],
+  }
+}
+
+/**
+ * Google Calendar "add event" link for a booked slot (Phase C). Text params
+ * are URI-encoded; times use the compact UTC format GCal expects (yyyyMMddTHHmmssZ).
+ */
+function gcalUrl(startTs: number, endTs: number, title: string, tzName: string): string {
+  const fmt = (ts: number) =>
+    new Date(ts * 1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${title} \u2014 ${formatSlot(startTs, tzName)}`,
+    dates: `${fmt(startTs)}/${fmt(endTs)}`,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
+/** Phase C: rich confirmation after a successful chat booking. */
+function bookingConfirmCard(
+  startTs: number,
+  endTs: number,
+  title: string,
+  email: string,
+  name: string,
+  tzName: string,
+  tenantName: string,
+): Card {
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'booking_confirm',
+    title: name ? `You\u2019re booked, ${name}` : 'You\u2019re booked',
+    subtitle: `A confirmation email is on its way to ${email}.`,
+    when: formatSlot(startTs, tzName),
+    service: title,
+    email,
+    calendar_url: gcalUrl(startTs, endTs, title, tzName),
+    actions: [
+      { label: 'Add to Google Calendar', url: gcalUrl(startTs, endTs, title, tzName) },
+      { label: 'Book another time', send_message: 'What times are you available this week?' },
+    ],
+  }
+}
+
+/** Phase C: confirmation after a successful chat cancellation, with rebook chip. */
+function cancelConfirmCard(when: string, tenantName: string): Card {
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'cancel_confirm',
+    title: 'Appointment cancelled',
+    subtitle: `Your ${when} slot at ${tenantName} has been freed up.`,
+    cancelled_when: when,
+    actions: [
+      { label: 'Book a new time', send_message: 'What times are you available this week?' },
     ],
   }
 }
@@ -384,7 +451,7 @@ export async function handleChat(
             })
           }
         } else if (intent === 'book_appointment') {
-          await handleBook(db, row, conversationId, message, send, settings)
+          card = await handleBook(db, row, conversationId, message, send, settings)
         } else if (intent === 'check_availability') {
           const tzName = rowString(row, 'timezone', 'UTC')
           const hint = resolveDateIso(message, tzName)
@@ -424,7 +491,7 @@ export async function handleChat(
             })
           }
         } else if (intent === 'cancel_appointment') {
-          await handleCancel(db, row, message, send, settings)
+          card = await handleCancel(db, row, message, send, settings)
         } else if (intent === 'transfer_human') {
           send({
             type: 'content',
@@ -645,8 +712,8 @@ async function handleCancel(
   message: string,
   send: (payload: Record<string, unknown>) => void,
   settings: Record<string, unknown>,
-): Promise<void> {
-  if (!tenant) return
+): Promise<Card | null> {
+  if (!tenant) return null
   const tzName = rowString(tenant, 'timezone', 'UTC')
   const emailMatch = message.match(EMAIL_RE)
   const email = emailMatch ? emailMatch[0] : null
@@ -657,8 +724,9 @@ async function handleCancel(
       content:
         'I can help you cancel — which email did you book with? (I\'ll cancel the next upcoming appointment on it.)',
     })
-    emitCard(send, cancelLookupCard(), settings, db, rowString(tenant, 'id'))
-    return
+    const lookup = cancelLookupCard()
+    emitCard(send, lookup, settings, db, rowString(tenant, 'id'))
+    return lookup
   }
   const outcome = await cancelAppointment(db, tenant, settings, { email: email || '', dateIso: dateIso ?? undefined })
   if (!outcome) {
@@ -667,7 +735,7 @@ async function handleCancel(
       content:
         "I couldn't find an upcoming appointment for that email. Double-check the address, or contact the team directly.",
     })
-    return
+    return null
   }
   const when = formatSlot(outcome.appointment.start_time, tzName)
   const emailNote = outcome.notify.ok
@@ -677,6 +745,7 @@ async function handleCancel(
     type: 'content',
     content: `Your ${when} appointment has been cancelled. ${emailNote}`,
   })
+  return cancelConfirmCard(when, rowString(tenant, 'name'))
 }
 
 async function handleBook(
@@ -686,10 +755,10 @@ async function handleBook(
   message: string,
   send: (payload: Record<string, unknown>) => void,
   settings: Record<string, unknown>,
-): Promise<void> {
+): Promise<Card | null> {
   if (!tenant) {
     send({ type: 'content', content: "I couldn't find the business to book with." })
-    return
+    return null
   }
   const tzName = rowString(tenant, 'timezone', 'UTC')
   const parsed = parseBooking(message, tzName, slotDuration(tenant))
@@ -703,14 +772,16 @@ async function handleBook(
         content:
           'I can book that for you. Could you tell me which day and time you prefer (e.g. "book Friday 2pm")?',
       })
-      emitCard(send, bookingPromptCard(), settings, db, rowString(tenant, 'id'))
+      const prompt = bookingPromptCard()
+      emitCard(send, prompt, settings, db, rowString(tenant, 'id'))
+      return prompt
     } else {
       send({
         type: 'content',
         content: 'To send your confirmation, please share your email address (e.g. "book Friday 2pm, me@email.com").',
       })
     }
-    return
+    return null
   }
 
   // Chat times are free-form ("Friday 2pm") and may fall off the tenant's slot
@@ -727,7 +798,7 @@ async function handleBook(
         ? 'That exact time isn\'t open. Here\'s what\'s available that day — tap a time or tell me another.'
         : "I couldn't find any open times that day — it may be a day we're closed. Tell me another day and I'll check.",
     })
-    return
+    return null
   }
 
   const endUserId = await ensureEndUser(db, tenant, email, parsed.name || undefined)
@@ -750,6 +821,7 @@ async function handleBook(
           ? `You're booked for ${when}, ${parsed.name}. A confirmation email is on its way to ${email}.`
           : `You're booked for ${when}. A confirmation email is on its way to ${email}.`,
     })
+    return bookingConfirmCard(parsed.start, parsed.end, 'Appointment', email, parsed.name, tzName, rowString(tenant, 'name'))
   } catch (e) {
     if (e instanceof ApptConflict) {
       const slots = dateIso
@@ -779,5 +851,6 @@ async function handleBook(
         content: "I couldn't complete the booking. Please try again in a moment.",
       })
     }
+    return null
   }
 }

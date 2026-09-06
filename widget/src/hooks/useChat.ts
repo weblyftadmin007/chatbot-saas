@@ -272,6 +272,38 @@ export function useChat(
           ? `${data.confirmation_message} (${when}, ${at})`
           : `You're booked for ${when} at ${at}. A confirmation email is on its way to ${email}.`
       }])
+      // Local Phase-C confirmation card (widget-side booking path). Kept in
+      // session state only — the DB row is the booking notification, so this
+      // card deliberately does not survive a history reload.
+      const gcal = (() => {
+        const fmt = (ts: number) =>
+          new Date(ts * 1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+        const params = new URLSearchParams({
+          action: 'TEMPLATE',
+          text: `Appointment \u2014 ${when} ${at}`,
+          dates: `${fmt(slot.start_time)}/${fmt(slot.end_time)}`,
+        })
+        return `https://calendar.google.com/calendar/render?${params.toString()}`
+      })()
+      setMessages(prev => [...prev, {
+        id: `card_${Date.now()}`,
+        role: 'assistant' as const,
+        content: '',
+        card: {
+          id: `card_${Date.now()}_confirm`,
+          kind: 'booking_confirm' as const,
+          title: 'You\u2019re booked',
+          subtitle: `A confirmation email is on its way to ${email}.`,
+          service: 'Appointment',
+          when: `${when}, ${at}`,
+          email,
+          calendar_url: gcal,
+          actions: [
+            { label: 'Add to Google Calendar', url: gcal },
+            { label: 'Book another time', send_message: 'What times are you available this week?' },
+          ],
+        },
+      }])
       return { ok: true }
     } catch (e) {
       console.error('Booking failed:', e)

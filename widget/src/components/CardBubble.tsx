@@ -6,6 +6,8 @@ export interface CardAction {
   send_message?: string
   /** Opens the user's email client (mailto:). */
   mailto?: string
+  /** Opens this URL in a new tab (e.g. add-to-calendar links). */
+  url?: string
   /** Renders a text input; on submit {value} is substituted into send_template. */
   input?: boolean
   /** Placeholder for the input action. */
@@ -16,11 +18,21 @@ export interface CardAction {
 
 export interface Card {
   id: string
-  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup'
+  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup' | 'booking_confirm' | 'cancel_confirm'
   title?: string
   subtitle?: string
   chips?: string[]
   actions?: CardAction[]
+  /** booking_confirm: appointment date+time. */
+  when?: string
+  /** booking_confirm: customer email. */
+  email?: string
+  /** booking_confirm: what was booked. */
+  service?: string
+  /** cancel_confirm: the cancelled slot's date+time. */
+  cancelled_when?: string
+  /** booking_confirm: add-to-calendar URL. */
+  calendar_url?: string
 }
 
 interface CardBubbleProps {
@@ -50,6 +62,10 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
 
   const handle = (action: CardAction) => {
     if (!interactive) return
+    if (action.url) {
+      window.open(action.url, '_blank', 'noopener')
+      return
+    }
     if (action.mailto) {
       window.location.href = `mailto:${action.mailto}`
       return
@@ -81,6 +97,38 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
             <div className="chatbot-card-head">
               {card.title && <p className="chatbot-card-title">{card.title}</p>}
               {card.subtitle && <p className="chatbot-card-subtitle">{card.subtitle}</p>}
+            </div>
+          )}
+
+          {card.kind === 'booking_confirm' && (
+            <div className="chatbot-card-fields">
+              {card.service && (
+                <div className="chatbot-card-field">
+                  <span className="chatbot-card-field-label">Service</span>
+                  <span className="chatbot-card-field-value">{card.service}</span>
+                </div>
+              )}
+              {card.when && (
+                <div className="chatbot-card-field">
+                  <span className="chatbot-card-field-label">When</span>
+                  <span className="chatbot-card-field-value">{card.when}</span>
+                </div>
+              )}
+              {card.email && (
+                <div className="chatbot-card-field">
+                  <span className="chatbot-card-field-label">Confirmation to</span>
+                  <span className="chatbot-card-field-value">{card.email}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {card.kind === 'cancel_confirm' && card.cancelled_when && (
+            <div className="chatbot-card-fields">
+              <div className="chatbot-card-field">
+                <span className="chatbot-card-field-label">Cancelled slot</span>
+                <span className="chatbot-card-field-value">{card.cancelled_when}</span>
+              </div>
             </div>
           )}
 

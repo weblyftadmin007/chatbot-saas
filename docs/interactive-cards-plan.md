@@ -111,8 +111,12 @@ Rules:
    `cancel_lookup` email card (inline input, `{value}` template substitution)
    fired when a cancel intent lacks an email. Removes the two clunkiest
    free-text dances.
-3. **Phase C:** `booking_confirm` / `cancel_confirm` summary cards with calendar
-   links (ICS via a tiny worker route) and "Rebook" chip.
+3. **Phase C (implemented):** `booking_confirm` / `cancel_confirm` summary
+   cards with fields (service/when/email, cancelled slot), an "Add to Google
+   Calendar" `url` action, and a "Book another time" rebook chip. Emitted by
+   the worker on chat-path book/cancel (persisted for read-only history
+   replay); the widget's slot-picker booking path shows an equivalent local
+   card in session state.
 4. **Phase D (optional):** replace the SlotPicker bottom sheet with an in-stream
    `availability_result` card once cards are proven.
 

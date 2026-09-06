@@ -631,6 +631,35 @@
   cursor: default;
 }
 
+.chatbot-card-fields {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chatbot-card-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 5px 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.chatbot-card-field-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.chatbot-card-field-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .chatbot-card-input-row {
   display: flex;
   gap: 6px;
