@@ -373,7 +373,7 @@
 .chatbot-slot-picker {
   border-top: 1px solid var(--border-color);
   background: var(--bg-primary);
-  max-height: 200px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
@@ -404,30 +404,83 @@
   padding: 0 16px 16px;
 }
 
-.chatbot-slot-email-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
+.chatbot-slot-contact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
-.chatbot-slot-email {
+.chatbot-slot-field {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  font-size: 13px;
+  padding: 8px 10px;
+  font-size: 12px;
   font-family: inherit;
   outline: none;
   color: var(--text-primary);
   transition: var(--transition);
+  min-width: 0;
 }
 
-.chatbot-slot-email:focus {
+.chatbot-slot-field:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+/* Accordion day headers */
+.chatbot-slot-day {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+.chatbot-slot-day-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg-secondary);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.chatbot-slot-day.open .chatbot-slot-day-head {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chatbot-slot-day-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chatbot-slot-day-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.chatbot-slot-day-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+}
+
+.chatbot-slot-day.open .chatbot-slot-day-chevron {
+  transform: rotate(180deg);
+}
+
+.chatbot-slot-day.open .chatbot-slot-times {
+  padding: 10px 12px;
 }
 
 .chatbot-slot-email-hint {

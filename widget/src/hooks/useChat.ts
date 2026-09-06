@@ -16,11 +16,11 @@ interface Slot {
 
 interface Card {
   id: string
-  kind: 'quick_replies' | 'contact_card'
+  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup' | 'booking_confirm' | 'cancel_confirm'
   title?: string
   subtitle?: string
   chips?: string[]
-  actions?: { label: string; send_message?: string; mailto?: string }[]
+  actions?: { label: string; send_message?: string; mailto?: string; url?: string; open_slots?: boolean }[]
 }
 
 function apiUrl(apiBase: string, path: string): string {
@@ -39,6 +39,8 @@ export function useChat(
   const [conversationId, setConversationId] = useState<string | null>(initialConversationId)
   const [slots, setSlots] = useState<Slot[]>([])
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+  /** Card action asked for the slot picker; ChatWidget opens it on change. */
+  const [pickerRequestId, setPickerRequestId] = useState(0)
 
   const eventSourceRef = useRef<EventSource | null>(null)
   // The rolling-week slots returned by the chat stream; restored when the
@@ -179,6 +181,26 @@ export function useChat(
     setPendingAction(null)
     weekSlotsRef.current = []
   }, [])
+
+  /** Open the slot picker on request from a card action (booking chips). */
+  const openSlotPicker = useCallback(async () => {
+    if (!weekSlotsRef.current.length) {
+      try {
+        const response = await fetch(
+          apiUrl(apiBase, `/widget/appointments/${tenantSlug}/availability?days=7`),
+        )
+        if (response.ok) {
+          const data = await response.json()
+          weekSlotsRef.current = data.slots || []
+        }
+      } catch {
+        // picker shows empty state; user can still pick a date
+      }
+    }
+    setSlots(weekSlotsRef.current || [])
+    setPendingAction('pick_slot')
+    setPickerRequestId((n) => n + 1)
+  }, [tenantSlug, apiBase])
 
   const selectSlot = useCallback(async (slot: Slot | null, email?: string) => {
     // Defensive: a null slot just dismisses the picker.
@@ -344,6 +366,8 @@ export function useChat(
     sendMessage,
     selectSlot,
     closePicker,
+    openSlotPicker,
+    pickerRequestId,
     setConversationId,
     reset,
     fetchAvailableDate,

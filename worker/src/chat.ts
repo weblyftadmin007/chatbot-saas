@@ -64,6 +64,8 @@ export interface CardAction {
   mailto?: string
   /** Opens this URL in a new tab (e.g. add-to-calendar links). */
   url?: string
+  /** Widget-side: clicking opens the slot picker instead of sending a message. */
+  open_slots?: boolean
   /** Renders a text input; on submit {value} is substituted into send_template. */
   input?: boolean
   /** Placeholder for the input action. */
@@ -277,7 +279,40 @@ function buildCardForIntent(
 }
 
 function chipsToSendActions(chips: string[]): CardAction[] {
-  return chips.map((chip) => ({ label: chip, send_message: chip }))
+  return chips.map((chip) => ({
+    label: chip,
+    send_message: chip,
+    // Booking chips jump straight into the widget's slot picker.
+    open_slots: /book/i.test(chip) || undefined,
+  }))
+}
+
+/**
+ * Follow-up card appended to knowledge-base answers so the conversation keeps
+ * going: two chips from the tenant's configured quick replies plus a booking
+ * entry point that opens the widget's slot picker.
+ */
+function followUpCard(settings: Record<string, unknown>): Card {
+  const configured = Array.isArray(settings['quick_replies'])
+    ? (settings['quick_replies'] as unknown[]).filter(
+        (q): q is string => typeof q === 'string' && q.trim().length > 0 && !/book/i.test(q),
+      )
+    : []
+  const chips =
+    configured.length >= 2
+      ? configured.slice(0, 2)
+      : [...configured, 'What are your opening hours?', 'What services do you offer?'].slice(0, 2)
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'quick_replies',
+    title: 'Anything else I can help with?',
+    chips,
+    actions: [
+      ...chipsToSendActions(chips),
+      { label: 'Book an appointment', send_message: 'Book an appointment', open_slots: true },
+    ],
+    _persist: true,
+  }
 }
 
 function contactActions(tenantName: string, settings: Record<string, unknown>): CardAction[] {
@@ -450,8 +485,13 @@ export async function handleChat(
                 "I don't have that information in my knowledge base. Would you like me to help you with something else?",
             })
           }
+          // Keep the conversation going: follow-up chips + a booking entry
+          // point (opens the widget's slot picker) on every KB answer.
+          card = followUpCard(settings)
+          sendCard(card)
         } else if (intent === 'book_appointment') {
           card = await handleBook(db, row, conversationId, message, send, settings)
+          if (card) sendCard(card)
         } else if (intent === 'check_availability') {
           const tzName = rowString(row, 'timezone', 'UTC')
           const hint = resolveDateIso(message, tzName)
@@ -490,8 +530,14 @@ export async function handleChat(
                 "I couldn't find any available slots in the next week. Please check back soon or contact the team directly.",
             })
           }
+          if (!slots.length) {
+            // No slots to show — still give the user a booking entry point.
+            card = followUpCard(settings)
+            sendCard(card)
+          }
         } else if (intent === 'cancel_appointment') {
           card = await handleCancel(db, row, message, send, settings)
+          if (card) sendCard(card)
         } else if (intent === 'transfer_human') {
           send({
             type: 'content',

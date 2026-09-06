@@ -8,6 +8,8 @@ export interface CardAction {
   mailto?: string
   /** Opens this URL in a new tab (e.g. add-to-calendar links). */
   url?: string
+  /** Widget-side: clicking opens the slot picker instead of sending a message. */
+  open_slots?: boolean
   /** Renders a text input; on submit {value} is substituted into send_template. */
   input?: boolean
   /** Placeholder for the input action. */
@@ -62,6 +64,10 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
 
   const handle = (action: CardAction) => {
     if (!interactive) return
+    if (action.open_slots) {
+      onAction?.(action)
+      return
+    }
     if (action.url) {
       window.open(action.url, '_blank', 'noopener')
       return
@@ -134,17 +140,21 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
 
           {card.kind === 'quick_replies' && (card.chips?.length || 0) > 0 && (
             <div className="chatbot-card-chips">
-              {card.chips!.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  className="chatbot-card-chip"
-                  disabled={!interactive}
-                  onClick={() => handle({ label: chip, send_message: chip })}
-                >
-                  {chip}
-                </button>
-              ))}
+              {card.chips!.map((chip) => {
+                // If actions already render this chip, skip the duplicate.
+                if (card.actions?.some((a) => a.label === chip)) return null
+                return (
+                  <button
+                    key={chip}
+                    type="button"
+                    className="chatbot-card-chip"
+                    disabled={!interactive}
+                    onClick={() => handle({ label: chip, send_message: chip })}
+                  >
+                    {chip}
+                  </button>
+                )
+              })}
             </div>
           )}
 

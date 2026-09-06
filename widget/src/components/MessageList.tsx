@@ -7,6 +7,8 @@ interface MessageListProps {
   isLoading: boolean
   config: any
   onSend: (content: string) => void
+  /** Card booking chips: opens the slot picker instead of chatting. */
+  onOpenSlots: () => void
 }
 
 const DEFAULT_CHIPS = [
@@ -19,7 +21,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   messages,
   isLoading,
   config,
-  onSend
+  onSend,
+  onOpenSlots
 }) => {
   if (messages.length === 0 && !isLoading) {
     const chips = (config.quick_replies && config.quick_replies.length
@@ -41,7 +44,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               key={chip}
               type="button"
               className="chatbot-suggest-chip"
-              onClick={() => onSend(chip)}
+              onClick={() => (/book/i.test(chip) ? onOpenSlots() : onSend(chip))}
             >
               {chip}
             </button>
@@ -64,6 +67,11 @@ export const MessageList: React.FC<MessageListProps> = ({
               withAvatar={withAvatar}
               interactive={message.interactive !== false}
               onAction={(action) => {
+                // Booking chips open the slot picker instead of chatting.
+                if (action.open_slots) {
+                  onOpenSlots()
+                  return
+                }
                 // Collapse the card to its transcript line after use
                 // (plan §3: cards are single-use).
                 if (action.send_message) onSend(action.send_message)

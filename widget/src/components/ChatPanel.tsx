@@ -16,6 +16,8 @@ interface ChatPanelProps {
   selectSlot: (slot: any, email?: string, name?: string) => void
   onDateChange: (dateIso: string | null) => void
   onClosePicker: () => void
+  /** Card booking chips: opens the slot picker. */
+  onOpenSlots: () => void
   horizonDays: number
   busy?: boolean
   error?: string | null
@@ -34,6 +36,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   selectSlot,
   onDateChange,
   onClosePicker,
+  onOpenSlots,
   horizonDays,
   busy = false,
   error = null
@@ -85,6 +88,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           isLoading={isLoading}
           config={config}
           onSend={onSendMessage}
+          onOpenSlots={onOpenSlots}
         />
         <div ref={messagesEndRef} />
       </div>
