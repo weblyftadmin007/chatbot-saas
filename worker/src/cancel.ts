@@ -31,11 +31,12 @@ export async function cancelAppointment(
 
   const endUserRes = await query(
     db,
-    'SELECT id FROM end_users WHERE tenant_id = ? AND lower(email) = ? LIMIT 1',
+    'SELECT id, email, name FROM end_users WHERE tenant_id = ? AND lower(email) = ? LIMIT 1',
     [rowString(tenant, 'id'), email],
   )
   if (!endUserRes.rows.length) return null
-  const endUserId = rowString(endUserRes.rows[0]!, 'id')
+  const endUser = endUserRes.rows[0]!
+  const endUserId = rowString(endUser, 'id')
 
   const now = Math.floor(Date.now() / 1000)
   const tzName = rowString(tenant, 'timezone', 'UTC')
@@ -68,7 +69,9 @@ export async function cancelAppointment(
   const start_time = Number(appt['start_time'] || 0)
   const end_time = Number(appt['end_time'] || 0)
 
-  // Free the slot.
+  // Free the slot, then persist the notify outcome so the cron sweep
+  // (which re-sends BOOKING notifications for pending rows) never picks
+  // this row up again.
   await query(
     db,
     `UPDATE appointments SET status = 'cancelled', notify_status = 'pending',
@@ -76,10 +79,10 @@ export async function cancelAppointment(
     [now, id],
   )
 
-  const emailsSent = []
-  if (rowString(appt, 'customer_email')) {
-    emailsSent.push(rowString(appt, 'customer_email'))
-  }
+  // Customer identity lives on end_users — the appointments table has no
+  // customer_email/customer_name columns.
+  const customerEmail = rowString(endUser, 'email')
+  const customerName = rowString(endUser, 'name')
   const notificationEmail =
     typeof settings['notification_email'] === 'string'
       ? settings['notification_email']
@@ -89,8 +92,8 @@ export async function cancelAppointment(
     type: 'cancellation',
     tenant_slug: rowString(tenant, 'slug'),
     tenant_name: rowString(tenant, 'name'),
-    customer_name: rowString(appt, 'customer_name'),
-    customer_email: rowString(appt, 'customer_email'),
+    customer_name: customerName,
+    customer_email: customerEmail,
     start_time,
     end_time,
     title: rowString(appt, 'title', 'Appointment'),
@@ -102,6 +105,15 @@ export async function cancelAppointment(
         : undefined,
     timezone: tzName,
   })
+
+  const errCol = notify.ok
+    ? null
+    : JSON.stringify({ error: notify.error || 'cancellation notify failed', detail: notify.detail || null })
+  await query(
+    db,
+    `UPDATE appointments SET notify_status = ?, notify_error = ?, updated_at = ? WHERE id = ?`,
+    [notify.ok ? 'sent' : 'failed', errCol, Math.floor(Date.now() / 1000), id],
+  )
 
   return {
     appointment: { id, status: 'cancelled', start_time, end_time },

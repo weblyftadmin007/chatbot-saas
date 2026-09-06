@@ -715,6 +715,7 @@ export async function sweepPendingNotifications(db: Client): Promise<NotifySweep
     db,
     `SELECT id, start_time, end_time, title, status FROM appointments
      WHERE notify_status IN ('pending', 'failed')
+       AND status IN ('pending', 'confirmed')
        AND updated_at < ?
      ORDER BY updated_at
      LIMIT ?`,
