@@ -107,9 +107,20 @@ export async function handleChat(
     {},
   )
   const now = Math.floor(Date.now() / 1000)
-  const conversationId = body.conversation_id || crypto.randomUUID()
+  let conversationId = body.conversation_id || ''
 
-  if (!body.conversation_id) {
+  if (conversationId) {
+    // Client-provided ids can be stale (widget reload after session expiry or
+    // DB reset) — if the conversation row is gone, start a fresh conversation
+    // instead of failing the whole chat on a FOREIGN KEY constraint.
+    const exists = await query(db, 'SELECT 1 FROM conversations WHERE id = ? LIMIT 1', [
+      conversationId,
+    ])
+    if (!exists.rows.length) conversationId = ''
+  }
+
+  if (!conversationId) {
+    conversationId = crypto.randomUUID()
     await query(
       db,
       `INSERT INTO conversations (id, tenant_id, status, created_at, updated_at)
@@ -402,11 +413,12 @@ function resolveDateIso(message: string, tzName: string): string | null {
 function resolveTime(message: string): { hour: number; minute: number } | null {
   const at = message.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i)
   const colon = at ? null : message.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?/i)
-  const bare = at || colon ? null : message.match(/\b(\d{1,2})\s*(am|pm)\b/i)
+  const bare = at || colon ? null : message.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)
   const m = at || colon || bare
   if (!m) return null
   let hour = parseInt(m[1] ?? '0', 10)
-  const minute = m[2] ? parseInt(m[2], 10) : 0
+  const minuteRaw = m[2] && /^\d{1,2}$/.test(m[2]) ? m[2] : null
+  const minute = minuteRaw ? parseInt(minuteRaw, 10) : 0
   const ampm = (m[3] || '').toLowerCase()
   if (ampm === 'pm' && hour < 12) hour += 12
   if (ampm === 'am' && hour === 12) hour = 0

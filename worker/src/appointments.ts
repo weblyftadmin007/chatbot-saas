@@ -118,15 +118,32 @@ export function isoToDayOffset(iso: string, tzName: string): number | null {
 /** UTC offset in minutes for a timezone at a given instant. */
 export function tzOffsetMinutes(utcMs: number, tzName: string): number {
   try {
+    // Derive the offset arithmetically from formatted date parts instead of
+    // parsing the timeZoneName ('GMT+5:30') — workerd's Intl output for
+    // timeZoneName is not guaranteed to match the regex across runtimes, and
+    // a parse failure silently yields 0, shifting every slot by the offset.
     const dtf = new Intl.DateTimeFormat('en-US', {
       timeZone: tzName,
-      timeZoneName: 'shortOffset',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
     })
-    const val = dtf.formatToParts(new Date(utcMs)).find((p) => p.type === 'timeZoneName')?.value || ''
-    const m = val.match(/GMT?([+-])(\\d{1,2}):?(\\d{2})/)
-    if (!m) return 0
-    const sign = m[1] === '-' ? -1 : 1
-    return sign * (parseInt(m[2] ?? '0', 10) * 60 + parseInt(m[3] ?? '0', 10))
+    const parts = dtf.formatToParts(new Date(utcMs))
+    const get = (t: string): number =>
+      parseInt(parts.find((p) => p.type === t)?.value ?? '0', 10) || 0
+    const asUTC = Date.UTC(
+      get('year'),
+      get('month') - 1,
+      get('day'),
+      get('hour') % 24,
+      get('minute'),
+      get('second'),
+    )
+    return Math.round((asUTC - utcMs) / 60000)
   } catch {
     return 0
   }
@@ -185,7 +202,7 @@ export async function getAvailability(
   const horizon = bookingHorizon(tenant)
 
   let offsets: number[]
-  if (opts.date && /^\\d{4}-\\d{2}-\\d{2}$/.test(opts.date)) {
+  if (opts.date && /^\d{4}-\d{2}-\d{2}$/.test(opts.date)) {
     const off = isoToDayOffset(opts.date, tzName)
     if (off === null || off < 0 || off > horizon) return []
     offsets = [off]
