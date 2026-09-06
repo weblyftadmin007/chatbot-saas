@@ -54,6 +54,104 @@ interface TenantCtx {
   config: WidgetConfig
 }
 
+// --- Interactive cards (Phase A: quick_replies on unclear, contact on transfer_human) ---
+
+export interface CardAction {
+  label: string
+  /** Sends this text back through the chat as a normal user message. */
+  send_message?: string
+  /** Opens the user's email client (mailto:). */
+  mailto?: string
+}
+
+export interface Card {
+  id: string
+  kind: 'quick_replies' | 'contact_card'
+  title?: string
+  subtitle?: string
+  chips?: string[]
+  actions?: CardAction[]
+  /** Persisted on the assistant message so history can re-render read-only. */
+  _persist?: boolean
+}
+
+/** Per-tenant RPM windows already track intent counts via usage_logs; this
+ * tracks consecutive 'unclear' replies per conversation for the escalation
+ * card (fall back to "talk to a human" after two in a row). */
+const unclearStreaks = new Map<string, number>()
+
+/** Quick-reply chips for the unclear card — tenant-configured when present. */
+function quickReplyChips(settings: Record<string, unknown>): string[] {
+  const configured = Array.isArray(settings['quick_replies'])
+    ? (settings['quick_replies'] as unknown[]).filter((q): q is string => typeof q === 'string' && q.trim().length > 0)
+    : []
+  const chips = (configured.length ? configured : [
+    'What are your hours?',
+    'Book an appointment',
+    'How do I get in touch?',
+  ]).slice(0, 4)
+  return chips
+}
+
+/**
+ * Build the Phase-A card for an intent. Returns null when no card applies.
+ * Gate: tenant setting cards_enabled (default true).
+ * Escalation streak is tracked by the caller (handleChat) on every message.
+ */
+function buildCardForIntent(
+  intent: string,
+  settings: Record<string, unknown>,
+  tenantName: string,
+  conversationId: string,
+): Card | null {
+  if (settings['cards_enabled'] === false) return null
+  if (intent === 'unclear') {
+    const streak = unclearStreaks.get(conversationId) ?? 0
+    if (streak >= 3) {
+      // Fallback chain (plan §5.3): three unclear in a row → push to human.
+      return {
+        id: `card_${crypto.randomUUID()}`,
+        kind: 'contact_card',
+        title: 'Let me get a human to help',
+        subtitle: 'I want to make sure you get a proper answer.',
+        _persist: true,
+      }
+    }
+    return {
+      id: `card_${crypto.randomUUID()}`,
+      kind: 'quick_replies',
+      title: 'Pick a topic',
+      subtitle: 'Or just type your question',
+      chips: quickReplyChips(settings),
+      actions: chipsToSendActions(quickReplyChips(settings)),
+      _persist: true,
+    }
+  }
+  if (intent === 'transfer_human') {
+    return {
+      id: `card_${crypto.randomUUID()}`,
+      kind: 'contact_card',
+      title: `Talk to ${tenantName}`,
+      subtitle: 'A real person can help with anything I can\'t.',
+      actions: contactActions(tenantName, settings),
+      _persist: true,
+    } satisfies Card
+  }
+  return null
+}
+
+function chipsToSendActions(chips: string[]): CardAction[] {
+  return chips.map((chip) => ({ label: chip, send_message: chip }))
+}
+
+function contactActions(tenantName: string, settings: Record<string, unknown>): CardAction[] {
+  const actions: CardAction[] = []
+  const email = typeof settings['notification_email'] === 'string' ? settings['notification_email'] : ''
+  if (email) actions.push({ label: `Email ${tenantName}`, mailto: email })
+  actions.push({ label: 'Book an appointment', send_message: 'Book an appointment' })
+  return actions
+}
+
 async function loadTenant(db: Client, slug: string): Promise<TenantCtx | null> {
   const row = await tenantBySlug(db, slug)
   if (!row) return null
@@ -155,13 +253,41 @@ export async function handleChat(
     [crypto.randomUUID(), tenantId, JSON.stringify({ intent }), now],
   )
 
+  // Track consecutive 'unclear' replies per conversation for the escalation
+  // card (any real intent resets it). Throttled messages don't count.
+  if (!throttled) {
+    if (intent === 'unclear') {
+      unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
+    } else {
+      unclearStreaks.delete(conversationId)
+    }
+  }
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let full = ''
+      let card: Card | null = null
       const send = (payload: Record<string, unknown>) => {
         const frame = `data: ${JSON.stringify(payload)}\n\n`
         full += (payload['content'] as string) || ''
         controller.enqueue(encoder.encode(frame))
+      }
+      // Cards ride their own SSE frame; old widgets ignore unknown types.
+      // _persist is internal bookkeeping and stays off the wire.
+      const sendCard = (c: Card) => {
+        const { _persist, ...wire } = c
+        void _persist
+        send({ type: 'card', card: wire })
+        try {
+          void query(
+            db,
+            `INSERT INTO usage_logs (id, tenant_id, event_type, metadata, created_at)
+             VALUES (?, ?, 'card_sent', ?, ?)`,
+            [crypto.randomUUID(), tenantId, JSON.stringify({ kind: c.kind, card_id: c.id, intent }), now],
+          )
+        } catch {
+          // analytics is best-effort
+        }
       }
       try {
         if (throttled || quotaExceeded) {
@@ -248,6 +374,8 @@ export async function handleChat(
             content:
               "I'll make sure someone from the team reaches out to you shortly. Is there anything else I can help with in the meantime?",
           })
+          card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
+          if (card) sendCard(card)
         } else {
           // unclear
           send({
@@ -255,15 +383,20 @@ export async function handleChat(
             content:
               "I'm not sure I understand. Could you rephrase that? I can help with answering questions about the business or booking appointments.",
           })
+          card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
+          if (card) sendCard(card)
         }
 
         const assistantMsg = full.trim()
         if (assistantMsg) {
+          // Persist the card alongside the text (messages.tool_calls) so a
+          // history reload can re-render it read-only.
+          const toolCalls = card && card._persist ? JSON.stringify({ card }) : null
           await query(
             db,
-            `INSERT INTO messages (id, conversation_id, role, content, intent, created_at)
-             VALUES (?, ?, 'assistant', ?, ?, ?)`,
-            [crypto.randomUUID(), conversationId, assistantMsg, intent, now],
+            `INSERT INTO messages (id, conversation_id, role, content, intent, tool_calls, created_at)
+             VALUES (?, ?, 'assistant', ?, ?, ?, ?)`,
+            [crypto.randomUUID(), conversationId, assistantMsg, intent, toolCalls, now],
           )
           await query(db, 'UPDATE conversations SET updated_at = ? WHERE id = ?', [
             now,

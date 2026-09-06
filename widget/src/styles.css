@@ -576,6 +576,67 @@
   background: var(--text-secondary);
 }
 
+/* Interactive cards (server-driven, docs/interactive-cards-plan.md) */
+.chatbot-card {
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--bg-primary);
+}
+
+.chatbot-card-title {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chatbot-card-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chatbot-card-chips,
+.chatbot-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.chatbot-card-chip,
+.chatbot-card-action {
+  border: 1px solid var(--primary-color);
+  background: transparent;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.chatbot-card-chip:hover:not(:disabled),
+.chatbot-card-action:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.chatbot-card-chip:disabled,
+.chatbot-card-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.chatbot-card-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .chatbot-button {

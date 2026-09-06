@@ -530,20 +530,32 @@ export default {
         if (!conv.rows.length) return withCors(json({ detail: 'Conversation not found' }, 404))
         const msgs = await query(
           db,
-          `SELECT id, role, content, intent, created_at
+          `SELECT id, role, content, intent, tool_calls, created_at
            FROM messages WHERE conversation_id = ? ORDER BY created_at`,
           [conversationId],
         )
         return withCors(
           json({
             conversation_id: conversationId,
-            messages: msgs.rows.map((r) => ({
-              id: rowString(r, 'id'),
-              role: rowString(r, 'role'),
-              content: rowString(r, 'content'),
-              intent: (r['intent'] as string | null) || null,
-              created_at: Number(r['created_at'] || 0),
-            })),
+            messages: msgs.rows.map((r) => {
+              const tc = rowString(r, 'tool_calls', '')
+              let card: unknown = null
+              if (tc) {
+                try {
+                  card = (JSON.parse(tc) as Record<string, unknown>)['card'] ?? null
+                } catch {
+                  card = null
+                }
+              }
+              return {
+                id: rowString(r, 'id'),
+                role: rowString(r, 'role'),
+                content: rowString(r, 'content'),
+                intent: (r['intent'] as string | null) || null,
+                card,
+                created_at: Number(r['created_at'] || 0),
+              }
+            }),
           }),
         )
       }

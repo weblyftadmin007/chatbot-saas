@@ -14,6 +14,15 @@ interface Slot {
   available: boolean
 }
 
+interface Card {
+  id: string
+  kind: 'quick_replies' | 'contact_card'
+  title?: string
+  subtitle?: string
+  chips?: string[]
+  actions?: { label: string; send_message?: string; mailto?: string }[]
+}
+
 function apiUrl(apiBase: string, path: string): string {
   return apiBase ? `${apiBase.replace(/\/+$/, '')}${path}` : path
 }
@@ -40,9 +49,11 @@ export function useChat(
     if (!content.trim() || isLoading) return
 
     // Any new message discards a pending slot-picker choice (it re-opens if
-    // the user asks about availability again).
+    // the user asks about availability again) and collapses any open card
+    // (plan §5.1: one pending card at a time).
     setSlots([])
     setPendingAction(null)
+    setMessages((prev) => prev.map((m) => (m.card ? { ...m, interactive: false } : m)))
 
     // Add user message immediately
     const userMessage: Message = {
@@ -128,6 +139,22 @@ export function useChat(
         setSlots(data.slots)
         weekSlotsRef.current = data.slots || []
         setPendingAction('pick_slot')
+        break
+
+      case 'card':
+        // Server-driven interactive card (docs/interactive-cards-plan.md).
+        // Appended as its own assistant message so cards render inline.
+        if (data.card && data.card.id) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: data.card.id as string,
+              role: 'assistant' as const,
+              content: '',
+              card: data.card as Card,
+            },
+          ])
+        }
         break
 
       case 'done':
@@ -264,7 +291,12 @@ export function useChat(
       const response = await fetch(apiUrl(apiBase, `/widget/history/${tenantSlug}?conversation_id=${convId}`))
       if (response.ok) {
         const data = await response.json()
-        setMessages(data.messages || [])
+        // History rows may carry a persisted card (read-only replay).
+        setMessages(
+          (data.messages || []).map((m: any) =>
+            m.card ? { ...m, interactive: false } : m,
+          ),
+        )
       }
     } catch (e) {
       console.warn('Failed to load history:', e)

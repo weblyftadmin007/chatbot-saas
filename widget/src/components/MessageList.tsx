@@ -1,5 +1,6 @@
 import React from 'react'
 import { MessageBubble } from './MessageBubble'
+import { CardBubble } from './CardBubble'
 
 interface MessageListProps {
   messages: any[]
@@ -52,14 +53,33 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="chatbot-message-list">
-      {messages.map((message, index) => (
-        <MessageBubble
-          key={message.id || index}
-          message={message}
-          config={config}
-          withAvatar={message.role === 'assistant' && (index === 0 || messages[index - 1].role !== 'assistant')}
-        />
-      ))}
+      {messages.map((message, index) => {
+        const withAvatar = message.role === 'assistant' && (index === 0 || messages[index - 1].role !== 'assistant')
+        if (message.card && message.role === 'assistant') {
+          return (
+            <CardBubble
+              key={message.id || `card_${index}`}
+              card={message.card}
+              config={config}
+              withAvatar={withAvatar}
+              interactive={message.interactive !== false}
+              onAction={(action) => {
+                // Collapse the card to its transcript line after use
+                // (plan §3: cards are single-use).
+                if (action.send_message) onSend(action.send_message)
+              }}
+            />
+          )
+        }
+        return (
+          <MessageBubble
+            key={message.id || index}
+            message={message}
+            config={config}
+            withAvatar={withAvatar}
+          />
+        )
+      })}
       {isLoading && (
         <div className="chatbot-typing">
           <span></span>
