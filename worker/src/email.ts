@@ -65,8 +65,15 @@ function withSecret(settings: Record<string, unknown>, payload: BookingNotificat
  * have succeeded for ok=true so retries kick in when the customer email
  * didn't actually go out.
  */
-function parseGasResult(data: Record<string, unknown> | null): { ok: boolean; error?: string } {
-  if (!data) return { ok: true }
+function parseGasResult(data: Record<string, unknown> | null, raw?: string): { ok: boolean; error?: string; detail?: string } {
+  // GAS web apps return HTML (an error/interstitial page) when the script
+  // throws, isn't authorized, or the deployment is stale. That is NOT success
+  // — treat unparseable bodies as failures so retries kick in instead of
+  // silently marking the notification as sent.
+  if (!data) {
+    const snippet = (raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+    return { ok: false, error: 'GAS returned a non-JSON response', detail: snippet }
+  }
   if (typeof data['error'] === 'string' && data['error']) {
     return { ok: false, error: data['error'] }
   }
@@ -113,9 +120,9 @@ export async function notifyBooking(settings: Record<string, unknown>, payload: 
       console.error(`[notifyBooking] GAS HTTP ${res.status} for ${payload.tenant_slug}: ${text.slice(0, 300)}`)
       return { ok: false, error, detail: text.slice(0, 300) }
     }
-    const parsed = parseGasResult(data)
+    const parsed = parseGasResult(data, text)
     if (!parsed.ok) {
-      console.error(`[notifyBooking] GAS partial failure for ${payload.tenant_slug}: ${parsed.error}`)
+      console.error(`[notifyBooking] GAS failure for ${payload.tenant_slug}: ${parsed.error}`)
       return { ok: false, error: parsed.error, detail: text.slice(0, 300) }
     }
     return { ok: true, detail: data && typeof data === 'object' ? JSON.stringify(data) : undefined }
@@ -155,7 +162,7 @@ export async function notifyCancellation(settings: Record<string, unknown>, payl
       const error = typeof data?.error === 'string' ? data.error : `GAS HTTP ${res.status}`
       return { ok: false, error, detail: text.slice(0, 300) }
     }
-    const parsed = parseGasResult(data)
+    const parsed = parseGasResult(data, text)
     if (!parsed.ok) return { ok: false, error: parsed.error, detail: text.slice(0, 300) }
     return { ok: true, detail: data && typeof data === 'object' ? JSON.stringify(data) : undefined }
   } catch (e) {
@@ -192,7 +199,7 @@ export async function notifyReminder(settings: Record<string, unknown>, payload:
       const error = typeof data?.error === 'string' ? data.error : `GAS HTTP ${res.status}`
       return { ok: false, error, detail: text.slice(0, 300) }
     }
-    const parsed = parseGasResult(data)
+    const parsed = parseGasResult(data, text)
     if (!parsed.ok) return { ok: false, error: parsed.error, detail: text.slice(0, 300) }
     return { ok: true, detail: data && typeof data === 'object' ? JSON.stringify(data) : undefined }
   } catch (e) {
