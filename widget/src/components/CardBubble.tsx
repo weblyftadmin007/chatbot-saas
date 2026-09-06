@@ -6,11 +6,17 @@ export interface CardAction {
   send_message?: string
   /** Opens the user's email client (mailto:). */
   mailto?: string
+  /** Renders a text input; on submit {value} is substituted into send_template. */
+  input?: boolean
+  /** Placeholder for the input action. */
+  placeholder?: string
+  /** Template for the input action, e.g. "Cancel my appointment {value}". */
+  send_template?: string
 }
 
 export interface Card {
   id: string
-  kind: 'quick_replies' | 'contact_card'
+  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup'
   title?: string
   subtitle?: string
   chips?: string[]
@@ -40,6 +46,8 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
   interactive = true,
   onAction,
 }) => {
+  const [inputValue, setInputValue] = React.useState('')
+
   const handle = (action: CardAction) => {
     if (!interactive) return
     if (action.mailto) {
@@ -47,6 +55,14 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
       return
     }
     if (action.send_message) onAction?.(action)
+  }
+
+  const submitInput = (action: CardAction) => {
+    const value = inputValue.trim()
+    if (!interactive || !value) return
+    const text = (action.send_template || '{value}').replace('{value}', value)
+    onAction?.({ label: action.label, send_message: text })
+    setInputValue('')
   }
 
   return (
@@ -86,17 +102,44 @@ export const CardBubble: React.FC<CardBubbleProps> = ({
 
           {card.actions && card.actions.length > 0 && (
             <div className="chatbot-card-actions">
-              {card.actions.map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  className="chatbot-card-action"
-                  disabled={!interactive}
-                  onClick={() => handle(action)}
-                >
-                  {action.label}
-                </button>
-              ))}
+              {card.actions.map((action) =>
+                action.input ? (
+                  <div key={action.label} className="chatbot-card-input-row">
+                    <input
+                      type={action.send_template?.includes('email') ? 'email' : 'text'}
+                      className="chatbot-card-input"
+                      placeholder={action.placeholder || 'Type here…'}
+                      value={inputValue}
+                      disabled={!interactive}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          submitInput(action)
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="chatbot-card-action"
+                      disabled={!interactive || !inputValue.trim()}
+                      onClick={() => submitInput(action)}
+                    >
+                      {action.label}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    key={action.label}
+                    type="button"
+                    className="chatbot-card-action"
+                    disabled={!interactive}
+                    onClick={() => handle(action)}
+                  >
+                    {action.label}
+                  </button>
+                )
+              )}
             </div>
           )}
 

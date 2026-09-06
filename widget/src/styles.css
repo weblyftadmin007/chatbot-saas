@@ -631,6 +631,32 @@
   cursor: default;
 }
 
+.chatbot-card-input-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.chatbot-card-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  outline: none;
+}
+
+.chatbot-card-input:focus {
+  border-color: var(--primary-color);
+}
+
+.chatbot-card-input:disabled {
+  opacity: 0.55;
+}
+
 .chatbot-card-note {
   margin: 8px 0 0;
   font-size: 12px;

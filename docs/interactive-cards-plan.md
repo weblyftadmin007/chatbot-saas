@@ -106,8 +106,11 @@ Rules:
 1. **Phase A (1 PR):** `quick_replies` card on `unclear` + `contact_card` on
    `transfer_human`. Pure additive frames; old widget unaffected. Biggest
    on-track win for least code.
-2. **Phase B:** `booking_prompt` chips (today/tomorrow/date) + `cancel_lookup`
-   email card. Removes the two clunkiest free-text dances.
+2. **Phase B (implemented):** `booking_prompt` chips (Today / Tomorrow / This
+   week) fired when a booking intent lacks a parseable date/time, and the
+   `cancel_lookup` email card (inline input, `{value}` template substitution)
+   fired when a cancel intent lacks an email. Removes the two clunkiest
+   free-text dances.
 3. **Phase C:** `booking_confirm` / `cancel_confirm` summary cards with calendar
    links (ICS via a tiny worker route) and "Rebook" chip.
 4. **Phase D (optional):** replace the SlotPicker bottom sheet with an in-stream

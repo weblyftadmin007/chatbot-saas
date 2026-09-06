@@ -62,17 +62,86 @@ export interface CardAction {
   send_message?: string
   /** Opens the user's email client (mailto:). */
   mailto?: string
+  /** Renders a text input; on submit {value} is substituted into send_template. */
+  input?: boolean
+  /** Placeholder for the input action. */
+  placeholder?: string
+  /** Template for the input action, e.g. "Cancel my appointment {value}". */
+  send_template?: string
 }
 
 export interface Card {
   id: string
-  kind: 'quick_replies' | 'contact_card'
+  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup'
   title?: string
   subtitle?: string
   chips?: string[]
   actions?: CardAction[]
-  /** Persisted on the assistant message so history can re-render read-only. */
+  /** Persisted as its own assistant row so history can re-render read-only. */
   _persist?: boolean
+}
+
+/** Tenant-level kill switch for interactive cards (default: on). */
+function cardsEnabled(settings: Record<string, unknown>): boolean {
+  return settings['cards_enabled'] !== false
+}
+
+/**
+ * Emit a card frame from any handler. Analytics write is fire-and-forget —
+ * never blocks or fails the chat.
+ */
+function emitCard(
+  send: (payload: Record<string, unknown>) => void,
+  card: Card,
+  settings: Record<string, unknown>,
+  db: Client,
+  tenantId: string,
+): void {
+  if (!cardsEnabled(settings)) return
+  const { _persist, ...wire } = card
+  void _persist
+  send({ type: 'card', card: wire })
+  void query(
+    db,
+    `INSERT INTO usage_logs (id, tenant_id, event_type, metadata, created_at)
+     VALUES (?, ?, 'card_sent', ?, ?)`,
+    [crypto.randomUUID(), tenantId, JSON.stringify({ kind: card.kind, card_id: card.id }), Math.floor(Date.now() / 1000)],
+  ).catch(() => {
+    // analytics is best-effort
+  })
+}
+
+/** Phase B: chips that funnel a vague booking request into availability. */
+function bookingPromptCard(): Card {
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'booking_prompt',
+    title: 'Let\u2019s find a time',
+    subtitle: 'Pick when works for you \u2014 I\u2019ll show the open slots.',
+    actions: [
+      { label: 'Today', send_message: 'What times are available today?' },
+      { label: 'Tomorrow', send_message: 'What times are available tomorrow?' },
+      { label: 'This week', send_message: 'What times are you available this week?' },
+    ],
+  }
+}
+
+/** Phase B: collect the booking email inline instead of a free-text dance. */
+function cancelLookupCard(): Card {
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'cancel_lookup',
+    title: 'Find your booking',
+    subtitle: 'Enter the email you booked with and I\u2019ll look it up.',
+    actions: [
+      {
+        label: 'Cancel booking',
+        input: true,
+        placeholder: 'you@email.com',
+        send_template: 'Cancel my appointment {value}',
+      },
+    ],
+  }
 }
 
 /** Per-tenant RPM windows already track intent counts via usage_logs; this
@@ -104,7 +173,7 @@ function buildCardForIntent(
   tenantName: string,
   conversationId: string,
 ): Card | null {
-  if (settings['cards_enabled'] === false) return null
+  if (!cardsEnabled(settings)) return null
   if (intent === 'unclear') {
     const streak = unclearStreaks.get(conversationId) ?? 0
     if (streak >= 3) {
@@ -275,19 +344,7 @@ export async function handleChat(
       // Cards ride their own SSE frame; old widgets ignore unknown types.
       // _persist is internal bookkeeping and stays off the wire.
       const sendCard = (c: Card) => {
-        const { _persist, ...wire } = c
-        void _persist
-        send({ type: 'card', card: wire })
-        try {
-          void query(
-            db,
-            `INSERT INTO usage_logs (id, tenant_id, event_type, metadata, created_at)
-             VALUES (?, ?, 'card_sent', ?, ?)`,
-            [crypto.randomUUID(), tenantId, JSON.stringify({ kind: c.kind, card_id: c.id, intent }), now],
-          )
-        } catch {
-          // analytics is best-effort
-        }
+        emitCard(send, c, settings, db, tenantId)
       }
       try {
         if (throttled || quotaExceeded) {
@@ -600,6 +657,7 @@ async function handleCancel(
       content:
         'I can help you cancel — which email did you book with? (I\'ll cancel the next upcoming appointment on it.)',
     })
+    emitCard(send, cancelLookupCard(), settings, db, rowString(tenant, 'id'))
     return
   }
   const outcome = await cancelAppointment(db, tenant, settings, { email: email || '', dateIso: dateIso ?? undefined })
@@ -645,6 +703,7 @@ async function handleBook(
         content:
           'I can book that for you. Could you tell me which day and time you prefer (e.g. "book Friday 2pm")?',
       })
+      emitCard(send, bookingPromptCard(), settings, db, rowString(tenant, 'id'))
     } else {
       send({
         type: 'content',
