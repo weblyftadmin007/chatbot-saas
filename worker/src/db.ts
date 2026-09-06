@@ -43,6 +43,12 @@ export async function ensureSchemaMigrations(db: Client): Promise<void> {
         args: [],
       })
     }
+    if (!cols.has('remind_status')) {
+      await db.execute({
+        sql: `ALTER TABLE appointments ADD COLUMN remind_status TEXT NOT NULL DEFAULT 'pending'`,
+        args: [],
+      })
+    }
     try {
       const endUserRes = await query(db, 'PRAGMA table_info(end_users)', [])
       if (!endUserRes.rows.length) {

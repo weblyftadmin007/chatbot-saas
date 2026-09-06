@@ -633,6 +633,7 @@ export async function sendReminder(
       `UPDATE appointments SET remind_status = 'remind_failed', notify_error = ?, updated_at = ? WHERE id = ?`,
       [err, Math.floor(Date.now() / 1000), appointmentId],
     )
+    return { ok: false, error: out.error }
   }
 
   const now = Math.floor(Date.now() / 1000)
@@ -641,7 +642,7 @@ export async function sendReminder(
     `UPDATE appointments SET remind_status = 'reminded', updated_at = ? WHERE id = ?`,
     [now, appointmentId],
   )
-  return out.ok ? { ok: true } : { ok: false, error: out.error }
+  return { ok: true }
 }
 
 /**
@@ -662,6 +663,7 @@ export async function sweepUpcomingReminders(db: Client): Promise<{ attempted: n
      JOIN tenants t ON t.id = a.tenant_id AND t.plan != 'deleted'
      LEFT JOIN end_users eu ON eu.id = a.end_user_id
      WHERE a.status IN ('pending', 'confirmed')
+       AND a.remind_status IN ('pending', 'remind_failed')
        AND a.start_time >= ?
        AND a.start_time < ?
      ORDER BY a.start_time

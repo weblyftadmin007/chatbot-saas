@@ -36,6 +36,7 @@ interface Appointment {
   end_user_email?: string
   notify_status?: string
   notify_error?: string
+  remind_status?: string
 }
 
 export function TenantDetail() {
@@ -95,7 +96,9 @@ export function TenantDetail() {
     const colors: Record<string, string> = {
       sent: '#10B981',
       pending: '#F59E0B',
-      failed: '#EF4444'
+      failed: '#EF4444',
+      reminded: '#10B981',
+      remind_failed: '#EF4444'
     }
     return colors[status] || '#64748B'
   }
@@ -250,6 +253,7 @@ export function TenantDetail() {
                   <th>Status</th>
                   <th>Customer</th>
                   <th>Notifications</th>
+                  <th>Reminder</th>
                 </tr>
               </thead>
               <tbody>
@@ -276,6 +280,27 @@ export function TenantDetail() {
                         >
                           Retry
                         </button>
+                      )}
+                      {appt.notify_error && (
+                        <span
+                          title={appt.notify_error}
+                          style={{ marginLeft: 8, cursor: 'help', color: '#EF4444' }}
+                        >
+                          ⚠
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="badge" style={{ backgroundColor: getNotifyColor(appt.remind_status || 'pending') }}>
+                        {appt.remind_status || 'pending'}
+                      </span>
+                      {appt.notify_error && (appt.remind_status === 'remind_failed' || appt.remind_status === 'pending') && (
+                        <span
+                          title={appt.notify_error}
+                          style={{ marginLeft: 8, cursor: 'help', color: '#EF4444' }}
+                        >
+                          ⚠
+                        </span>
                       )}
                     </td>
                   </tr>

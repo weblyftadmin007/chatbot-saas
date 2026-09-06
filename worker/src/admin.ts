@@ -445,6 +445,7 @@ export async function listTenantAppointments(db: Client, tenantId: string): Prom
       end_user_email: (r['end_user_email'] as string | null) || null,
       notify_status: rowString(r, 'notify_status', 'pending'),
       notify_error: (r['notify_error'] as string | null) || null,
+      remind_status: rowString(r, 'remind_status', 'pending'),
       created_at: Number(r['created_at'] || 0),
     })),
   )
