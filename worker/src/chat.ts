@@ -526,6 +526,35 @@ export async function handleChat(
     unclearStreaks.delete(conversationId)
   }
 
+  // Load prior conversation turns so follow-up questions can be answered with
+  // context (e.g. "How much is the middle one?" after discussing packages).
+  const prevMessages: { role: 'user' | 'assistant'; text: string }[] = []
+  if (conversationId) {
+    try {
+      const hist = await query(
+        db,
+        `SELECT role, content FROM messages
+         WHERE conversation_id = ? AND role IN ('user', 'assistant')
+         ORDER BY created_at ASC`,
+        [conversationId],
+      )
+      for (const r of hist.rows) {
+        const role = rowString(r, 'role')
+        const content = rowString(r, 'content')
+        if (role && content && role !== 'system') {
+          prevMessages.push({ role: role as 'user' | 'assistant', text: content })
+        }
+      }
+      // Keep the context window bounded — last 10 turns (20 messages) is plenty
+      // for follow-ups while staying well inside the LLM prompt budget.
+      if (prevMessages.length > 20) {
+        prevMessages.splice(0, prevMessages.length - 20)
+      }
+    } catch {
+      // Best-effort history — a failure here must not break the chat.
+    }
+  }
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let full = ''
@@ -555,7 +584,7 @@ export async function handleChat(
           if (hits.length) {
             const context = hits.map((h) => h.content)
             try {
-              for await (const chunk of synthesizeAnswer(env, message, context)) {
+              for await (const chunk of synthesizeAnswer(env, message, context, prevMessages)) {
                 send({ type: 'content', content: chunk })
               }
             } catch (e) {
@@ -571,16 +600,22 @@ export async function handleChat(
               }
             }
           } else {
+            // Knowledge base has no answer — offer concrete next steps instead
+            // of a dead-end. The follow-up card gives topic chips; the contact
+            // card gives a human path. Show the contact card on the second
+            // consecutive miss so users aren't stuck re-asking.
+            const missCount = prevMessages.filter(
+              (m) => m.role === 'assistant' && m.text.includes("don't have that information"),
+            ).length
             send({
               type: 'content',
-              content:
-                "I don't have that information in my knowledge base. Would you like me to help you with something else?",
+              content: missCount >= 2
+                ? "I'm not finding that in my knowledge base. Let me connect you with someone who can help — or try asking about the business, services, pricing, or hours."
+                : "I don't have that information in my knowledge base right now. Try asking about the business, services, pricing, hours, or how to get in touch.",
             })
             card = await followUpCard(db, conversationId, settings)
             sendCard(card)
-            if (matchedChip) {
-              // The tenant advertised this exact chip — never dead-end on a
-              // KB miss; offer the human path instead.
+            if (missCount >= 2) {
               const contact = await buildCardForIntent(
                 db,
                 'transfer_human',
@@ -669,9 +704,11 @@ export async function handleChat(
           }
           if (hits.length) {
             try {
-              for await (const chunk of synthesizeAnswer(env, message, hits.map((h) => h.content))) {
+              for await (const chunk of synthesizeAnswer(env, message, hits.map((h) => h.content), prevMessages)) {
                 send({ type: 'content', content: chunk })
               }
+              // The KB answered it — relabel so analytics are accurate.
+              intent = 'general_query'
             } catch (e) {
               console.error(
                 `[synthesizeAnswer] failed slug:${slug} | ${e instanceof Error ? e.stack || e.message : String(e)}`,
@@ -688,10 +725,12 @@ export async function handleChat(
             sendCard(card)
           } else {
             unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
+            const streak = unclearStreaks.get(conversationId) ?? 0
             send({
               type: 'content',
-              content:
-                "I'm not sure I understand. Could you rephrase that? I can help with answering questions about the business or booking appointments.",
+              content: streak >= 2
+                ? "I'm having trouble understanding. Let me connect you with someone who can help — or try asking about the business, services, pricing, or hours."
+                : "I'm not sure I understand. Could you rephrase that? I can help with questions about the business or booking appointments.",
             })
             card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
             if (card) sendCard(card)

@@ -48,7 +48,7 @@ export function topK(env: Env): number {
 }
 
 export function similarityThreshold(env: Env): number {
-  return parseFloat(env.SIMILARITY_THRESHOLD || '0.55')
+  return parseFloat(env.SIMILARITY_THRESHOLD || '0.48')
 }
 
 export function chunkSize(env: Env): number {

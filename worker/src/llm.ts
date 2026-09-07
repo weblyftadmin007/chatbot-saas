@@ -1,4 +1,4 @@
-/**
+/** 
  * Gemini API client (REST, no SDK). Chat + streaming use a flash-class model
  * (env CHAT_MODEL); embeddings use gemini-embedding-001 at 768 dims so stored
  * vectors match the 768-dim float32 BLOBs in knowledge_chunks.embedding.
@@ -207,13 +207,21 @@ export async function embedSingle(env: Env, text: string): Promise<number[]> {
 
 /** Port of backend llm.py intent classifier (few-shot prompt). */
 export async function classifyIntent(env: Env, text: string): Promise<string> {
-  const prompt = `Classify the user's intent into ONE category:
-- book_appointment: Wants to schedule a meeting
-- cancel_appointment: Wants to cancel or reschedule
-- check_availability: Asks about open slots
-- general_query: Information question
-- transfer_human: Explicitly asks for human
-- unclear: Greeting, or truly ambiguous/off-topic with no question
+  const prompt = `Classify the user's intent into ONE category from the list below. Respond with ONLY the category name, nothing else.
+
+Categories:
+- book_appointment: Wants to schedule a meeting, book a time slot, or reserve an appointment
+- cancel_appointment: Wants to cancel or reschedule an existing appointment
+- check_availability: Asks about open/free time slots, when someone is available
+- general_query: Any question about the business — hours, services, prices, location, contact info, policies, packages, what they do, how their process works, testimonials, experience, or anything else answerable from their information
+- transfer_human: Explicitly asks to talk to a person, a human, support, or a real person
+- unclear: Greetings only (hello, hi, hey), or messages with no clear question and no clear intent
+
+IMPORTANT RULES:
+- Short informational questions about the business are ALWAYS general_query, NEVER unclear — even if you don't know the answer. Examples: "What are your hours?", "How much does it cost?", "Where are you located?", "What services do you offer?", "What does your company do?", "How do I contact you?", "Do you do redesigns?", "Are your sites mobile-friendly?" — ALL of these are general_query.
+- Any question that asks for information (who, what, where, when, how, why, how much, how long, can you, do you, is it, etc.) is general_query unless it's specifically about booking/canceling/availability.
+- If the message contains both a question AND booking-related words, prefer book_appointment or check_availability over general_query.
+- Only classify as unclear if it's a pure greeting with no question, or completely nonsensical/off-topic input.
 
 Examples:
 User: "Book a meeting for Tuesday 2pm" -> book_appointment
@@ -222,6 +230,7 @@ User: "What times are open Friday?" -> check_availability
 User: "What's your refund policy?" -> general_query
 User: "Talk to a person" -> transfer_human
 User: "Hello" -> unclear
+User: "Hi there" -> unclear
 User: "What are your hours?" -> general_query
 User: "What services do you offer?" -> general_query
 User: "What does your company do?" -> general_query
@@ -229,10 +238,36 @@ User: "How much does a website cost?" -> general_query
 User: "How much does it cost?" -> general_query
 User: "Where are you located?" -> general_query
 User: "How do I get in touch?" -> general_query
-
-Short informational questions about the business are ALWAYS general_query,
-never unclear — even if you don't know the answer. Only greetings and messages
-with no answerable question are unclear.
+User: "Do you do custom websites?" -> general_query
+User: "Can you redesign my site?" -> general_query
+User: "Tell me about your packages" -> general_query
+User: "I need a website" -> general_query
+User: "What's included in the Professional package?" -> general_query
+User: "How long does a project take?" -> general_query
+User: "Do you work with international clients?" -> general_query
+User: "What's your phone number?" -> general_query
+User: "Can I see some examples?" -> general_query
+User: "Who are your clients?" -> general_query
+User: "What's your experience?" -> general_query
+User: "I'm looking for a web designer" -> general_query
+User: "Price?" -> general_query
+User: "Show me pricing" -> general_query
+User: "What's the cheapest option?" -> general_query
+User: "I want to book" -> book_appointment
+User: "Schedule something" -> book_appointment
+User: "Book an appointment" -> book_appointment
+User: "When are you free?" -> check_availability
+User: "What slots do you have?" -> check_availability
+User: "Cancel my booking" -> cancel_appointment
+User: "I need to reschedule" -> cancel_appointment
+User: "Talk to a human" -> transfer_human
+User: "Get me a real person" -> transfer_human
+User: "Yes" -> unclear
+User: "Maybe" -> unclear
+User: "lol" -> unclear
+User: "asdf" -> unclear
+User: "What is your refund policy and can I book a meeting" -> book_appointment
+User: "How much and where are you?" -> general_query
 
 User: "${text}"
 Intent:`
@@ -265,17 +300,28 @@ Intent:`
   return 'unclear'
 }
 
-/** Port of backend llm.py synthesize_answer (RAG answer from context). */
+/** Port of backend llm.py synthesize_answer (RAG answer from context).
+ * Adds conversation history so follow-up questions ("How much is that one?",
+ * "What about the cheaper option?") can be answered from context + history.
+ */
 export async function* synthesizeAnswer(
   env: Env,
   query: string,
   contextChunks: string[],
+  previousMessages: { role: 'user' | 'assistant'; text: string }[] = [],
 ): AsyncGenerator<string> {
   const context = contextChunks
     .map((c, i) => `Source ${i + 1}: ${c}`)
     .join('\n')
-  const prompt = `Answer the user's question using ONLY the provided context. 
-If the answer isn't in the context, say "I don't have that information in my knowledge base."
+  const history = previousMessages
+    .map((m) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.text}`)
+    .join('\n')
+  const prompt = `You are the helpful assistant for a small business. Answer the user's question using ONLY the provided context. Do not make up information — if the answer is not in the context, say "I don't have that information in my knowledge base."
+
+Keep answers short, direct, and in the same language as the question. If the user asks a follow-up question that refers to something mentioned earlier in the conversation, use BOTH the conversation history AND the context to answer.
+
+Conversation so far:
+${history || '(no prior messages)'}
 
 Context:
 ${context}
