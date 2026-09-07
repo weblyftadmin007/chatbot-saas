@@ -39,6 +39,10 @@ export interface WidgetConfig {
   secondary_color: string
   logo_url?: string | null
   show_branding: boolean
+  /** "Powered by {branding_name}" footer link (widget defaults apply). */
+  branding_name?: string
+  /** Where the branding footer links to (widget defaults apply). */
+  branding_url?: string
   business_hours?: Record<string, unknown> | null
   quick_replies?: string[]
   /** Booking window in days (default 60). */
@@ -69,6 +73,14 @@ export function buildWidgetConfig(row: SqlRow): WidgetConfig {
     secondary_color: (settings['secondary_color'] as string) || '#1E40AF',
     logo_url: (settings['logo_url'] as string) || null,
     show_branding: settings['show_branding'] !== false,
+    branding_name:
+      typeof settings['branding_name'] === 'string' && settings['branding_name'].trim()
+        ? (settings['branding_name'] as string).trim()
+        : undefined,
+    branding_url:
+      typeof settings['branding_url'] === 'string' && settings['branding_url'].trim()
+        ? (settings['branding_url'] as string).trim()
+        : undefined,
     quick_replies: Array.isArray(settings['quick_replies'])
       ? (settings['quick_replies'] as string[]).filter((q) => typeof q === 'string' && q.trim())
       : undefined,

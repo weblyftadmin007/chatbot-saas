@@ -608,6 +608,16 @@
   background: var(--bg-secondary);
 }
 
+.chatbot-branding-link {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.chatbot-branding-link:hover {
+  text-decoration: underline;
+}
+
 /* Scrollbar */
 .chatbot-messages::-webkit-scrollbar,
 .chatbot-slot-list::-webkit-scrollbar {

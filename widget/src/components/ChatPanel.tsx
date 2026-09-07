@@ -120,7 +120,15 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
       {config.show_branding && (
         <div className="chatbot-branding">
-          Powered by AI Chatbot
+          Powered by{' '}
+          <a
+            className="chatbot-branding-link"
+            href={config.branding_url || 'https://site-weblyft-design.weblyftt.workers.dev/'}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {config.branding_name || 'WebLyft Design'}
+          </a>
         </div>
       )}
     </div>
