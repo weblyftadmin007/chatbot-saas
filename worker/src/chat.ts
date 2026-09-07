@@ -218,17 +218,105 @@ function cancelConfirmCard(when: string, tenantName: string): Card {
  * card (fall back to "talk to a human" after two in a row). */
 const unclearStreaks = new Map<string, number>()
 
-/** Quick-reply chips for the unclear card — tenant-configured when present. */
-function quickReplyChips(settings: Record<string, unknown>): string[] {
+/** Fallback topic chips for when the tenant's configured quick replies are
+ * used up — all answerable via the classifier + knowledge base. */
+const GENERIC_CHIPS = [
+  'What are your opening hours?',
+  'What services do you offer?',
+  'How much does it cost?',
+  'Where are you located?',
+  'How do I get in touch?',
+]
+
+/** Normalize chip text for comparison (case, spacing, trailing punctuation). */
+function normChip(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[?!.]+$/, '')
+}
+
+/** Topic-chip pool: tenant-configured quick replies (booking chips excluded —
+ * every card carries a dedicated Book-an-appointment action) plus generic
+ * fallbacks, deduped in order. */
+function chipPool(settings: Record<string, unknown>): string[] {
   const configured = Array.isArray(settings['quick_replies'])
-    ? (settings['quick_replies'] as unknown[]).filter((q): q is string => typeof q === 'string' && q.trim().length > 0)
+    ? (settings['quick_replies'] as unknown[]).filter(
+        (q): q is string => typeof q === 'string' && q.trim().length > 0 && !/book/i.test(q),
+      )
     : []
-  const chips = (configured.length ? configured : [
-    'What are your hours?',
-    'Book an appointment',
-    'How do I get in touch?',
-  ]).slice(0, 4)
-  return chips
+  const seen = new Set<string>()
+  const pool: string[] = []
+  for (const chip of [...configured, ...GENERIC_CHIPS]) {
+    const key = normChip(chip)
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      pool.push(chip)
+    }
+  }
+  return pool
+}
+
+/**
+ * Chips already surfaced in this conversation: clicked ones come back as user
+ * messages, shown ones persist on card rows (messages.tool_calls). Used to
+ * rotate follow-up cards so users never see the same chips twice.
+ */
+async function chipUsage(
+  db: Client,
+  conversationId: string,
+): Promise<{ clicked: Set<string>; shown: Set<string> }> {
+  const clicked = new Set<string>()
+  const shown = new Set<string>()
+  try {
+    const users = await query(
+      db,
+      `SELECT content FROM messages WHERE conversation_id = ? AND role = 'user'`,
+      [conversationId],
+    )
+    for (const r of users.rows) {
+      const content = rowString(r, 'content')
+      if (content) clicked.add(normChip(content))
+    }
+    const cardRows = await query(
+      db,
+      `SELECT tool_calls FROM messages
+       WHERE conversation_id = ? AND role = 'assistant' AND tool_calls IS NOT NULL
+       ORDER BY created_at DESC LIMIT 10`,
+      [conversationId],
+    )
+    for (const r of cardRows.rows) {
+      const raw = rowString(r, 'tool_calls')
+      if (!raw) continue
+      try {
+        const parsed = JSON.parse(raw) as { card?: Card }
+        for (const chip of parsed.card?.chips ?? []) shown.add(normChip(chip))
+      } catch {
+        // unparseable tool_calls — skip
+      }
+    }
+  } catch {
+    // best-effort rotation; empty sets just mean chips may repeat
+  }
+  return { clicked, shown }
+}
+
+/**
+ * Pick `count` topic chips avoiding everything already used this conversation.
+ * Chips the user actually clicked are never re-offered; shown-but-not-clicked
+ * ones only come back once the fresh pool is exhausted.
+ */
+function pickChips(pool: string[], clicked: Set<string>, shown: Set<string>, count: number): string[] {
+  const fresh = pool.filter((c) => !clicked.has(normChip(c)) && !shown.has(normChip(c)))
+  const ranked =
+    fresh.length >= count ? fresh : [...fresh, ...pool.filter((c) => !clicked.has(normChip(c)))]
+  const out: string[] = []
+  for (const chip of ranked) {
+    if (out.length >= count) break
+    if (!out.some((o) => normChip(o) === normChip(chip))) out.push(chip)
+  }
+  return out
 }
 
 /**
@@ -236,12 +324,13 @@ function quickReplyChips(settings: Record<string, unknown>): string[] {
  * Gate: tenant setting cards_enabled (default true).
  * Escalation streak is tracked by the caller (handleChat) on every message.
  */
-function buildCardForIntent(
+async function buildCardForIntent(
+  db: Client,
   intent: string,
   settings: Record<string, unknown>,
   tenantName: string,
   conversationId: string,
-): Card | null {
+): Promise<Card | null> {
   if (!cardsEnabled(settings)) return null
   if (intent === 'unclear') {
     const streak = unclearStreaks.get(conversationId) ?? 0
@@ -255,13 +344,17 @@ function buildCardForIntent(
         _persist: true,
       }
     }
+    // Rotate: never re-offer chips already used or shown this conversation.
+    const { clicked, shown } = await chipUsage(db, conversationId)
+    const chips = pickChips(chipPool(settings), clicked, shown, 3)
     return {
       id: `card_${crypto.randomUUID()}`,
       kind: 'quick_replies',
       title: 'Pick a topic',
       subtitle: 'Or just type your question',
-      chips: quickReplyChips(settings),
-      actions: chipsToSendActions(quickReplyChips(settings)),
+      chips,
+      // Booking is always one tap away (opens the widget's slot picker).
+      actions: [{ label: 'Book an appointment', open_slots: true }],
       _persist: true,
     }
   }
@@ -278,39 +371,24 @@ function buildCardForIntent(
   return null
 }
 
-function chipsToSendActions(chips: string[]): CardAction[] {
-  return chips.map((chip) => ({
-    label: chip,
-    send_message: chip,
-    // Booking chips jump straight into the widget's slot picker.
-    open_slots: /book/i.test(chip) || undefined,
-  }))
-}
-
 /**
- * Follow-up card appended to knowledge-base answers so the conversation keeps
- * going: two chips from the tenant's configured quick replies plus a booking
- * entry point that opens the widget's slot picker.
+ * Follow-up card appended to answers so the conversation keeps going: fresh
+ * topic chips the user hasn't seen or used yet (rotated per conversation),
+ * plus a booking entry point that opens the widget's slot picker — always.
  */
-function followUpCard(settings: Record<string, unknown>): Card {
-  const configured = Array.isArray(settings['quick_replies'])
-    ? (settings['quick_replies'] as unknown[]).filter(
-        (q): q is string => typeof q === 'string' && q.trim().length > 0 && !/book/i.test(q),
-      )
-    : []
-  const chips =
-    configured.length >= 2
-      ? configured.slice(0, 2)
-      : [...configured, 'What are your opening hours?', 'What services do you offer?'].slice(0, 2)
+async function followUpCard(
+  db: Client,
+  conversationId: string,
+  settings: Record<string, unknown>,
+): Promise<Card> {
+  const { clicked, shown } = await chipUsage(db, conversationId)
+  const chips = pickChips(chipPool(settings), clicked, shown, 2)
   return {
     id: `card_${crypto.randomUUID()}`,
     kind: 'quick_replies',
     title: 'Anything else I can help with?',
     chips,
-    actions: [
-      ...chipsToSendActions(chips),
-      { label: 'Book an appointment', send_message: 'Book an appointment', open_slots: true },
-    ],
+    actions: [{ label: 'Book an appointment', open_slots: true }],
     _persist: true,
   }
 }
@@ -416,13 +494,7 @@ export async function handleChat(
         (q): q is string => typeof q === 'string' && q.trim().length > 0,
       )
     : []
-  const norm = (s: string) =>
-    s
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .replace(/[?!.]+$/, '')
-  const matchedChip = configuredChips.find((c) => norm(c) === norm(message))
+  const matchedChip = configuredChips.find((c) => normChip(c) === normChip(message))
   let intent = 'unclear'
   let quotaExceeded = false
   const throttled = !chatAllowed(slug, env)
@@ -504,11 +576,27 @@ export async function handleChat(
               content:
                 "I don't have that information in my knowledge base. Would you like me to help you with something else?",
             })
+            card = await followUpCard(db, conversationId, settings)
+            sendCard(card)
+            if (matchedChip) {
+              // The tenant advertised this exact chip — never dead-end on a
+              // KB miss; offer the human path instead.
+              const contact = await buildCardForIntent(
+                db,
+                'transfer_human',
+                settings,
+                rowString(row, 'name'),
+                conversationId,
+              )
+              if (contact) sendCard(contact)
+            }
           }
           // Keep the conversation going: follow-up chips + a booking entry
           // point (opens the widget's slot picker) on every KB answer.
-          card = followUpCard(settings)
-          sendCard(card)
+          if (!card) {
+            card = await followUpCard(db, conversationId, settings)
+            sendCard(card)
+          }
         } else if (intent === 'book_appointment') {
           card = await handleBook(db, row, conversationId, message, send, settings)
           if (card) sendCard(card)
@@ -552,7 +640,7 @@ export async function handleChat(
           }
           if (!slots.length) {
             // No slots to show — still give the user a booking entry point.
-            card = followUpCard(settings)
+            card = await followUpCard(db, conversationId, settings)
             sendCard(card)
           }
         } else if (intent === 'cancel_appointment') {
@@ -564,7 +652,7 @@ export async function handleChat(
             content:
               "I'll make sure someone from the team reaches out to you shortly. Is there anything else I can help with in the meantime?",
           })
-          card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
+          card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
           if (card) sendCard(card)
         } else {
           // unclear — but not final until the knowledge base has had a say:
@@ -596,7 +684,7 @@ export async function handleChat(
                 })
               }
             }
-            card = followUpCard(settings)
+            card = await followUpCard(db, conversationId, settings)
             sendCard(card)
           } else {
             unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
@@ -605,7 +693,7 @@ export async function handleChat(
               content:
                 "I'm not sure I understand. Could you rephrase that? I can help with answering questions about the business or booking appointments.",
             })
-            card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
+            card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
             if (card) sendCard(card)
           }
         }

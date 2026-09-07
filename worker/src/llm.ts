@@ -226,6 +226,7 @@ User: "What are your hours?" -> general_query
 User: "What services do you offer?" -> general_query
 User: "What does your company do?" -> general_query
 User: "How much does a website cost?" -> general_query
+User: "How much does it cost?" -> general_query
 User: "Where are you located?" -> general_query
 User: "How do I get in touch?" -> general_query
 
