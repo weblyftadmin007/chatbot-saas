@@ -406,15 +406,38 @@ export async function handleChat(
   )
 
   // Intent classification is best-effort; any failure falls back to unclear.
+  // Exception: tenant-configured quick replies are routed deterministically.
+  // The widget sends chip clicks back as plain messages, and the LLM classifier
+  // is unreliable on short texts ("What does Weblyft Design do?" sometimes
+  // comes back unclear) — which looped chip clicks back to the unclear card.
+  // A chip the tenant configured is by definition an answerable topic.
+  const configuredChips = Array.isArray(settings['quick_replies'])
+    ? (settings['quick_replies'] as unknown[]).filter(
+        (q): q is string => typeof q === 'string' && q.trim().length > 0,
+      )
+    : []
+  const norm = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[?!.]+$/, '')
+  const matchedChip = configuredChips.find((c) => norm(c) === norm(message))
   let intent = 'unclear'
   let quotaExceeded = false
   const throttled = !chatAllowed(slug, env)
   if (!throttled) {
-    try {
-      intent = await classifyIntent(env, message)
-    } catch (e) {
-      quotaExceeded = e instanceof LLMError && e.status === 429
-      intent = 'unclear'
+    if (matchedChip) {
+      intent = /book|appointment|schedule|slot/i.test(matchedChip)
+        ? 'book_appointment'
+        : 'general_query'
+    } else {
+      try {
+        intent = await classifyIntent(env, message)
+      } catch (e) {
+        quotaExceeded = e instanceof LLMError && e.status === 429
+        intent = 'unclear'
+      }
     }
   }
   await query(
@@ -424,14 +447,11 @@ export async function handleChat(
     [crypto.randomUUID(), tenantId, JSON.stringify({ intent }), now],
   )
 
-  // Track consecutive 'unclear' replies per conversation for the escalation
-  // card (any real intent resets it). Throttled messages don't count.
-  if (!throttled) {
-    if (intent === 'unclear') {
-      unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
-    } else {
-      unclearStreaks.delete(conversationId)
-    }
+  // Any real intent resets the escalation streak. The increment itself happens
+  // where an unclear reply is actually shown — the KB fallback below may still
+  // answer a classifier-unclear message, which shouldn't count toward it.
+  if (!throttled && intent !== 'unclear') {
+    unclearStreaks.delete(conversationId)
   }
 
   const stream = new ReadableStream<Uint8Array>({
@@ -547,14 +567,47 @@ export async function handleChat(
           card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
           if (card) sendCard(card)
         } else {
-          // unclear
-          send({
-            type: 'content',
-            content:
-              "I'm not sure I understand. Could you rephrase that? I can help with answering questions about the business or booking appointments.",
-          })
-          card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
-          if (card) sendCard(card)
+          // unclear — but not final until the knowledge base has had a say:
+          // short chip-style questions often miss the classifier yet live in
+          // the KB. Only a genuine KB miss shows the unclear reply.
+          let hits: Awaited<ReturnType<typeof search>> = []
+          try {
+            hits = await search(db, env, tenantId, message)
+          } catch (e) {
+            console.error(
+              `[unclear→kb] search failed slug:${slug} | ${e instanceof Error ? e.message : String(e)}`,
+            )
+            hits = []
+          }
+          if (hits.length) {
+            try {
+              for await (const chunk of synthesizeAnswer(env, message, hits.map((h) => h.content))) {
+                send({ type: 'content', content: chunk })
+              }
+            } catch (e) {
+              console.error(
+                `[synthesizeAnswer] failed slug:${slug} | ${e instanceof Error ? e.stack || e.message : String(e)}`,
+              )
+              if (!full) {
+                send({
+                  type: 'content',
+                  content:
+                    "I'm having trouble answering right now — please try again in a moment.",
+                })
+              }
+            }
+            card = followUpCard(settings)
+            sendCard(card)
+          } else {
+            unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
+            send({
+              type: 'content',
+              content:
+                "I'm not sure I understand. Could you rephrase that? I can help with answering questions about the business or booking appointments.",
+            })
+            card = buildCardForIntent(intent, settings, rowString(row, 'name'), conversationId)
+            if (card) sendCard(card)
+          }
         }
 
         const assistantMsg = full.trim()

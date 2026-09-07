@@ -213,7 +213,7 @@ export async function classifyIntent(env: Env, text: string): Promise<string> {
 - check_availability: Asks about open slots
 - general_query: Information question
 - transfer_human: Explicitly asks for human
-- unclear: Ambiguous or off-topic
+- unclear: Greeting, or truly ambiguous/off-topic with no question
 
 Examples:
 User: "Book a meeting for Tuesday 2pm" -> book_appointment
@@ -222,6 +222,16 @@ User: "What times are open Friday?" -> check_availability
 User: "What's your refund policy?" -> general_query
 User: "Talk to a person" -> transfer_human
 User: "Hello" -> unclear
+User: "What are your hours?" -> general_query
+User: "What services do you offer?" -> general_query
+User: "What does your company do?" -> general_query
+User: "How much does a website cost?" -> general_query
+User: "Where are you located?" -> general_query
+User: "How do I get in touch?" -> general_query
+
+Short informational questions about the business are ALWAYS general_query,
+never unclear — even if you don't know the answer. Only greetings and messages
+with no answerable question are unclear.
 
 User: "${text}"
 Intent:`
