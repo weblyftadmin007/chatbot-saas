@@ -15,9 +15,12 @@ interface MessageListProps {
 }
 
 const DEFAULT_CHIPS = [
-  'What are your hours?',
+  'What services do you offer?',
+  'How much does a website cost?',
+  'What packages do you have?',
+  'Can you redesign my site?',
   'How do I get in touch?',
-  'What services do you offer?'
+  'What is your process?'
 ]
 
 export const MessageList: React.FC<MessageListProps> = ({

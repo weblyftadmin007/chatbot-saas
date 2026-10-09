@@ -1,106 +1,166 @@
 [
   {
     "question": "What does Weblyft Design do?",
-    "answer": "Weblyft Design is a web design and development agency based in New Delhi, India. We build custom websites, landing pages, and web applications for local businesses. Every site is custom-designed \u2014 no templates \u2014 and pricing is transparent."
+    "answer": "Weblyft Design is a web design and development agency based in New Delhi, India. We build custom websites, landing pages, and web applications for local businesses. Every site is custom-designed from scratch — no templates — and pricing is completely transparent. We focus on helping local businesses get a professional online presence that actually works for them."
   },
   {
     "question": "What kind of businesses do you work with?",
-    "answer": "We specialize in local businesses. Past and current projects include roofing companies, dental studios, landscaping businesses, salons, fitness gyms, restaurants, and tattoo studios."
+    "answer": "We specialize in local businesses across many industries. Past and current projects include roofing companies, dental studios, landscaping businesses, salons and barbershops, fitness gyms, restaurants and cafés, tattoo studios, construction companies, real estate agents, physiotherapists, tutors, and retail shops. If you have a local business, we can build a site that fits your needs."
   },
   {
     "question": "Do you only make full websites, or also single pages and web apps?",
-    "answer": "All three. We build custom websites, single landing pages, and web applications depending on what your business needs."
+    "answer": "All three. We build: (1) Full multi-page websites for businesses that need a complete online presence, (2) Single landing pages for quick launched campaigns, events, or simple business profiles, and (3) Web applications with interactive features like booking systems, membership portals, or custom tools. We'll recommend what fits your goals during discovery."
   },
   {
     "question": "Do you use templates or WordPress themes?",
-    "answer": "No templates. Every project is custom-designed from scratch to match your brand, so your site does not look like anyone else's."
+    "answer": "No templates — ever. Every project is custom-designed from scratch to match your brand, your audience, and your goals. Your site won't look like anyone else's. This means cleaner code, better performance, and a design that's actually yours rather than a pre-made theme with swapped colors."
+  },
+  {
+    "question": "Which platform do you build on?",
+    "answer": "We build custom websites using modern web technologies (HTML, CSS, JavaScript, and React where it makes sense). Sites are lightweight, fast-loading, and easy to host. We handle the hosting setup for you — and it's included free with Starter and Professional packages. The result is a site you own completely, not locked into a platform."
+  },
+  {
+    "question": "Can I edit the site myself after it's built?",
+    "answer": "Yes. For content updates like changing text, photos, or business info, we can set up a simple editing approach that doesn't require coding. For Premium package clients, we include a built-in blog system so you can publish posts yourself. For other packages, we discuss the best editing approach during planning — options range from simple file-based updates to a lightweight admin interface, depending on what you need."
   },
   {
     "question": "How much does a website cost?",
-    "answer": "There are three packages: Starter at $899 (single-page site), Professional at $1,799 (full 5-page business website), and Premium at $2,799 (Professional plus a built-in blog system). All pricing is transparent."
+    "answer": "We have three clear packages with transparent pricing:\n\n• Starter — $899: A single-page website. Best for new businesses or freelancers who need a simple online presence fast.\n\n• Professional — $1,799: A full 5-page business website (homepage, about, services, gallery, contact). Best for most local businesses ready to establish a strong online presence.\n\n• Premium — $2,799: Everything in Professional, plus a built-in blog system, newsletter integration, and priority support. Best for businesses that want to grow traffic through content.\n\nAll packages include free hosting setup, mobile-responsive design, and a custom design. No hidden fees, no surprises."
   },
   {
     "question": "What is included in the Starter package ($899)?",
-    "answer": "A single-page website \u2014 ideal for new businesses or freelancers that need an online presence fast. It includes a hero section with call-to-action, about section, services showcase, project gallery, contact form with Google Apps Script integration, mobile-responsive design, and free hosting setup."
+    "answer": "The Starter package gives you a polished single-page website ideal for new businesses or freelancers. It includes: a hero section with a clear call-to-action, an about section, a services showcase, a project/image gallery, a contact form with email notifications (using Google Apps Script), mobile-responsive design that works on all devices, and free hosting setup. Perfect if you need to get online quickly without a big investment."
   },
   {
     "question": "What is included in the Professional package ($1,799)?",
-    "answer": "A full 5-page business website: homepage, about page, services page, gallery, and contact page. It adds SEO optimization, Google Analytics integration, Schema.org structured data for rich search results, contact form with email notifications, mobile-responsive design, free hosting setup, and delivery in 10-14 business days."
+    "answer": "The Professional package is our most popular choice. You get a full 5-page business website: homepage, about page, services page, gallery, and contact page. It includes SEO optimization so you show up in search, Google Analytics integration to track visitors, Schema.org structured data for rich search results, a contact form with email notifications, mobile-responsive design, free hosting setup, and delivery in 10-14 business days. This package gives a complete, professional online presence."
   },
   {
     "question": "What is included in the Premium package ($2,799)?",
-    "answer": "Everything in Professional, plus a built-in blog system with a blog listing page, individual blog post pages, blog category tagging, SEO-optimized blog posts, newsletter signup integration, and priority support."
+    "answer": "The Premium package is everything in Professional, plus a full built-in blog system. You get a blog listing page, individual blog post pages, blog category tagging so readers can find related posts, SEO-optimized blog posts, newsletter signup integration to build your email list, and priority support. This package is ideal if you want to publish regular content and grow your traffic over time — clients using the blog feature have reported strong growth in organic search traffic."
   },
   {
-    "question": "Which package is right for a brand-new business?",
-    "answer": "The Starter package is designed for new businesses or freelancers that just need a simple, professional online presence quickly."
-  },
-  {
-    "question": "Which package is right if I want to grow my traffic with content?",
-    "answer": "The Premium package \u2014 its built-in blog lets you publish regular posts, which improves search visibility. Clients using the blog report strong growth in organic traffic."
+    "question": "Which package should I choose?",
+    "answer": "It depends on what you need:\n\n• Starter ($899) — Best for new businesses, freelancers, or anyone who needs a simple, professional one-page site quickly.\n\n• Professional ($1,799) — Best for most established local businesses that want a full website with multiple pages, SEO, and analytics.\n\n• Premium ($2,799) — Best if you plan to publish blog posts regularly, build an email list, or want priority support.\n\nNot sure? Just tell us about your business and we'll recommend the right fit during discovery — no pressure."
   },
   {
     "question": "Do you include SEO in the price?",
-    "answer": "SEO optimization is included in the Professional package and above. The Starter package does not list SEO as an included feature."
+    "answer": "Yes, SEO optimization is included in the Professional package and above. This includes on-page SEO elements like meta titles and descriptions, proper heading structure, Schema.org structured data for rich search results, Google Analytics integration, and mobile-friendly design (which search engines favor). The Starter package focuses on a clean single-page site and doesn't include the full SEO setup. If SEO is important to you, the Professional package is the starting point."
   },
   {
-    "question": "Is hosting included?",
-    "answer": "Free hosting setup is included with the Starter and Professional packages. If you need specifics about ongoing hosting costs, ask via the contact form."
+    "question": "Is hosting included in the price?",
+    "answer": "Yes, free hosting setup is included with the Starter and Professional packages. We set up your site on fast, reliable hosting at no extra cost. If you need ongoing hosting beyond the initial setup, or if you have specific hosting requirements, just ask — we can discuss options. For Premium clients, priority support includes help with any hosting questions."
+  },
+  {
+    "question": "Do you offer payment plans or installments?",
+    "answer": "We know budgets matter for small businesses. Reach out through the contact form or give us a call and we can discuss options that work for you. We want to make this accessible, so let's talk about what's possible."
+  },
+  {
+    "question": "Is there a refund policy?",
+    "answer": "We stand behind our work. If you're not happy, reach out within the first 14 days of delivery and we'll work with you. We want you to be happy with your site — that's the goal. For specifics beyond that window, contact us directly and we'll do our best to help."
   },
   {
     "question": "How long does a website project take?",
-    "answer": "The Professional package is delivered in 10-14 business days. Timelines for Starter and Premium projects are confirmed during planning \u2014 every project gets a clear roadmap with milestones and timelines."
+    "answer": "The Professional package is delivered in 10-14 business days from the start of creation. Timelines for Starter and Premium projects are confirmed during the planning phase — every project gets a clear roadmap with milestones and timelines so you know exactly what to expect. We don't overpromise — we give you a realistic timeline based on your scope and stick to it."
   },
   {
-    "question": "How does your process work?",
-    "answer": "Four steps: 1) Discovery \u2014 we discuss your goals, requirements, and vision; 2) Planning \u2014 a clear roadmap with milestones, timelines, and transparent pricing; 3) Creation \u2014 the site is built with attention to detail and regular updates; 4) Delivery \u2014 the project is delivered on time and backed by support."
+    "question": "What is your process like?",
+    "answer": "We keep things simple with four clear steps:\n\n1. Discovery — We discuss your goals, what you need, and your vision. This is where we understand your business and what you want the site to do.\n\n2. Planning — We create a clear roadmap with milestones, timelines, and transparent pricing. No vague promises — you'll know exactly what's happening and when.\n\n3. Creation — We build your site with attention to detail and keep you updated regularly. You're not left wondering what's happening.\n\n4. Delivery — We deliver on time, back up by support. Your site goes live and we make sure everything works.\n\nThroughout the process, you can expect clear communication and actual progress."
   },
   {
-    "question": "Will I see updates while the site is being built?",
-    "answer": "Yes. During the creation phase you receive regular updates on progress."
+    "question": "Will I get updates while my site is being built?",
+    "answer": "Yes. During the creation phase you receive regular updates on progress. We don't disappear for weeks and reappear with a finished site — you'll know how things are going. The frequency and style of updates is something we can agree on during discovery so it works for you."
   },
   {
-    "question": "Can you redesign an existing website?",
-    "answer": "Yes. We build custom websites for local businesses, including redesigns that replace old or self-built sites \u2014 clients have come to us after trying to build their own sites."
+    "question": "Can you redesign my existing website?",
+    "answer": "Yes, absolutely. We do redesigns all the time. Many clients come to us after trying to build their own site or after having an old, outdated site that doesn't represent their business well anymore. We'll replace it with a fresh, custom design that actually works for your business. Tell us what's not working with your current site and what you want instead."
+  },
+  {
+    "question": "My current site looks bad. Can you fix it?",
+    "answer": "Yes — that's one of the most common reasons clients contact us. Whether your current site is self-built, outdated, not mobile-friendly, slow, or just doesn't look professional, we can redesign it. We'll create a custom site that represents your business well and works on all devices. Send us your current URL and we can take a look before we talk."
   },
   {
     "question": "Can the site work on mobile phones?",
-    "answer": "Yes. Every package includes mobile-responsive design, so the site works well on phones, tablets, and desktops."
+    "answer": "Yes — every package includes mobile-responsive design. Your site will work well on phones, tablets, and desktops. More people browse on phones than desktops these days, so mobile responsiveness isn't optional — it's essential. We make sure your site looks and works great no matter how visitors access it."
   },
   {
-    "question": "Can my site take bookings, membership inquiries, or contact form submissions?",
-    "answer": "Yes. Sites include contact forms (with email notifications), and we have built sites that handle online reservations, membership inquiries, and online booking forms for clients."
+    "question": "Can my site have a booking or contact form?",
+    "answer": "Yes. All sites include contact forms with email notifications so inquiries come straight to your inbox. We've also built sites that handle online reservations, membership inquiries, service bookings, and appointment requests. If your business needs visitors to book or inquire online, we can set that up. Tell us what workflow you need and we'll build it."
+  },
+  {
+    "question": "Can you add a gallery or portfolio to my site?",
+    "answer": "Yes. Every package can include a gallery or portfolio section to showcase your work. For Professional and Premium packages, this is built right in. Showing your past work is one of the best ways to build trust with new customers — we make it easy to display your projects beautifully."
+  },
+  {
+    "question": "Do you add a map or location to the site?",
+    "answer": "Yes, we can add your business location with an embedded map, directions, and contact details. This is especially useful for local businesses that want customers to visit in person. It's a standard feature we can include in your site."
+  },
+  {
+    "question": "Can my site send email notifications when someone fills out a form?",
+    "answer": "Yes. Contact forms on your site can send email notifications directly to you whenever someone submits a form. This way you never miss an inquiry. We set this up using Google Apps Script integration, which is reliable and free. You'll get an email every time someone reaches out through your site."
   },
   {
     "question": "How much experience does Weblyft Design have?",
-    "answer": "Over 3 years of hands-on experience with more than 32 projects completed and delivered, with 100% client satisfaction."
+    "answer": "Over 3 years of hands-on experience building websites for local businesses. We've completed and delivered more than 32 projects with 100% client satisfaction. Every project is custom work — we don't recycle templates or rush through jobs. We've worked with roofing companies, dental studios, restaurants, gyms, salons, landscaping businesses, and many more. Each one taught us something new about what local businesses actually need from their website."
   },
   {
     "question": "Are you a top-rated freelancer?",
-    "answer": "Yes \u2014 Weblyft Design is described on the site as a top-rated freelancer with over 32 projects delivered."
+    "answer": "Yes — Weblyft Design is a top-rated freelancer with over 32 projects delivered. We've built a reputation for quality work, clear communication, and making the process easy for business owners who aren't technical. Being top-rated means we've consistently delivered for our clients — and we aim to keep it that way."
   },
   {
     "question": "Do you have client testimonials?",
-    "answer": "Yes. Clients include a construction company owner whose phone \"has been ringing nonstop since launch,\" a restaurant whose online reservations went up 40% after a redesign, a dentist whose online booking form brought in new patients, a gym owner, and a marketing director who tripled organic traffic with the blog feature."
+    "answer": "Yes, here's what some of our clients have said:\n\n• A construction company owner said their phone \"has been ringing nonstop since launch\" — the new site brought in more leads.\n\n• A restaurant saw online reservations go up 40% after a redesign. The new site made it easy for customers to book a table.\n\n• A dentist launched an online booking form that brought in new patients who previously would have called elsewhere.\n\n• A gym owner got a clean, mobile-friendly site that members actually use to check schedules and contact the gym.\n\n• A marketing director used the blog feature to triple their organic traffic over time.\n\nThese aren't cherry-picked outliers — this is the kind of results we aim for with every project."
   },
   {
-    "question": "Where are you located and do you work with international clients?",
-    "answer": "We are based in New Delhi, India, and we work with clients around the world \u2014 testimonials come from businesses internationally."
+    "question": "Where are you located?",
+    "answer": "We're based in New Delhi, India. We work with clients around the world — our testimonials come from businesses internationally, not just locally. Being in New Delhi gives us a strong work ethic and the ability to deliver great value while maintaining high quality."
+  },
+  {
+    "question": "Do you work with international clients?",
+    "answer": "Yes, we work with clients around the world. Time zones don't stop us — we communicate in ways that work for you, whether that's email, calls, or messaging. Our international clients have included businesses from multiple countries, and we've delivered successfully for all of them. Distance is not a barrier."
+  },
+  {
+    "question": "What is your timezone?",
+    "answer": "We're in IST (Indian Standard Time), which is UTC+5:30. We're flexible with communication hours and can work around your timezone for calls and meetings. For day-to-day updates, email and messaging work regardless of timezone."
+  },
+  {
+    "question": "What are your working hours?",
+    "answer": "We're flexible and work with clients to find times that work for both sides. For communication, we're generally available during IST business hours (9am-6pm IST), but we accommodate calls and meetings outside those hours when needed. The 24-hour response time for new inquiries applies regardless of when you reach out."
   },
   {
     "question": "How do I get in touch?",
-    "answer": "Call +91 9816499417 (call anytime) or email weblyft.admin@gmail.com. You can also use the \"Get In Touch\" or \"Start a Project\" form on the website."
+    "answer": "You can reach us three ways:\n\n• Call or WhatsApp: +91 9816499417 (available anytime — call or message)\n\n• Email: weblyft.admin@gmail.com\n\n• Website form: Use the \"Get In Touch\" or \"Start a Project\" form on our website\n\nPick whatever's easiest for you. We respond to all inquiries."
   },
   {
     "question": "How fast will I get a response?",
-    "answer": "When you start a project, you get a reply within 24 hours with a plan and a quote \u2014 no obligation and no pressure."
+    "answer": "When you start a project, you get a reply within 24 hours with a plan and a quote — no obligation and no pressure. We respect your time and don't leave you waiting. Whether you reach out by call, email, or form, you'll hear back within a day."
   },
   {
     "question": "What do you need from me to get started?",
-    "answer": "Just share your idea through the contact form or a call. We discuss your goals, requirements, and vision during discovery, then provide a tailored plan and quote."
+    "answer": "Just share your idea. You can reach us through the contact form or a call. During discovery, we'll discuss your goals, what you need, and your vision. Then we'll provide a tailored plan and a clear quote — no pressure, no obligation. The more you can tell us about what you want, the better, but don't worry if you're not sure yet — that's what discovery is for."
   },
   {
     "question": "What happens after my site launches?",
-    "answer": "Delivery includes support after launch. Premium clients also get priority support."
+    "answer": "After launch, you're not on your own. Delivery includes support after launch — we make sure everything is working and help with any initial questions. Premium clients get priority support, which means faster responses and dedicated attention when you need it. For all clients, if something comes up after launch, reach out and we'll help."
+  },
+  {
+    "question": "Do you offer ongoing support or maintenance?",
+    "answer": "Yes. After your site launches, we offer support to keep it running smoothly. This can include technical fixes, small content updates, performance checks, and general maintenance. Reach out to discuss what kind of ongoing support would work for your business — we can suggest a plan based on what you need."
+  },
+  {
+    "question": "Can I add more pages or features later?",
+    "answer": "Yes, absolutely. Your site can grow with your business. Need to add a services page later? A blog? An online store? A booking system? We can add features and pages as your needs change. Many clients start with one package and add more over time. Just reach out when you're ready to expand."
+  },
+  {
+    "question": "Will my website work in different browsers?",
+    "answer": "Yes. We test sites to make sure they work in all major browsers — Chrome, Firefox, Safari, Edge, and others. You don't need to worry about visitors seeing a broken site because of their browser choice. We build to modern web standards that work everywhere."
+  },
+  {
+    "question": "Do you build e-commerce or online stores?",
+    "answer": "We can build sites with e-commerce features, though our core focus is on business websites, landing pages, and web applications. If you need an online store, let's talk about what you need — we can recommend the best approach, whether that's a custom solution or integrating an existing platform. We'll be honest about what makes sense for your situation."
+  },
+  {
+    "question": "What if I don't know what I want yet?",
+    "answer": "That's completely fine — that's what discovery is for. Reach out and tell us where you're at. We'll ask questions to understand your business, what you're trying to achieve, and what you think you might need. Then we'll give you a clear recommendation. No pressure, no jargon — just a honest conversation about what makes sense for you."
   }
 ]
