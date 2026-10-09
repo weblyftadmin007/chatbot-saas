@@ -27,7 +27,7 @@ jobs:
         run: cd widget && npm run build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v5
+        uses: cloudflare/pages-action@1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
