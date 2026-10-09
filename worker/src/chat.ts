@@ -54,56 +54,38 @@ interface TenantCtx {
   config: WidgetConfig
 }
 
-// --- Interactive cards (Phase A: quick_replies on unclear, contact on transfer_human) ---
+// --- Interactive cards ---
 
 export interface CardAction {
   label: string
-  /** Sends this text back through the chat as a normal user message. */
   send_message?: string
-  /** Opens the user's email client (mailto:). */
   mailto?: string
-  /** Opens this URL in a new tab (e.g. add-to-calendar links). */
   url?: string
-  /** Widget-side: clicking opens the slot picker instead of sending a message. */
   open_slots?: boolean
-  /** Renders a text input; on submit {value} is substituted into send_template. */
   input?: boolean
-  /** Placeholder for the input action. */
   placeholder?: string
-  /** Template for the input action, e.g. "Cancel my appointment {value}". */
   send_template?: string
 }
 
 export interface Card {
   id: string
-  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup' | 'booking_confirm' | 'cancel_confirm'
+  kind: 'quick_replies' | 'contact_card' | 'booking_prompt' | 'cancel_lookup' | 'booking_confirm' | 'cancel_confirm' | 'explore_services' | 'pricing_guide' | 'talk_to_human'
   title?: string
   subtitle?: string
   chips?: string[]
   actions?: CardAction[]
-  /** booking_confirm: appointment date+time, tenant-timezone formatted. */
   when?: string
-  /** booking_confirm: customer-facing email used for the booking. */
   email?: string
-  /** booking_confirm: what was booked (currently always 'Appointment'). */
   service?: string
-  /** cancel_confirm: the cancelled slot's date+time, tenant-timezone formatted. */
   cancelled_when?: string
-  /** booking_confirm: add-to-calendar URL (Google Calendar). */
   calendar_url?: string
-  /** Persisted as its own assistant row so history can re-render read-only. */
   _persist?: boolean
 }
 
-/** Tenant-level kill switch for interactive cards (default: on). */
 function cardsEnabled(settings: Record<string, unknown>): boolean {
   return settings['cards_enabled'] !== false
 }
 
-/**
- * Emit a card frame from any handler. Analytics write is fire-and-forget —
- * never blocks or fails the chat.
- */
 function emitCard(
   send: (payload: Record<string, unknown>) => void,
   card: Card,
@@ -120,18 +102,17 @@ function emitCard(
     `INSERT INTO usage_logs (id, tenant_id, event_type, metadata, created_at)
      VALUES (?, ?, 'card_sent', ?, ?)`,
     [crypto.randomUUID(), tenantId, JSON.stringify({ kind: card.kind, card_id: card.id }), Math.floor(Date.now() / 1000)],
-  ).catch(() => {
-    // analytics is best-effort
-  })
+  ).catch(() => {})
 }
 
-/** Phase B: chips that funnel a vague booking request into availability. */
+// --- Card definitions ---
+
 function bookingPromptCard(): Card {
   return {
     id: `card_${crypto.randomUUID()}`,
     kind: 'booking_prompt',
-    title: 'Let\u2019s find a time',
-    subtitle: 'Pick when works for you \u2014 I\u2019ll show the open slots.',
+    title: 'Let\’s find a time',
+    subtitle: 'Pick when works for you \— I\’ll show the open slots.',
     actions: [
       { label: 'Today', send_message: 'What times are available today?' },
       { label: 'Tomorrow', send_message: 'What times are available tomorrow?' },
@@ -140,13 +121,12 @@ function bookingPromptCard(): Card {
   }
 }
 
-/** Phase B: collect the booking email inline instead of a free-text dance. */
 function cancelLookupCard(): Card {
   return {
     id: `card_${crypto.randomUUID()}`,
     kind: 'cancel_lookup',
     title: 'Find your booking',
-    subtitle: 'Enter the email you booked with and I\u2019ll look it up.',
+    subtitle: 'Enter the email you booked with and I\’ll look it up.',
     actions: [
       {
         label: 'Cancel booking',
@@ -158,22 +138,17 @@ function cancelLookupCard(): Card {
   }
 }
 
-/**
- * Google Calendar "add event" link for a booked slot (Phase C). Text params
- * are URI-encoded; times use the compact UTC format GCal expects (yyyyMMddTHHmmssZ).
- */
 function gcalUrl(startTs: number, endTs: number, title: string, tzName: string): string {
   const fmt = (ts: number) =>
-    new Date(ts * 1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+    new Date(ts * 1000).toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}/, '')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: `${title} \u2014 ${formatSlot(startTs, tzName)}`,
+    text: `${title} \— ${formatSlot(startTs, tzName)}`,
     dates: `${fmt(startTs)}/${fmt(endTs)}`,
   })
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
-/** Phase C: rich confirmation after a successful chat booking. */
 function bookingConfirmCard(
   startTs: number,
   endTs: number,
@@ -186,7 +161,7 @@ function bookingConfirmCard(
   return {
     id: `card_${crypto.randomUUID()}`,
     kind: 'booking_confirm',
-    title: name ? `You\u2019re booked, ${name}` : 'You\u2019re booked',
+    title: name ? `You\’re booked, ${name}` : 'You\’re booked',
     subtitle: `A confirmation email is on its way to ${email}.`,
     when: formatSlot(startTs, tzName),
     service: title,
@@ -199,7 +174,6 @@ function bookingConfirmCard(
   }
 }
 
-/** Phase C: confirmation after a successful chat cancellation, with rebook chip. */
 function cancelConfirmCard(when: string, tenantName: string): Card {
   return {
     id: `card_${crypto.randomUUID()}`,
@@ -213,33 +187,82 @@ function cancelConfirmCard(when: string, tenantName: string): Card {
   }
 }
 
-/** Per-tenant RPM windows already track intent counts via usage_logs; this
- * tracks consecutive 'unclear' replies per conversation for the escalation
- * card (fall back to "talk to a human" after two in a row). */
-const unclearStreaks = new Map<string, number>()
+// New interesting cards
 
-/** Fallback topic chips for when the tenant's configured quick replies are
- * used up — all answerable via the classifier + knowledge base. */
+function exploreServicesCard(tenantName: string): Card {
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'explore_services',
+    title: 'What we can do for you',
+    subtitle: `Whether you need a simple page or a full website, we build it custom. Here's a quick peek —`,
+    chips: [
+      'What\’s included in Starter?',
+      'Tell me about Professional',
+      'What\’s in Premium?',
+      'Do you redesign sites?',
+      'Can you build a landing page?',
+    ],
+    actions: [
+      { label: '\\u201cWhat\’s your pricing?\\u201d', send_message: 'How much does a website cost?' },
+      { label: 'Book a free chat', send_message: 'I want to talk about my project' },
+    ],
+    _persist: true,
+  }
+}
+
+function pricingGuideCard(tenantName: string): Card {
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'pricing_guide',
+    title: 'Transparent pricing, no surprises',
+    subtitle: `Three packages to fit where you\’re at. Every one is custom-designed — no templates.`,
+    chips: [
+      'What\’s the cheapest option?',
+      'Which package is best for me?',
+      'Do you offer payment plans?',
+      'What\’s included in each?',
+    ],
+    actions: [
+      { label: 'Compare all packages', send_message: 'Tell me about your packages' },
+    ],
+    _persist: true,
+  }
+}
+
+function talkToHumanCard(tenantName: string, settings: Record<string, unknown>): Card {
+  const actions: CardAction[] = []
+  const email = typeof settings['notification_email'] === 'string' ? settings['notification_email'] : ''
+  if (email) actions.push({ label: `Email ${tenantName}`, mailto: email })
+  actions.push({ label: 'Book a call', send_message: 'I want to schedule a call' })
+  return {
+    id: `card_${crypto.randomUUID()}`,
+    kind: 'talk_to_human',
+    title: `Let\’s talk it through`,
+    subtitle: `If you\’d rather discuss your project directly — we\’re here. No pressure, just a friendly chat about what you need.`,
+    actions,
+    _persist: true,
+  }
+}
+
+// --- Chip rotation ---
+
 const GENERIC_CHIPS = [
   'What are your opening hours?',
   'What services do you offer?',
   'How much does it cost?',
   'Where are you located?',
   'How do I get in touch?',
+  'Can you redesign my site?',
+  'What\’s your process like?',
+  'Do you work with international clients?',
+  'How long does a project take?',
+  'Do you include SEO?',
 ]
 
-/** Normalize chip text for comparison (case, spacing, trailing punctuation). */
 function normChip(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/[?!.]+$/, '')
+  return s.trim().toLowerCase().replace(/\\s+/g, ' ').replace(/[?!.]+$/, '')
 }
 
-/** Topic-chip pool: tenant-configured quick replies (booking chips excluded —
- * every card carries a dedicated Book-an-appointment action) plus generic
- * fallbacks, deduped in order. */
 function chipPool(settings: Record<string, unknown>): string[] {
   const configured = Array.isArray(settings['quick_replies'])
     ? (settings['quick_replies'] as unknown[]).filter(
@@ -258,11 +281,6 @@ function chipPool(settings: Record<string, unknown>): string[] {
   return pool
 }
 
-/**
- * Chips already surfaced in this conversation: clicked ones come back as user
- * messages, shown ones persist on card rows (messages.tool_calls). Used to
- * rotate follow-up cards so users never see the same chips twice.
- */
 async function chipUsage(
   db: Client,
   conversationId: string,
@@ -292,25 +310,15 @@ async function chipUsage(
       try {
         const parsed = JSON.parse(raw) as { card?: Card }
         for (const chip of parsed.card?.chips ?? []) shown.add(normChip(chip))
-      } catch {
-        // unparseable tool_calls — skip
-      }
+      } catch {}
     }
-  } catch {
-    // best-effort rotation; empty sets just mean chips may repeat
-  }
+  } catch {}
   return { clicked, shown }
 }
 
-/**
- * Pick `count` topic chips avoiding everything already used this conversation.
- * Chips the user actually clicked are never re-offered; shown-but-not-clicked
- * ones only come back once the fresh pool is exhausted.
- */
 function pickChips(pool: string[], clicked: Set<string>, shown: Set<string>, count: number): string[] {
   const fresh = pool.filter((c) => !clicked.has(normChip(c)) && !shown.has(normChip(c)))
-  const ranked =
-    fresh.length >= count ? fresh : [...fresh, ...pool.filter((c) => !clicked.has(normChip(c)))]
+  const ranked = fresh.length >= count ? fresh : [...fresh, ...pool.filter((c) => !clicked.has(normChip(c)))]
   const out: string[] = []
   for (const chip of ranked) {
     if (out.length >= count) break
@@ -319,11 +327,10 @@ function pickChips(pool: string[], clicked: Set<string>, shown: Set<string>, cou
   return out
 }
 
-/**
- * Build the Phase-A card for an intent. Returns null when no card applies.
- * Gate: tenant setting cards_enabled (default true).
- * Escalation streak is tracked by the caller (handleChat) on every message.
- */
+// --- Intent-based card builders ---
+
+const unclearStreaks = new Map<string, number>()
+
 async function buildCardForIntent(
   db: Client,
   intent: string,
@@ -335,16 +342,8 @@ async function buildCardForIntent(
   if (intent === 'unclear') {
     const streak = unclearStreaks.get(conversationId) ?? 0
     if (streak >= 3) {
-      // Fallback chain (plan §5.3): three unclear in a row → push to human.
-      return {
-        id: `card_${crypto.randomUUID()}`,
-        kind: 'contact_card',
-        title: 'Let me get a human to help',
-        subtitle: 'I want to make sure you get a proper answer.',
-        _persist: true,
-      }
+      return talkToHumanCard(tenantName, settings)
     }
-    // Rotate: never re-offer chips already used or shown this conversation.
     const { clicked, shown } = await chipUsage(db, conversationId)
     const chips = pickChips(chipPool(settings), clicked, shown, 3)
     return {
@@ -353,40 +352,48 @@ async function buildCardForIntent(
       title: 'Pick a topic',
       subtitle: 'Or just type your question',
       chips,
-      // Booking is always one tap away (opens the widget's slot picker).
       actions: [{ label: 'Book an appointment', open_slots: true }],
       _persist: true,
     }
   }
   if (intent === 'transfer_human') {
-    return {
-      id: `card_${crypto.randomUUID()}`,
-      kind: 'contact_card',
-      title: `Talk to ${tenantName}`,
-      subtitle: 'A real person can help with anything I can\'t.',
-      actions: contactActions(tenantName, settings),
-      _persist: true,
-    } satisfies Card
+    return talkToHumanCard(tenantName, settings)
   }
   return null
 }
 
-/**
- * Follow-up card appended to answers so the conversation keeps going: fresh
- * topic chips the user hasn't seen or used yet (rotated per conversation),
- * plus a booking entry point that opens the widget's slot picker — always.
- */
+// --- Enhanced follow-up card with smart sequencing ---
+
 async function followUpCard(
   db: Client,
   conversationId: string,
   settings: Record<string, unknown>,
+  lastIntent: string,
 ): Promise<Card> {
   const { clicked, shown } = await chipUsage(db, conversationId)
+  
+  // Smart sequencing: different cards based on what we just talked about
+  if (lastIntent === 'general_query' || lastIntent === 'unclear') {
+    const chips = pickChips(chipPool(settings), clicked, shown, 3)
+    return {
+      id: `card_${crypto.randomUUID()}`,
+      kind: 'quick_replies',
+      title: 'Want to know more?',
+      subtitle: 'Here are some things you can explore next —',
+      chips,
+      actions: [
+        { label: 'See what we can do', send_message: 'What services do you offer?' },
+        { label: 'Talk to a person', send_message: 'I want to talk to someone' },
+      ],
+      _persist: true,
+    }
+  }
+  
   const chips = pickChips(chipPool(settings), clicked, shown, 2)
   return {
     id: `card_${crypto.randomUUID()}`,
     kind: 'quick_replies',
-    title: 'Anything else I can help with?',
+    title: 'Anything else?',
     chips,
     actions: [{ label: 'Book an appointment', open_slots: true }],
     _persist: true,
@@ -409,12 +416,10 @@ async function loadTenant(db: Client, slug: string): Promise<TenantCtx | null> {
     slug: rowString(row, 'slug'),
     name: rowString(row, 'name'),
     settings: parseJson(rowString(row, 'settings', '{}'), {}),
-    config: undefined as unknown as WidgetConfig, // set below
+    config: undefined as unknown as WidgetConfig,
   }
 }
 
-// Minimal per-tenant chat self-throttle (in-memory; replace with KV for
-// durable daily caps — see spec §5.7).
 const rpmWindows = new Map<string, { start: number; count: number }>()
 function chatAllowed(tenantSlug: string, env: Env): boolean {
   const max = parseInt(env.LLM_CHAT_RPM || '10', 10)
@@ -429,7 +434,6 @@ function chatAllowed(tenantSlug: string, env: Env): boolean {
   return w.count <= max
 }
 
-/** Main chat handler. Returns a streaming SSE Response. */
 export async function handleChat(
   db: Client,
   env: Env,
@@ -437,32 +441,19 @@ export async function handleChat(
   body: ChatRequestBody,
 ): Promise<Response> {
   const message = (body.message || '').trim()
-  if (!message) {
-    return json({ detail: 'message is required' }, 400)
-  }
-  if (message.length > 4000) {
-    return json({ detail: 'message too long (max 4000 chars)' }, 400)
-  }
+  if (!message) return json({ detail: 'message is required' }, 400)
+  if (message.length > 4000) return json({ detail: 'message too long (max 4000 chars)' }, 400)
 
   const row = await tenantBySlug(db, slug)
-  if (!row) {
-    return json({ detail: 'Tenant not found' }, 404)
-  }
+  if (!row) return json({ detail: 'Tenant not found' }, 404)
+  
   const tenantId = rowString(row, 'id')
-  const settings = parseJson<Record<string, unknown>>(
-    rowString(row, 'settings', '{}'),
-    {},
-  )
+  const settings = parseJson<Record<string, unknown>>(rowString(row, 'settings', '{}'), {})
   const now = Math.floor(Date.now() / 1000)
   let conversationId = body.conversation_id || ''
 
   if (conversationId) {
-    // Client-provided ids can be stale (widget reload after session expiry or
-    // DB reset) — if the conversation row is gone, start a fresh conversation
-    // instead of failing the whole chat on a FOREIGN KEY constraint.
-    const exists = await query(db, 'SELECT 1 FROM conversations WHERE id = ? LIMIT 1', [
-      conversationId,
-    ])
+    const exists = await query(db, 'SELECT 1 FROM conversations WHERE id = ? LIMIT 1', [conversationId])
     if (!exists.rows.length) conversationId = ''
   }
 
@@ -483,12 +474,6 @@ export async function handleChat(
     [crypto.randomUUID(), conversationId, message, now],
   )
 
-  // Intent classification is best-effort; any failure falls back to unclear.
-  // Exception: tenant-configured quick replies are routed deterministically.
-  // The widget sends chip clicks back as plain messages, and the LLM classifier
-  // is unreliable on short texts ("What does Weblyft Design do?" sometimes
-  // comes back unclear) — which looped chip clicks back to the unclear card.
-  // A chip the tenant configured is by definition an answerable topic.
   const configuredChips = Array.isArray(settings['quick_replies'])
     ? (settings['quick_replies'] as unknown[]).filter(
         (q): q is string => typeof q === 'string' && q.trim().length > 0,
@@ -512,6 +497,7 @@ export async function handleChat(
       }
     }
   }
+  
   await query(
     db,
     `INSERT INTO usage_logs (id, tenant_id, event_type, metadata, created_at)
@@ -519,15 +505,10 @@ export async function handleChat(
     [crypto.randomUUID(), tenantId, JSON.stringify({ intent }), now],
   )
 
-  // Any real intent resets the escalation streak. The increment itself happens
-  // where an unclear reply is actually shown — the KB fallback below may still
-  // answer a classifier-unclear message, which shouldn't count toward it.
   if (!throttled && intent !== 'unclear') {
     unclearStreaks.delete(conversationId)
   }
 
-  // Load prior conversation turns so follow-up questions can be answered with
-  // context (e.g. "How much is the middle one?" after discussing packages).
   const prevMessages: { role: 'user' | 'assistant'; text: string }[] = []
   if (conversationId) {
     try {
@@ -545,14 +526,10 @@ export async function handleChat(
           prevMessages.push({ role: role as 'user' | 'assistant', text: content })
         }
       }
-      // Keep the context window bounded — last 10 turns (20 messages) is plenty
-      // for follow-ups while staying well inside the LLM prompt budget.
       if (prevMessages.length > 20) {
         prevMessages.splice(0, prevMessages.length - 20)
       }
-    } catch {
-      // Best-effort history — a failure here must not break the chat.
-    }
+    } catch {}
   }
 
   const stream = new ReadableStream<Uint8Array>({
@@ -560,20 +537,20 @@ export async function handleChat(
       let full = ''
       let card: Card | null = null
       const send = (payload: Record<string, unknown>) => {
-        const frame = `data: ${JSON.stringify(payload)}\n\n`
+        const frame = `data: ${JSON.stringify(payload)}\
+\
+`
         full += (payload['content'] as string) || ''
         controller.enqueue(encoder.encode(frame))
       }
-      // Cards ride their own SSE frame; old widgets ignore unknown types.
-      // _persist is internal bookkeeping and stays off the wire.
       const sendCard = (c: Card) => {
         emitCard(send, c, settings, db, tenantId)
       }
+      
       try {
         if (throttled || quotaExceeded) {
           send({ type: 'content', content: LIMIT_MESSAGE })
         } else if (intent === 'general_query') {
-          // Search the knowledge base first
           let hits: Awaited<ReturnType<typeof search>> = []
           try {
             hits = await search(db, env, tenantId, message)
@@ -582,7 +559,6 @@ export async function handleChat(
           }
 
           if (hits.length > 0) {
-            // Business question — answer from knowledge base
             const context = hits.map((h) => h.content)
             try {
               for await (const chunk of synthesizeAnswer(env, message, context, prevMessages)) {
@@ -595,8 +571,6 @@ export async function handleChat(
               }
             }
           } else {
-            // NOT a business question — let the AI chat freely like a mini ChatGPT
-            // No knowledge base context needed — respond conversationally
             try {
               for await (const chunk of synthesizeAnswer(env, message, [], prevMessages)) {
                 send({ type: 'content', content: chunk })
@@ -609,9 +583,8 @@ export async function handleChat(
             }
           }
 
-          // Keep the conversation going
           if (!card) {
-            card = await followUpCard(db, conversationId, settings)
+            card = await followUpCard(db, conversationId, settings, intent)
             sendCard(card)
           }
         } else if (intent === 'book_appointment') {
@@ -625,10 +598,7 @@ export async function handleChat(
             const horizon = bookingHorizon(row)
             const off = isoToDayOffset(hint, tzName)
             if (off !== null && off > horizon) {
-              send({
-                type: 'content',
-                content: `That date is beyond our ${horizon}-day booking window. Please pick a date within the next ${horizon} days.`,
-              })
+              send({ type: 'content', content: `That date is beyond our ${horizon}-day booking window. Please pick a date within the next ${horizon} days.` })
             } else {
               slots = await getAvailability(db, row, { date: hint })
             }
@@ -637,51 +607,29 @@ export async function handleChat(
           }
           if (slots.length) {
             send({ type: 'slots', slots })
-            send({
-              type: 'content',
-              content:
-                'Here are the available times. Click one to book, or tell me your preferred day and time.',
-            })
+            send({ type: 'content', content: 'Here are the available times. Click one to book, or tell me your preferred day and time.' })
           } else if (hint) {
-            send({
-              type: 'content',
-              content:
-                "I couldn't find any available times on that day — it may be a day the business is closed. Try another date or this week's slots.",
-            })
+            send({ type: 'content', content: "I couldn't find any available times on that day — it may be a day the business is closed. Try another date or this week's slots." })
           } else {
-            send({
-              type: 'content',
-              content:
-                "I couldn't find any available slots in the next week. Please check back soon or contact the team directly.",
-            })
+            send({ type: 'content', content: "I couldn't find any available slots in the next week. Please check back soon or contact the team directly." })
           }
           if (!slots.length) {
-            // No slots to show — still give the user a booking entry point.
-            card = await followUpCard(db, conversationId, settings)
+            card = await followUpCard(db, conversationId, settings, intent)
             sendCard(card)
           }
         } else if (intent === 'cancel_appointment') {
           card = await handleCancel(db, row, message, send, settings)
           if (card) sendCard(card)
         } else if (intent === 'transfer_human') {
-          send({
-            type: 'content',
-            content:
-              "I'll make sure someone from the team reaches out to you shortly. Is there anything else I can help with in the meantime?",
-          })
+          send({ type: 'content', content: "I'll make sure someone from the team reaches out to you shortly. Is there anything else I can help with in the meantime?" })
           card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
           if (card) sendCard(card)
         } else if (intent === 'greeting') {
-          // Warm, conversational welcome — like a real AI assistant
-          send({
-            type: 'content',
-            content:
-              "Hey there! 👋 Great to meet you! I'm here to chat and help out. You can ask me anything — about the business, services, pricing, or just have a casual conversation. What's on your mind?",
-          })
-          card = await followUpCard(db, conversationId, settings)
-          sendCard(card)
+          send({ type: 'content', content: "Hey there! 👋 Great to meet you! I'm here to chat and help out. Whether you've got questions about websites, want to bounce ideas around, or just feel like chatting — I'm game. What's on your mind?" })
+          const welcomeCard = exploreServicesCard(rowString(row, 'name'))
+          sendCard(welcomeCard)
+          card = welcomeCard
         } else if (intent === 'general_query') {
-          // Search the knowledge base first
           let hits: Awaited<ReturnType<typeof search>> = []
           try {
             hits = await search(db, env, tenantId, message)
@@ -690,7 +638,6 @@ export async function handleChat(
           }
 
           if (hits.length > 0) {
-            // Business question — answer from knowledge base
             const context = hits.map((h) => h.content)
             try {
               for await (const chunk of synthesizeAnswer(env, message, context, prevMessages)) {
@@ -703,8 +650,6 @@ export async function handleChat(
               }
             }
           } else {
-            // NOT a business question — let the AI chat freely like a mini ChatGPT
-            // No knowledge base context needed — respond conversationally
             try {
               for await (const chunk of synthesizeAnswer(env, message, [], prevMessages)) {
                 send({ type: 'content', content: chunk })
@@ -716,8 +661,12 @@ export async function handleChat(
               }
             }
           }
+
+          if (!card) {
+            card = await followUpCard(db, conversationId, settings, intent)
+            sendCard(card)
+          }
         } else {
-          // unclear — try the knowledge base first, then let the AI chat
           let hits: Awaited<ReturnType<typeof search>> = []
           try {
             hits = await search(db, env, tenantId, message)
@@ -730,7 +679,6 @@ export async function handleChat(
               for await (const chunk of synthesizeAnswer(env, message, hits.map((h) => h.content), prevMessages)) {
                 send({ type: 'content', content: chunk })
               }
-              // The KB answered it — relabel so analytics are accurate.
               intent = 'general_query'
             } catch (e) {
               console.error(`[synthesizeAnswer] failed: ${e instanceof Error ? e.message : String(e)}`)
@@ -738,10 +686,9 @@ export async function handleChat(
                 send({ type: 'content', content: "I'm having trouble pulling that up — want to try asking differently?" })
               }
             }
-            card = await followUpCard(db, conversationId, settings)
+            card = await followUpCard(db, conversationId, settings, intent)
             sendCard(card)
           } else {
-            // Not in KB — let the AI respond conversationally like mini ChatGPT
             try {
               for await (const chunk of synthesizeAnswer(env, message, [], prevMessages)) {
                 send({ type: 'content', content: chunk })
@@ -757,8 +704,6 @@ export async function handleChat(
 
         const assistantMsg = full.trim()
         if (assistantMsg) {
-          // Persist the card alongside the text (messages.tool_calls) so a
-          // history reload can re-render it read-only.
           const toolCalls = card && card._persist ? JSON.stringify({ card }) : null
           await query(
             db,
@@ -766,10 +711,7 @@ export async function handleChat(
              VALUES (?, ?, 'assistant', ?, ?, ?, ?)`,
             [crypto.randomUUID(), conversationId, assistantMsg, intent, toolCalls, now],
           )
-          await query(db, 'UPDATE conversations SET updated_at = ? WHERE id = ?', [
-            now,
-            conversationId,
-          ])
+          await query(db, 'UPDATE conversations SET updated_at = ? WHERE id = ?', [now, conversationId])
         }
         send({
           type: 'done',
@@ -780,11 +722,7 @@ export async function handleChat(
       } catch (e) {
         console.error('chat stream error:', e)
         if (!full) {
-          send({
-            type: 'content',
-            content:
-              'Sorry, something went wrong. Please try again in a moment.',
-          })
+          send({ type: 'content', content: 'Sorry, something went wrong. Please try again in a moment.' })
         }
         send({ type: 'done', conversation_id: conversationId, intent })
       } finally {
@@ -810,15 +748,8 @@ export function json(data: unknown, status = 200): Response {
   })
 }
 
-/** Events the widget may self-report; anything else is rejected. */
 const TELEMETRY_EVENTS = new Set(['card_clicked', 'picker_opened', 'slot_chosen'])
 
-/**
- * POST /widget/telemetry/:slug — engagement events from the widget (card chip
- * clicks, picker opens, slot choices). Written to usage_logs so the admin
- * analytics can compute per-kind click-through. Best-effort: always 204,
- * never blocks the widget.
- */
 export async function handleTelemetry(
   db: Client,
   slug: string,
@@ -851,7 +782,7 @@ export async function handleTelemetry(
   return new Response(null, { status: 204 })
 }
 
-const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/
 
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n)
@@ -880,31 +811,18 @@ function weekdayNum(word: string): number {
   return k in map ? map[k]! : -1
 }
 
-/**
- * Resolve the YYYY-MM-DD (tenant-timezone) date a message refers to, or null.
- * Accepts YYYY-MM-DD, "July 15 (2026)", "15 July", "15/7", "7/15/2026",
- * weekday names (next occurrence), "tomorrow", "today".
- */
-/**
- * Roll a parsed month/day forward to the next occurrence when no year was
- * given (handles "July 15" said in December). Explicit years are kept as-is
- * so past dates fail with a clear 'already passed' instead of silently
- * moving a year.
- */
 function rollForward(y: number, m: number, d: number, tzName: string, explicitYear: boolean): string | null {
   const base = isoFromYMD(y, m, d)
   if (!base) return null
   if (explicitYear || base >= localIsoDate(0, tzName)) return base
-  // No year given and the date is past — try next year (Feb 29 handled by
-  // isoFromYMD's validity check).
   return isoFromYMD(y + 1, m, d) ?? base
 }
 
 function resolveDateIso(message: string, tzName: string): string | null {
-  const iso = message.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
+  const iso = message.match(/\\b(\\d{4})-(\\d{2})-(\\d{2})\\b/)
   if (iso) return isoFromYMD(+iso[1]!, +iso[2]!, +iso[3]!)
 
-  const monthFirst = message.match(/\b([a-zA-Z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?\b/i)
+  const monthFirst = message.match(/\\b([a-zA-Z]{3,9})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?\\b/i)
   if (monthFirst) {
     const mi = monthNum(monthFirst[1]!)
     if (mi) {
@@ -912,7 +830,7 @@ function resolveDateIso(message: string, tzName: string): string | null {
       if (iso2) return iso2
     }
   }
-  const dayFirst = message.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-zA-Z]{3,9})\b(?:\s*,?\s*(\d{4}))?/i)
+  const dayFirst = message.match(/\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?([a-zA-Z]{3,9})\\b(?:\\s*,?\\s*(\\d{4}))?/i)
   if (dayFirst) {
     const mi = monthNum(dayFirst[2]!)
     if (mi) {
@@ -920,18 +838,16 @@ function resolveDateIso(message: string, tzName: string): string | null {
       if (iso2) return iso2
     }
   }
-  const slash = message.match(/\b(\d{1,2})\s*[/.]\s*(\d{1,2})(?:\s*[/.]\s*(\d{2,4}))?\b/)
+  const slash = message.match(/\\b(\\d{1,2})\\s*[/.]\\s*(\\d{1,2})(?:\\s*[/.]\\s*(\\d{2,4}))?\\b/)
   if (slash) {
     const p1 = +slash[1]!
     const p2 = +slash[2]!
     const y = slash[3] ? +slash[3] : new Date().getFullYear()
-    if (p1 > 12) return rollForward(y, p2, p1, tzName, Boolean(slash[3])) // day-first (dd/mm)
-    if (p2 > 12) return rollForward(y, p1, p2, tzName, Boolean(slash[3])) // month-first (mm/dd)
-    return rollForward(y, p1, p2, tzName, Boolean(slash[3])) // ambiguous -> month-first (matches widget format)
+    if (p1 > 12) return rollForward(y, p2, p1, tzName, Boolean(slash[3]))
+    if (p2 > 12) return rollForward(y, p1, p2, tzName, Boolean(slash[3]))
+    return rollForward(y, p1, p2, tzName, Boolean(slash[3]))
   }
-  const wd = message.match(
-    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i,
-  )
+  const wd = message.match(/\\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\\b/i)
   if (wd) {
     const want = weekdayNum(wd[1]!)
     const todayIso = localIsoDate(0, tzName)
@@ -941,25 +857,25 @@ function resolveDateIso(message: string, tzName: string): string | null {
     const when = new Date((todayEpoch + diff * 86400) * 1000)
     return isoFromYMD(when.getUTCFullYear(), when.getUTCMonth() + 1, when.getUTCDate())
   }
-  if (/\btomorrow\b/i.test(message)) {
+  if (/\\btomorrow\\b/i.test(message)) {
     const todayEpoch = localMidnightEpoch(localIsoDate(0, tzName), tzName)
     const when = new Date((todayEpoch + 86400) * 1000)
     return isoFromYMD(when.getUTCFullYear(), when.getUTCMonth() + 1, when.getUTCDate())
   }
-  if (/\btoday\b/i.test(message)) {
+  if (/\\btoday\\b/i.test(message)) {
     return localIsoDate(0, tzName)
   }
   return null
 }
 
 function resolveTime(message: string): { hour: number; minute: number } | null {
-  const at = message.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i)
-  const colon = at ? null : message.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?/i)
-  const bare = at || colon ? null : message.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)
+  const at = message.match(/\\bat\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?/i)
+  const colon = at ? null : message.match(/\\b(\\d{1,2}):(\\d{2})\\s*(am|pm)?/i)
+  const bare = at || colon ? null : message.match(/\\b(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b/i)
   const m = at || colon || bare
   if (!m) return null
   let hour = parseInt(m[1] ?? '0', 10)
-  const minuteRaw = m[2] && /^\d{1,2}$/.test(m[2]) ? m[2] : null
+  const minuteRaw = m[2] && /^\\d{1,2}$/.test(m[2]) ? m[2] : null
   const minute = minuteRaw ? parseInt(minuteRaw, 10) : 0
   const ampm = (m[3] || '').toLowerCase()
   if (ampm === 'pm' && hour < 12) hour += 12
@@ -968,11 +884,6 @@ function resolveTime(message: string): { hour: number; minute: number } | null {
   return { hour, minute }
 }
 
-/**
- * Parse a booking message like "Book 11/5/2026 at 13:00 person@example.com",
- * "book friday 2pm a@b.com", or "book July 15 at 3pm for Alex". Durations
- * follow the tenant's slot_duration — not a hardcoded 30 minutes.
- */
 function parseBooking(
   message: string,
   tzName: string,
@@ -980,8 +891,8 @@ function parseBooking(
 ): { start: number; end: number; email: string | null; name: string } | null {
   const emailMatch = message.match(EMAIL_RE)
   const email = emailMatch ? emailMatch[0] : null
-  const nameMatch = message.match(/\b(?:for|name(?:d)?)\s+([A-Za-z][A-Za-z .'’-]{1,40})/i)
-  const name = nameMatch ? nameMatch[1]!.replace(/\s+/g, ' ').trim() : ''
+  const nameMatch = message.match(/\\b(?:for|name(?:d)?)\\s+([A-Za-z][A-Za-z .'’-]{1,40})/i)
+  const name = nameMatch ? nameMatch[1]!.replace(/\\s+/g, ' ').trim() : ''
   const iso = resolveDateIso(message, tzName)
   const time = resolveTime(message)
   if (!iso || !time) return null
@@ -1004,32 +915,21 @@ async function handleCancel(
   const email = emailMatch ? emailMatch[0] : null
   const dateIso = resolveDateIso(message, tzName)
   if (!email) {
-    send({
-      type: 'content',
-      content:
-        'I can help you cancel — which email did you book with? (I\'ll cancel the next upcoming appointment on it.)',
-    })
+    send({ type: 'content', content: 'I can help you cancel — which email did you book with? (I\'ll cancel the next upcoming appointment on it.)' })
     const lookup = cancelLookupCard()
     emitCard(send, lookup, settings, db, rowString(tenant, 'id'))
     return lookup
   }
   const outcome = await cancelAppointment(db, tenant, settings, { email: email || '', dateIso: dateIso ?? undefined })
   if (!outcome) {
-    send({
-      type: 'content',
-      content:
-        "I couldn't find an upcoming appointment for that email. Double-check the address, or contact the team directly.",
-    })
+    send({ type: 'content', content: "I couldn't find an upcoming appointment for that email. Double-check the address, or contact the team directly." })
     return null
   }
   const when = formatSlot(outcome.appointment.start_time, tzName)
   const emailNote = outcome.notify.ok
     ? 'A cancellation confirmation is on its way.'
     : 'We were unable to email a cancellation confirmation — the team has been notified.'
-  send({
-    type: 'content',
-    content: `Your ${when} appointment has been cancelled. ${emailNote}`,
-  })
+  send({ type: 'content', content: `Your ${when} appointment has been cancelled. ${emailNote}` })
   return cancelConfirmCard(when, rowString(tenant, 'name'))
 }
 
@@ -1052,26 +952,16 @@ async function handleBook(
 
   if (!parsed || !email) {
     if (!parsed) {
-      send({
-        type: 'content',
-        content:
-          'I can book that for you. Could you tell me which day and time you prefer (e.g. "book Friday 2pm")?',
-      })
+      send({ type: 'content', content: 'I can book that for you. Could you tell me which day and time you prefer (e.g. "book Friday 2pm")?' })
       const prompt = bookingPromptCard()
       emitCard(send, prompt, settings, db, rowString(tenant, 'id'))
       return prompt
     } else {
-      send({
-        type: 'content',
-        content: 'To send your confirmation, please share your email address (e.g. "book Friday 2pm, me@email.com").',
-      })
+      send({ type: 'content', content: 'To send your confirmation, please share your email address (e.g. "book Friday 2pm, me@email.com").' })
     }
     return null
   }
 
-  // Chat times are free-form ("Friday 2pm") and may fall off the tenant's slot
-  // grid or already be taken — check against real availability first and offer
-  // the day's actual slots instead of attempting a booking that would fail.
   const dateIso = resolveDateIso(message, tzName)
   const daySlots = dateIso ? await getAvailability(db, tenant, { date: dateIso }) : []
   const exactMatch = daySlots.some((s) => s.start_time === parsed.start)
@@ -1080,7 +970,7 @@ async function handleBook(
     send({
       type: 'content',
       content: daySlots.length
-        ? 'That exact time isn\'t open. Here\'s what\'s available that day — tap a time or tell me another.'
+        ? "That exact time isn't open. Here's what's available that day — tap a time or tell me another."
         : "I couldn't find any open times that day — it may be a day we're closed. Tell me another day and I'll check.",
     })
     return null
@@ -1097,7 +987,6 @@ async function handleBook(
       customerEmail: email,
       customerName: parsed.name || '',
     })
-    // Confirm in the BUSINESS's timezone so the customer sees the local time.
     const when = formatSlot(parsed.start, tzName)
     send({
       type: 'content',
@@ -1109,32 +998,16 @@ async function handleBook(
     return bookingConfirmCard(parsed.start, parsed.end, 'Appointment', email, parsed.name, tzName, rowString(tenant, 'name'))
   } catch (e) {
     if (e instanceof ApptConflict) {
-      const slots = dateIso
-        ? await getAvailability(db, tenant, { date: dateIso })
-        : await getAvailability(db, tenant, { days: 7 })
+      const slots = dateIso ? await getAvailability(db, tenant, { date: dateIso }) : await getAvailability(db, tenant, { days: 7 })
       if (slots.length) send({ type: 'slots', slots })
-      send({
-        type: 'content',
-        content:
-          'Sorry, that time was just taken. Pick an available slot below, or tell me another day/time.',
-      })
+      send({ type: 'content', content: 'Sorry, that time was just taken. Pick an available slot below, or tell me another day/time.' })
     } else if (e instanceof ApptHorizon) {
-      send({
-        type: 'content',
-        content: `I couldn't book that — it's outside the ${bookingHorizon(tenant)}-day booking window. Please choose a date within that range.`,
-      })
+      send({ type: 'content', content: `I couldn't book that — it's outside the ${bookingHorizon(tenant)}-day booking window. Please choose a date within that range.` })
     } else if (e instanceof ApptClosed) {
-      send({
-        type: 'content',
-        content:
-          "I couldn't book that time — the business is closed then. Pick an available slot or ask me for opening times.",
-      })
+      send({ type: 'content', content: "I couldn't book that time — the business is closed then. Pick an available slot or ask me for opening times." })
     } else {
       console.error(`[book] ${e instanceof Error ? e.stack || e.message : String(e)}`)
-      send({
-        type: 'content',
-        content: "I couldn't complete the booking. Please try again in a moment.",
-      })
+      send({ type: 'content', content: "I couldn't complete the booking. Please try again in a moment." })
     }
     return null
   }
