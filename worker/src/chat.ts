@@ -573,61 +573,43 @@ export async function handleChat(
         if (throttled || quotaExceeded) {
           send({ type: 'content', content: LIMIT_MESSAGE })
         } else if (intent === 'general_query') {
-          let hits: Awaited<ReturnType<typeof search>>
+          // Search the knowledge base first
+          let hits: Awaited<ReturnType<typeof search>> = []
           try {
             hits = await search(db, env, tenantId, message)
           } catch (e) {
-            const limit = e instanceof LLMError && e.status === 429
-            send({ type: 'content', content: limit ? LIMIT_MESSAGE : KB_UNAVAILABLE_MESSAGE })
-            hits = []
+            console.error(`[general_query] search failed: ${e instanceof Error ? e.message : String(e)}`)
           }
-          if (hits.length) {
+
+          if (hits.length > 0) {
+            // Business question — answer from knowledge base
             const context = hits.map((h) => h.content)
             try {
               for await (const chunk of synthesizeAnswer(env, message, context, prevMessages)) {
                 send({ type: 'content', content: chunk })
               }
             } catch (e) {
-              console.error(
-                `[synthesizeAnswer] failed slug:${slug} | ${e instanceof Error ? e.stack || e.message : String(e)}`,
-              )
+              console.error(`[synthesizeAnswer] failed: ${e instanceof Error ? e.message : String(e)}`)
               if (!full) {
-                send({
-                  type: 'content',
-                  content:
-                    "I'm having trouble answering right now — please try again in a moment.",
-                })
+                send({ type: 'content', content: "I'm having trouble pulling that up — want to try asking differently?" })
               }
             }
           } else {
-            // Knowledge base has no answer — offer concrete next steps instead
-            // of a dead-end. The follow-up card gives topic chips; the contact
-            // card gives a human path. Show the contact card on the second
-            // consecutive miss so users aren't stuck re-asking.
-            const missCount = prevMessages.filter(
-              (m) => m.role === 'assistant' && m.text.includes("don't have that information"),
-            ).length
-            send({
-              type: 'content',
-              content: missCount >= 2
-                ? "I'm not finding that in my knowledge base. Let me connect you with someone who can help — or try asking about the business, services, pricing, or hours."
-                : "I don't have that information in my knowledge base right now. Try asking about the business, services, pricing, hours, or how to get in touch.",
-            })
-            card = await followUpCard(db, conversationId, settings)
-            sendCard(card)
-            if (missCount >= 2) {
-              const contact = await buildCardForIntent(
-                db,
-                'transfer_human',
-                settings,
-                rowString(row, 'name'),
-                conversationId,
-              )
-              if (contact) sendCard(contact)
+            // NOT a business question — let the AI chat freely like a mini ChatGPT
+            // No knowledge base context needed — respond conversationally
+            try {
+              for await (const chunk of synthesizeAnswer(env, message, [], prevMessages)) {
+                send({ type: 'content', content: chunk })
+              }
+            } catch (e) {
+              console.error(`[chat] failed: ${e instanceof Error ? e.message : String(e)}`)
+              if (!full) {
+                send({ type: 'content', content: "Hmm, I'm not sure what to say about that. Want to talk about something else?" })
+              }
             }
           }
-          // Keep the conversation going: follow-up chips + a booking entry
-          // point (opens the widget's slot picker) on every KB answer.
+
+          // Keep the conversation going
           if (!card) {
             card = await followUpCard(db, conversationId, settings)
             sendCard(card)
@@ -698,17 +680,49 @@ export async function handleChat(
           })
           card = await followUpCard(db, conversationId, settings)
           sendCard(card)
-        } else {
-          // unclear — but not final until the knowledge base has had a say:
-          // short chip-style questions often miss the classifier yet live in
-          // the KB. Only a genuine KB miss shows the unclear reply.
+        } else if (intent === 'general_query') {
+          // Search the knowledge base first
           let hits: Awaited<ReturnType<typeof search>> = []
           try {
             hits = await search(db, env, tenantId, message)
           } catch (e) {
-            console.error(
-              `[unclear→kb] search failed slug:${slug} | ${e instanceof Error ? e.message : String(e)}`,
-            )
+            console.error(`[general_query] search failed: ${e instanceof Error ? e.message : String(e)}`)
+          }
+
+          if (hits.length > 0) {
+            // Business question — answer from knowledge base
+            const context = hits.map((h) => h.content)
+            try {
+              for await (const chunk of synthesizeAnswer(env, message, context, prevMessages)) {
+                send({ type: 'content', content: chunk })
+              }
+            } catch (e) {
+              console.error(`[synthesizeAnswer] failed: ${e instanceof Error ? e.message : String(e)}`)
+              if (!full) {
+                send({ type: 'content', content: "I'm having trouble pulling that up — want to try asking differently?" })
+              }
+            }
+          } else {
+            // NOT a business question — let the AI chat freely like a mini ChatGPT
+            // No knowledge base context needed — respond conversationally
+            try {
+              for await (const chunk of synthesizeAnswer(env, message, [], prevMessages)) {
+                send({ type: 'content', content: chunk })
+              }
+            } catch (e) {
+              console.error(`[chat] failed: ${e instanceof Error ? e.message : String(e)}`)
+              if (!full) {
+                send({ type: 'content', content: "Hmm, I'm not sure what to say about that. Want to talk about something else?" })
+              }
+            }
+          }
+        } else {
+          // unclear — try the knowledge base first, then let the AI chat
+          let hits: Awaited<ReturnType<typeof search>> = []
+          try {
+            hits = await search(db, env, tenantId, message)
+          } catch (e) {
+            console.error(`[unclear] search failed: ${e instanceof Error ? e.message : String(e)}`)
             hits = []
           }
           if (hits.length) {
@@ -719,33 +733,25 @@ export async function handleChat(
               // The KB answered it — relabel so analytics are accurate.
               intent = 'general_query'
             } catch (e) {
-              console.error(
-                `[synthesizeAnswer] failed slug:${slug} | ${e instanceof Error ? e.stack || e.message : String(e)}`,
-              )
+              console.error(`[synthesizeAnswer] failed: ${e instanceof Error ? e.message : String(e)}`)
               if (!full) {
-                send({
-                  type: 'content',
-                  content:
-                    "I'm having trouble answering right now — please try again in a moment.",
-                })
+                send({ type: 'content', content: "I'm having trouble pulling that up — want to try asking differently?" })
               }
             }
             card = await followUpCard(db, conversationId, settings)
             sendCard(card)
           } else {
-            unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
-            const streak = unclearStreaks.get(conversationId) ?? 0
-            // First unclear: be friendly and guide them. Second+: escalate.
-            send({
-              type: 'content',
-              content: streak === 1
-                ? "Hey! I'm here to help you learn about the business. You can ask me about what we do, our services, pricing, packages, how to get in touch, or anything else about the business. What's on your mind?"
-                : streak >= 2
-                  ? "I'm having trouble understanding. Let me connect you with someone who can help — or try asking about the business, services, pricing, or hours."
-                  : "I'm not sure I understand. Could you rephrase that? I can help with questions about the business or booking appointments.",
-            })
-            card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
-            if (card) sendCard(card)
+            // Not in KB — let the AI respond conversationally like mini ChatGPT
+            try {
+              for await (const chunk of synthesizeAnswer(env, message, [], prevMessages)) {
+                send({ type: 'content', content: chunk })
+              }
+            } catch (e) {
+              console.error(`[chat-unclear] failed: ${e instanceof Error ? e.message : String(e)}`)
+              if (!full) {
+                send({ type: 'content', content: "Hmm, not sure about that one. Want to chat about something else?" })
+              }
+            }
           }
         }
 

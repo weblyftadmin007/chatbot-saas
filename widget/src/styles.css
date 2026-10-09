@@ -329,12 +329,12 @@
   color: var(--primary);
 }
 
-/* Messages */
+/* Messages - symmetrical bubbles */
 .chatbot-message {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 85%;
+  max-width: 80%;
   min-width: 0;
   animation: msgIn 0.25s ease;
 }
@@ -346,6 +346,10 @@
 
 .chatbot-message.assistant {
   align-self: flex-start;
+}
+
+.chatbot-message.assistant .chatbot-bubble {
+  max-width: 80%;
 }
 
 @keyframes msgIn {
