@@ -690,11 +690,11 @@ export async function handleChat(
           card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
           if (card) sendCard(card)
         } else if (intent === 'greeting') {
-          // Friendly welcome — don't just say "hello" back
+          // Warm, conversational welcome — like a real AI assistant
           send({
             type: 'content',
             content:
-              "Hi there! 👋 Great to have you here. I can help answer questions about the business, our services, pricing, packages, and how to get in touch. What would you like to know?",
+              "Hey there! 👋 Great to meet you! I'm here to chat and help out. You can ask me anything — about the business, services, pricing, or just have a casual conversation. What's on your mind?",
           })
           card = await followUpCard(db, conversationId, settings)
           sendCard(card)
