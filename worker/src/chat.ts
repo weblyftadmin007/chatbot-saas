@@ -140,25 +140,6 @@ function bookingPromptCard(): Card {
   }
 }
 
-/** Enhanced follow-up card with clearer topic suggestions */
-function enhancedFollowUpCard(
-  db: Client,
-  conversationId: string,
-  settings: Record<string, unknown>,
-): Card {
-  const { clicked, shown } = await chipUsage(db, conversationId)
-  const chips = pickChips(chipPool(settings), clicked, shown, 3)
-  return {
-    id: `card_${crypto.randomUUID()}`,
-    kind: 'quick_replies',
-    title: 'Still have questions?',
-    subtitle: 'Here are some things you can ask about:',
-    chips,
-    actions: [{ label: 'Book an appointment', open_slots: true }],
-    _persist: true,
-  }
-}
-
 /** Phase B: collect the booking email inline instead of a free-text dance. */
 function cancelLookupCard(): Card {
   return {
