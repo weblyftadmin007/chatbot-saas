@@ -207,21 +207,23 @@ export async function embedSingle(env: Env, text: string): Promise<number[]> {
 
 /** Port of backend llm.py intent classifier (few-shot prompt). */
 export async function classifyIntent(env: Env, text: string): Promise<string> {
-  const prompt = `Classify the user's intent into ONE category from the list below. Respond with ONLY the category name, nothing else.
+  const prompt = `Classify the user's intent into ONE category from the list below. Respond with ONLY the category name, nothing else — no explanation, no punctuation.
 
 Categories:
-- book_appointment: Wants to schedule a meeting, book a time slot, or reserve an appointment
-- cancel_appointment: Wants to cancel or reschedule an existing appointment
-- check_availability: Asks about open/free time slots, when someone is available
-- general_query: Any question about the business — hours, services, prices, location, contact info, policies, packages, what they do, how their process works, testimonials, experience, or anything else answerable from their information
-- transfer_human: Explicitly asks to talk to a person, a human, support, or a real person
-- unclear: Greetings only (hello, hi, hey), or messages with no clear question and no clear intent
+- book_appointment: User wants to schedule a meeting, book a time slot, or reserve an appointment
+- cancel_appointment: User wants to cancel or reschedule an existing appointment
+- check_availability: User asks about open/free time slots, when someone is available
+- general_query: User asks any question about the business — hours, services, prices, location, contact info, policies, packages, what they do, how their process works, testimonials, experience, or anything else answerable from their information
+- transfer_human: User explicitly asks to talk to a person, a human, support, or a real person
+- unclear: Pure greetings only (hello, hi, hey, good morning) with NO question, or messages with completely no clear intent
 
-IMPORTANT RULES:
-- Short informational questions about the business are ALWAYS general_query, NEVER unclear — even if you don't know the answer. Examples: "What are your hours?", "How much does it cost?", "Where are you located?", "What services do you offer?", "What does your company do?", "How do I contact you?", "Do you do redesigns?", "Are your sites mobile-friendly?" — ALL of these are general_query.
-- Any question that asks for information (who, what, where, when, how, why, how much, how long, can you, do you, is it, etc.) is general_query unless it's specifically about booking/canceling/availability.
-- If the message contains both a question AND booking-related words, prefer book_appointment or check_availability over general_query.
-- Only classify as unclear if it's a pure greeting with no question, or completely nonsensical/off-topic input.
+STRICT RULES:
+- ANY question seeking information is general_query, NEVER unclear. This includes short questions like "Price?", "Hours?", "Location?", "Services?", "Contact?"
+- Questions starting with Who, What, Where, When, Why, How, Can, Do, Is, Are, Does, Will, Would, Could, Should, May, Might are ALWAYS general_query (unless specifically about booking/canceling/availability)
+- Expressions of interest like "I need a website", "I'm looking for a designer", "I want a redesign" are general_query
+- Only classify as unclear if it's a pure greeting ("Hi", "Hello", "Hey") with absolutely no question, yes/no without context ("Yes", "Maybe"), or gibberish ("asdf", "lol")
+- If the message has ANY question word or seeks ANY information, it is NOT unclear
+- Booking-related words (book, schedule, appointment, slot, time, reserve) take priority: book_appointment if they want to book, check_availability if they're asking about open times
 
 Examples:
 User: "Book a meeting for Tuesday 2pm" -> book_appointment
@@ -230,7 +232,8 @@ User: "What times are open Friday?" -> check_availability
 User: "What's your refund policy?" -> general_query
 User: "Talk to a person" -> transfer_human
 User: "Hello" -> unclear
-User: "Hi there" -> unclear
+User: "Hi" -> unclear
+User: "hey" -> unclear
 User: "What are your hours?" -> general_query
 User: "What services do you offer?" -> general_query
 User: "What does your company do?" -> general_query
@@ -268,8 +271,10 @@ User: "lol" -> unclear
 User: "asdf" -> unclear
 User: "What is your refund policy and can I book a meeting" -> book_appointment
 User: "How much and where are you?" -> general_query
+User: "What does Weblyft Design do?" -> general_query
+User: "Tell me about your business" -> general_query
 
-User: "${text}"
+User message: "${text}"
 Intent:`
   let response: string
   try {
@@ -284,7 +289,7 @@ Intent:`
     if (e instanceof LLMError && e.status === 429) throw e
     return 'unclear'
   }
-  const intent = response.trim().toLowerCase()
+  const intent = response.trim().toLowerCase().replace(/[^a-z_]/g, '')
   console.error(`[classifyIntent] input:${text.length <= 80 ? text : text.slice(0, 80) + '...'} | raw:${response.slice(0, 140)} | intent:${intent}`)
   const valid = [
     'book_appointment',
@@ -316,22 +321,33 @@ export async function* synthesizeAnswer(
   const history = previousMessages
     .map((m) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.text}`)
     .join('\n')
-  const prompt = `You are the helpful assistant for a small business. Answer the user's question using ONLY the provided context. Do not make up information — if the answer is not in the context, say "I don't have that information in my knowledge base."
+  const prompt = `You are a helpful, professional assistant for a small business. Your role is to answer customer questions clearly and concisely using ONLY the provided knowledge base context.
 
-Keep answers short, direct, and in the same language as the question. If the user asks a follow-up question that refers to something mentioned earlier in the conversation, use BOTH the conversation history AND the context to answer.
+## RESPONSE GUIDELINES:
+- Be direct and helpful. Get straight to the answer.
+- Keep responses concise — aim for 2-4 sentences for simple questions.
+- Use natural, conversational language. Avoid robotic or overly formal phrasing.
+- If the answer is not in the context, say: "I don't have that information in my knowledge base right now. Try asking about the business, services, pricing, hours, or how to get in touch."
+- For follow-up questions, use the conversation history to understand context, then answer from the knowledge base.
+- NEVER make up information, prices, or policies not in the context.
+- If a question is ambiguous, ask for clarification rather than guessing.
+
+## FORMATTING:
+- Use plain text only. No markdown, no bullet points unless specifically needed.
+- Keep paragraphs short (1-3 sentences each).
 
 Conversation so far:
 ${history || '(no prior messages)'}
 
-Context:
+Knowledge base context:
 ${context}
 
-Question: ${query}
+Customer question: ${query}
 
-Answer:`
+Your answer:`
   yield* streamText(env, {
     messages: [{ role: 'user', text: prompt }],
-    temperature: 0.2,
-    maxTokens: 800,
+    temperature: 0.1,
+    maxTokens: 500,
   })
 }
