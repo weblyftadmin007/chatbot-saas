@@ -203,7 +203,7 @@ function exploreServicesCard(tenantName: string): Card {
       'Can you build a landing page?',
     ],
     actions: [
-      { label: '\\u201cWhat\’s your pricing?\\u201d', send_message: 'How much does a website cost?' },
+      { label: '“What’s your pricing?”', send_message: 'How much does a website cost?' },
       { label: 'Book a free chat', send_message: 'I want to talk about my project' },
     ],
     _persist: true,
@@ -537,8 +537,8 @@ export async function handleChat(
       let full = ''
       let card: Card | null = null
       const send = (payload: Record<string, unknown>) => {
-        const frame = `data: ${JSON.stringify(payload)}\
-\
+        const frame = `data: ${JSON.stringify(payload)}
+
 `
         full += (payload['content'] as string) || ''
         controller.enqueue(encoder.encode(frame))
