@@ -213,16 +213,18 @@ Categories:
 - book_appointment: User wants to schedule a meeting, book a time slot, or reserve an appointment
 - cancel_appointment: User wants to cancel or reschedule an existing appointment
 - check_availability: User asks about open/free time slots, when someone is available
+- greeting: Pure greeting like "hello", "hi", "hey", "good morning", "good afternoon", "good evening", "howdy", "sup", "yo" — no question, just saying hello
 - general_query: User asks any question about the business — hours, services, prices, location, contact info, policies, packages, what they do, how their process works, testimonials, experience, or anything else answerable from their information
 - transfer_human: User explicitly asks to talk to a person, a human, support, or a real person
-- unclear: Pure greetings only (hello, hi, hey, good morning) with NO question, or messages with completely no clear intent
+- unclear: Messages with completely no clear intent — gibberish ("asdf", "lol"), yes/no without context ("Yes", "Maybe"), or random noise
 
 STRICT RULES:
-- ANY question seeking information is general_query, NEVER unclear. This includes short questions like "Price?", "Hours?", "Location?", "Services?", "Contact?"
+- ANY question seeking information is general_query, NEVER unclear or greeting. This includes short questions like "Price?", "Hours?", "Location?", "Services?", "Contact?"
 - Questions starting with Who, What, Where, When, Why, How, Can, Do, Is, Are, Does, Will, Would, Could, Should, May, Might are ALWAYS general_query (unless specifically about booking/canceling/availability)
 - Expressions of interest like "I need a website", "I'm looking for a designer", "I want a redesign" are general_query
-- Only classify as unclear if it's a pure greeting ("Hi", "Hello", "Hey") with absolutely no question, yes/no without context ("Yes", "Maybe"), or gibberish ("asdf", "lol")
-- If the message has ANY question word or seeks ANY information, it is NOT unclear
+- ONLY classify as greeting if it's a pure greeting ("Hi", "Hello", "Hey", "Good morning", "Good afternoon", "Good evening", "Howdy", "Yo", "Sup") with absolutely no question attached
+- If the message has ANY question word or seeks ANY information, it is NOT greeting and NOT unclear — it's general_query
+- Only classify as unclear if it's gibberish, random noise, or yes/no without any context — not greetings
 - Booking-related words (book, schedule, appointment, slot, time, reserve) take priority: book_appointment if they want to book, check_availability if they're asking about open times
 
 Examples:
@@ -295,6 +297,7 @@ Intent:`
     'book_appointment',
     'cancel_appointment',
     'check_availability',
+    'greeting',
     'general_query',
     'transfer_human',
     'unclear',
@@ -321,33 +324,39 @@ export async function* synthesizeAnswer(
   const history = previousMessages
     .map((m) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.text}`)
     .join('\n')
-  const prompt = `You are a helpful, professional assistant for a small business. Your role is to answer customer questions clearly and concisely using ONLY the provided knowledge base context.
+  const prompt = `You are a friendly, conversational assistant for a small business called Weblyft Design. Your job is to chat with visitors and help them learn about the business using ONLY the knowledge base below.
 
-## RESPONSE GUIDELINES:
-- Be direct and helpful. Get straight to the answer.
-- Keep responses concise — aim for 2-4 sentences for simple questions.
-- Use natural, conversational language. Avoid robotic or overly formal phrasing.
-- If the answer is not in the context, say: "I don't have that information in my knowledge base right now. Try asking about the business, services, pricing, hours, or how to get in touch."
-- For follow-up questions, use the conversation history to understand context, then answer from the knowledge base.
-- NEVER make up information, prices, or policies not in the context.
-- If a question is ambiguous, ask for clarification rather than guessing.
+## HOW TO BEHAVE:
+
+1. BE FRIENDLY AND CONVERSATIONAL: Chat naturally like a real person would. Use a warm, helpful tone. You can say things like "Great question!" or "Happy to help with that" before answering.
+
+2. ONLY ANSWER FROM THE KNOWLEDGE BASE: If the user asks something that's in the knowledge base context, find the relevant info and answer it in your own words — naturally, not copy-pasted. Use the conversation history to understand follow-up questions.
+
+3. IF YOU DON'T KNOW: If the question isn't covered in the knowledge base, be honest: "I don't have that info right now, but I can help with questions about the business, services, pricing, packages, hours, or how to get in touch. What would you like to know?"
+
+4. KEEP IT SHORT: Aim for 2-4 sentences per reply. Don't write essays. Be concise but friendly.
+
+5. ENGAGE: After answering, you can ask if they want to know more about something specific, or offer to help with something else. Don't be pushy — just natural.
+
+6. NEVER HALLUCINATE: Do not make up prices, dates, policies, or any facts. If you're not sure, say you don't have that info.
 
 ## FORMATTING:
-- Use plain text only. No markdown, no bullet points unless specifically needed.
-- Keep paragraphs short (1-3 sentences each).
+- Plain text only. No markdown, no bullet points.
+- Use natural paragraphs.
+- Be conversational — use contractions (I'm, don't, can't), and natural phrasing.
 
-Conversation so far:
+Conversation history:
 ${history || '(no prior messages)'}
 
-Knowledge base context:
+Knowledge base (ONLY use this to answer):
 ${context}
 
-Customer question: ${query}
+Customer says: ${query}
 
-Your answer:`
+Your reply:`
   yield* streamText(env, {
     messages: [{ role: 'user', text: prompt }],
-    temperature: 0.1,
+    temperature: 0.2,
     maxTokens: 500,
   })
 }

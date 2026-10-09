@@ -708,6 +708,15 @@ export async function handleChat(
           })
           card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
           if (card) sendCard(card)
+        } else if (intent === 'greeting') {
+          // Friendly welcome — don't just say "hello" back
+          send({
+            type: 'content',
+            content:
+              "Hi there! 👋 Great to have you here. I can help answer questions about the business, our services, pricing, packages, and how to get in touch. What would you like to know?",
+          })
+          card = await followUpCard(db, conversationId, settings)
+          sendCard(card)
         } else {
           // unclear — but not final until the knowledge base has had a say:
           // short chip-style questions often miss the classifier yet live in
@@ -745,11 +754,14 @@ export async function handleChat(
           } else {
             unclearStreaks.set(conversationId, (unclearStreaks.get(conversationId) ?? 0) + 1)
             const streak = unclearStreaks.get(conversationId) ?? 0
+            // First unclear: be friendly and guide them. Second+: escalate.
             send({
               type: 'content',
-              content: streak >= 2
-                ? "I'm having trouble understanding. Let me connect you with someone who can help — or try asking about the business, services, pricing, or hours."
-                : "I'm not sure I understand. Could you rephrase that? I can help with questions about the business or booking appointments.",
+              content: streak === 1
+                ? "Hey! I'm here to help you learn about the business. You can ask me about what we do, our services, pricing, packages, how to get in touch, or anything else about the business. What's on your mind?"
+                : streak >= 2
+                  ? "I'm having trouble understanding. Let me connect you with someone who can help — or try asking about the business, services, pricing, or hours."
+                  : "I'm not sure I understand. Could you rephrase that? I can help with questions about the business or booking appointments.",
             })
             card = await buildCardForIntent(db, intent, settings, rowString(row, 'name'), conversationId)
             if (card) sendCard(card)
