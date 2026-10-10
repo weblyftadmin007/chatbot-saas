@@ -65,7 +65,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <div className="chatbot-message-list">
       {messages.map((message, index) => {
-        const withAvatar = message.role === 'assistant' && (index === 0 || messages[index - 1].role !== 'assistant')
+        // Every assistant message keeps the logo so all bot bubbles stay on the
+        // same vertical line (an avatar-less bubble would shift left out of line).
+        const withAvatar = message.role === 'assistant'
         if (message.card && message.role === 'assistant') {
           return (
             <CardBubble
@@ -99,10 +101,18 @@ export const MessageList: React.FC<MessageListProps> = ({
         )
       })}
       {isLoading && (
-        <div className="chatbot-typing">
-          <span></span>
-          <span></span>
-          <span></span>
+        <div className="chatbot-message assistant">
+          <div className="chatbot-avatar" style={{ backgroundColor: config.primary_color }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+              <rect x={2} y={3} width={20} height={14} rx={2} ry={2} />
+              <path d="M8 21h8M12 17v4" />
+            </svg>
+          </div>
+          <div className="chatbot-typing">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
         </div>
       )}
     </div>

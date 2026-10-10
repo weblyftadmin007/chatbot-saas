@@ -422,7 +422,8 @@
   line-height: inherit;
 }
 
-/* Typing indicator */
+/* Typing indicator — sits inside a .chatbot-message row next to the avatar,
+   so it shares the same left edge as every other bot bubble. */
 .chatbot-typing {
   display: flex;
   gap: 5px;
@@ -430,7 +431,7 @@
   background: var(--surface);
   border-radius: var(--radius-lg);
   border-bottom-left-radius: 4px;
-  align-self: flex-start;
+  align-self: center;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
