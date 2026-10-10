@@ -10,7 +10,7 @@
  */
 import type { Client } from '@libsql/client/web'
 import { query, rowString, type SqlRow } from './db'
-import { tenantById } from './tenants'
+import { tenantById, sanitizeBotAvatar } from './tenants'
 import { processFaq, processText, deleteChunks, listSources } from './knowledge'
 import type { Env } from './config'
 import { json } from './chat'
@@ -45,6 +45,8 @@ interface TenantBody {
   primary_color?: string
   greeting?: string
   bot_name?: string
+  /** Animated avatar id: boy-1 | boy-2 | girl-1 | girl-2. */
+  bot_avatar?: string
   gas_url?: string
   notification_email?: string
   spreadsheet_id?: string
@@ -128,6 +130,7 @@ export async function createTenant(db: Client, raw: string | null): Promise<Resp
   const now = Math.floor(Date.now() / 1000)
   const settings = {
     bot_name: (body.bot_name || 'Assistant').trim(),
+    bot_avatar: sanitizeBotAvatar(body.bot_avatar),
     greeting: (body.greeting || 'Hi! How can I help you today?').trim(),
     primary_color: body.primary_color || '#3B82F6',
     secondary_color: '#1E40AF',

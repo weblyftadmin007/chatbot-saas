@@ -329,6 +329,8 @@ export function TenantDetail() {
               bookingHorizon={tenant.settings?.booking_horizon_days}
               sessionTimeout={tenant.settings?.session_timeout_minutes}
               cardsEnabled={tenant.settings?.cards_enabled !== false}
+              botName={tenant.settings?.bot_name}
+              botAvatar={tenant.settings?.bot_avatar}
               onSave={async (settings) => {
                 const res = await apiFetch(`/admin/tenants/${tenantId}`, {
                   method: 'PATCH',

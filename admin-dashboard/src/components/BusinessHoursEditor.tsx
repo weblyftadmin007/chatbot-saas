@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { BotAvatarPicker } from './BotAvatarPicker'
 
 interface BusinessHoursEditorProps {
   businessHours: any
@@ -13,6 +14,8 @@ interface BusinessHoursEditorProps {
   bookingHorizon?: number
   sessionTimeout?: number
   cardsEnabled?: boolean
+  botName?: string
+  botAvatar?: string
   onSave: (settings: any) => void
 }
 
@@ -31,6 +34,8 @@ export function BusinessHoursEditor({
   bookingHorizon,
   sessionTimeout,
   cardsEnabled = true,
+  botName,
+  botAvatar,
   onSave
 }: BusinessHoursEditorProps) {
   const [hours, setHours] = useState<Record<string, { open: string; close: string }>>(
@@ -57,6 +62,8 @@ export function BusinessHoursEditor({
   const [horizonDays, setHorizonDays] = useState(bookingHorizon || 60)
   const [sessionTimeoutMin, setSessionTimeoutMin] = useState(sessionTimeout || 30)
   const [cardsEnabledVal, setCardsEnabledVal] = useState(cardsEnabled)
+  const [botNameVal, setBotNameVal] = useState(botName || 'Assistant')
+  const [botAvatarVal, setBotAvatarVal] = useState(botAvatar || 'boy-1')
 
   const handleSave = () => {
     const qr = quickRepliesVal
@@ -69,6 +76,8 @@ export function BusinessHoursEditor({
       slot_duration: slotDur,
       buffer_minutes: buffer,
       settings: {
+        bot_name: botNameVal.trim() || 'Assistant',
+        bot_avatar: botAvatarVal,
         gas_url: gasUrlVal.trim() || undefined,
         notification_email: notifEmail.trim().toLowerCase() || undefined,
         spreadsheet_id: sheetId.trim() || undefined,
@@ -100,6 +109,27 @@ export function BusinessHoursEditor({
 
   return (
     <div className="settings-form">
+      <div className="form-section">
+        <h3>Assistant</h3>
+        <p className="form-hint">The bot's name and avatar as visitors see them in the chat widget.</p>
+        <div className="settings-grid">
+          <div className="form-group">
+            <label>Bot Name</label>
+            <input
+              type="text"
+              value={botNameVal}
+              onChange={(e) => setBotNameVal(e.target.value)}
+              placeholder="Assistant"
+              maxLength={40}
+            />
+          </div>
+          <div className="form-group form-group-full">
+            <label>Avatar</label>
+            <BotAvatarPicker value={botAvatarVal} onChange={setBotAvatarVal} />
+          </div>
+        </div>
+      </div>
+
       <div className="form-section">
         <h3>Business Hours</h3>
         <p className="form-hint">Set open/close times for each day. Leave empty for closed days.</p>

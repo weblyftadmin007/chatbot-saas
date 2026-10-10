@@ -1,5 +1,6 @@
 import React from 'react'
 import { CardBubble, CardAction } from './CardBubble'
+import { BotAvatar } from './BotAvatars'
 
 interface MessageBubbleProps {
   message: any
@@ -92,14 +93,11 @@ function renderContent(content: string): React.ReactNode {
   return blocks
 }
 
-/** Bot header: avatar + name above the message (shared with the typing row). */
+/** Bot header: animated avatar + name above the message (shared with the typing row). */
 export const BotHead: React.FC<{ config: any }> = ({ config }) => (
   <div className="chatbot-message-head">
-    <div className="chatbot-avatar" style={{ backgroundColor: config.primary_color }}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-        <rect x={2} y={3} width={20} height={14} rx={2} ry={2} />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
+    <div className="chatbot-avatar bot-avatar">
+      <BotAvatar id={config?.bot_avatar} />
     </div>
     {config.bot_name && <span className="chatbot-message-name">{config.bot_name}</span>}
   </div>

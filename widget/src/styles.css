@@ -422,6 +422,30 @@
   color: var(--text-muted);
 }
 
+/* Animated bot avatars paint their own tinted circle */
+.chatbot-avatar.bot-avatar {
+  background: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.chatbot-avatar.bot-avatar svg {
+  width: 100%;
+  height: 100%;
+  color: unset;
+}
+
+.chatbot-welcome-avatar.bot-avatar {
+  background: none;
+  overflow: hidden;
+}
+
+.chatbot-welcome-avatar.bot-avatar svg {
+  width: 100%;
+  height: 100%;
+  color: unset;
+}
+
 .chatbot-bubble {
   padding: 10px 14px;
   border-radius: var(--radius-lg);

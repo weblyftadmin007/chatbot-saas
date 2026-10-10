@@ -2,6 +2,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MessageBubble } from './src/components/MessageBubble'
 import { restoreHistory } from './src/hooks/useChat'
+import { BotAvatar, BOT_AVATARS } from './src/components/BotAvatars'
 
 const cfg = { primary_color: '#0EA5E9', bot_name: 'Weblyft Assistant' }
 const render = (content: string) =>
@@ -94,5 +95,26 @@ check('older cards read-only', restored[1]?.interactive === false && restored[2]
 check('newest card interactive', restored[3]?.interactive === true, JSON.stringify(restored))
 check('card-only row kept', restored[3]?.content === '' && restored[3]?.card?.id === 'c3', JSON.stringify(restored))
 check('empty history safe', restoreHistory([]).length === 0 && restoreHistory(null as any).length === 0, 'null case')
+
+// 10. The four animated avatars: 2 boys + 2 girls, all animated, all render
+const ids = BOT_AVATARS.map((a) => a.id).join(',')
+check('exactly 4 avatars (2 boys, 2 girls)', ids === 'boy-1,boy-2,girl-1,girl-2', ids)
+for (const { id } of BOT_AVATARS) {
+  const svg = renderToStaticMarkup(<BotAvatar id={id} />)
+  check(`${id} renders with its marker`, svg.includes(`data-avatar="${id}"`), svg)
+  check(`${id} is animated`, svg.includes('<animate'), svg)
+}
+check('unknown avatar falls back to boy-1', renderToStaticMarkup(<BotAvatar id="alien" />).includes('data-avatar="boy-1"'), 'fallback')
+check('missing avatar falls back to boy-1', renderToStaticMarkup(<BotAvatar id={null} />).includes('data-avatar="boy-1"'), 'null')
+
+// 11. The bot head shows the tenant's chosen avatar
+const h1 = renderToStaticMarkup(
+  <MessageBubble message={{ role: 'assistant', content: 'Hi' }} config={{ primary_color: '#0EA5E9', bot_name: 'Weblyft Assistant', bot_avatar: 'girl-2' }} />,
+)
+check('head uses selected avatar', h1.includes('data-avatar="girl-2"'), h1)
+const h2 = render(
+  'Hi',
+)
+check('head defaults to boy-1 without setting', h2.includes('data-avatar="boy-1"'), h2)
 
 process.exit(failed ? 1 : 0)

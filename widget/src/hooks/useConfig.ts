@@ -4,6 +4,8 @@ interface WidgetConfig {
   tenant_slug: string
   tenant_name: string
   bot_name: string
+  /** Animated avatar id: boy-1 | boy-2 | girl-1 | girl-2. */
+  bot_avatar?: string
   greeting: string
   primary_color: string
   secondary_color: string

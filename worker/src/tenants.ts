@@ -30,10 +30,22 @@ export async function tenantById(db: Client, id: string): Promise<SqlRow | null>
   return r.rows[0] ?? null
 }
 
+/** The four animated avatars a tenant can pick between (admin → Settings). */
+export const BOT_AVATAR_IDS = ['boy-1', 'boy-2', 'girl-1', 'girl-2'] as const
+
+/** Validate a stored/requested avatar id; anything unknown falls back to Boy 1. */
+export function sanitizeBotAvatar(value: unknown): string {
+  return typeof value === 'string' && (BOT_AVATAR_IDS as readonly string[]).includes(value)
+    ? value
+    : 'boy-1'
+}
+
 export interface WidgetConfig {
   tenant_slug: string
   tenant_name: string
   bot_name: string
+  /** Animated avatar id: boy-1 | boy-2 | girl-1 | girl-2. */
+  bot_avatar: string
   greeting: string
   primary_color: string
   secondary_color: string
@@ -68,6 +80,7 @@ export function buildWidgetConfig(row: SqlRow): WidgetConfig {
     tenant_slug: rowString(row, 'slug'),
     tenant_name: rowString(row, 'name'),
     bot_name: (settings['bot_name'] as string) || 'Assistant',
+    bot_avatar: sanitizeBotAvatar(settings['bot_avatar']),
     greeting: (settings['greeting'] as string) || 'Hi! How can I help you today?',
     primary_color: (settings['primary_color'] as string) || '#3B82F6',
     secondary_color: (settings['secondary_color'] as string) || '#1E40AF',

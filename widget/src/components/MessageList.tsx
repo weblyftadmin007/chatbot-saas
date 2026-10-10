@@ -1,5 +1,6 @@
 import React from 'react'
 import { MessageBubble, BotHead } from './MessageBubble'
+import { BotAvatar } from './BotAvatars'
 
 interface MessageListProps {
   messages: any[]
@@ -38,11 +39,8 @@ export const MessageList: React.FC<MessageListProps> = ({
 
     return (
       <div className="chatbot-welcome">
-        <div className="chatbot-welcome-avatar" style={{ backgroundColor: config.primary_color }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-            <rect x={2} y={3} width={20} height={14} rx={2} ry={2} />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
+        <div className="chatbot-welcome-avatar bot-avatar">
+          <BotAvatar id={config.bot_avatar} />
         </div>
         <p className="chatbot-greeting">{config.greeting}</p>
         <div className="chatbot-suggest">
