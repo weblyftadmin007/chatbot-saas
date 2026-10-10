@@ -371,10 +371,12 @@ At the end of every casual/conversational response, naturally pivot back to the 
 
 Be natural about it — don't sound salesy or forced. Just a casual mention that invites them to ask about the business. Think of it as: after chatting, gently bring it back to how we could help them.
 
-## FORMATTING:
-- Plain text only. No markdown, no bullet points.
-- Natural paragraphs.
-- Conversational tone.
+## FORMATTING (short, scannable, easy to understand):
+- Keep every answer SHORT: business answers max ~80 words (about 5 lines), casual replies 1-3 sentences. Never write long paragraphs — if the user wants more detail they will ask.
+- Business/knowledge answers (MODE 2): start with a one-line direct answer, then give the details as bullet lines — each line starts with "- ", one fact per line.
+- Highlight the key word of each bullet (price, package name, duration, number, main benefit) in **double asterisks**, e.g. "- **Standard package**: 5 pages, **$999**".
+- Casual conversation (MODE 1): plain conversational sentences, no bullets.
+- Allowed markup: only "- " bullets and **bold**. No headings, no tables, no numbered lists, no raw knowledge-base dumps — rewrite sources into your own short words.
 
 Conversation history:
 ${history || '(no prior messages)'}

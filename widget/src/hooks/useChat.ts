@@ -6,6 +6,8 @@ interface Message {
   content: string
   intent?: string
   read?: boolean
+  card?: any
+  interactive?: boolean
 }
 
 interface Slot {
@@ -50,6 +52,39 @@ export function trackEvent(
   } catch {
     /* telemetry is best-effort */
   }
+}
+
+/**
+ * Turn history rows into renderable messages. One DB row can hold BOTH the
+ * answer text and its follow-up card (tool_calls), and MessageList renders a
+ * card row *instead of* its text — so split each row into a text message plus
+ * a separate card message, mirroring how they looked while streaming. Only
+ * the newest card stays clickable (single pending card rule).
+ */
+export function restoreHistory(rows: any[]): Message[] {
+  const list = Array.isArray(rows) ? rows : []
+  let lastCardIndex = -1
+  list.forEach((m, i) => {
+    if (m && m.role === 'assistant' && m.card) lastCardIndex = i
+  })
+  const out: Message[] = []
+  list.forEach((m, i) => {
+    if (!m) return
+    const content = String(m.content ?? '')
+    if (content) {
+      out.push({ id: m.id, role: m.role, content, intent: m.intent ?? undefined })
+    }
+    if (m.role === 'assistant' && m.card) {
+      out.push({
+        id: `${m.id}__card`,
+        role: 'assistant',
+        content: '',
+        card: m.card,
+        interactive: i === lastCardIndex,
+      })
+    }
+  })
+  return out
 }
 
 export function useChat(
@@ -359,9 +394,17 @@ export function useChat(
     }
   }, [tenantSlug, apiBase])
 
-  // Load history on conversation change
+  // Mirror messages synchronously so the effect below can tell a restored
+  // session (needs history) from a live stream (already has its messages).
+  const messagesRef = useRef<Message[]>([])
+  messagesRef.current = messages
+
+  // Load history only when a stored conversation is restored on mount.
+  // The first live answer assigns the new conversation_id — reloading there
+  // would replace the just-streamed messages and hide the answer behind its
+  // own follow-up card, so skip when we already have messages.
   useEffect(() => {
-    if (conversationId) {
+    if (conversationId && messagesRef.current.length === 0) {
       loadHistory(conversationId)
     }
   }, [conversationId, tenantSlug, apiBase])
@@ -371,12 +414,7 @@ export function useChat(
       const response = await fetch(apiUrl(apiBase, `/widget/history/${tenantSlug}?conversation_id=${convId}`))
       if (response.ok) {
         const data = await response.json()
-        // History rows may carry a persisted card (read-only replay).
-        setMessages(
-          (data.messages || []).map((m: any) =>
-            m.card ? { ...m, interactive: false } : m,
-          ),
-        )
+        setMessages(restoreHistory(data.messages || []))
       }
     } catch (e) {
       console.warn('Failed to load history:', e)

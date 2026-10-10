@@ -422,6 +422,31 @@
   line-height: inherit;
 }
 
+/* Rich answer blocks: paragraphs, bullet/numbered lists, **bold** highlights */
+.chatbot-para {
+  margin: 0;
+}
+
+.chatbot-para + .chatbot-para,
+.chatbot-para + .chatbot-list,
+.chatbot-list + .chatbot-para {
+  margin-top: 6px;
+}
+
+.chatbot-list {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.chatbot-list li {
+  margin: 3px 0;
+  line-height: 1.5;
+}
+
+.chatbot-text strong {
+  font-weight: 600;
+}
+
 /* Typing indicator — sits inside a .chatbot-message row next to the avatar,
    so it shares the same left edge as every other bot bubble. */
 .chatbot-typing {
