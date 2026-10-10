@@ -1,9 +1,13 @@
 import React from 'react'
+import { CardBubble, CardAction } from './CardBubble'
 
 interface MessageBubbleProps {
   message: any
   config: any
-  withAvatar: boolean
+  onSend?: (content: string) => void
+  onOpenSlots?: () => void
+  tenantSlug?: string
+  apiBase?: string
 }
 
 const BULLET = /^\s*[-•*–]\s+(.*)$/
@@ -88,23 +92,61 @@ function renderContent(content: string): React.ReactNode {
   return blocks
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, config, withAvatar }) => {
+/** Bot header: avatar + name above the message (shared with the typing row). */
+export const BotHead: React.FC<{ config: any }> = ({ config }) => (
+  <div className="chatbot-message-head">
+    <div className="chatbot-avatar" style={{ backgroundColor: config.primary_color }}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+        <rect x={2} y={3} width={20} height={14} rx={2} ry={2} />
+        <path d="M8 21h8M12 17v4" />
+      </svg>
+    </div>
+    {config.bot_name && <span className="chatbot-message-name">{config.bot_name}</span>}
+  </div>
+)
+
+export const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message,
+  config,
+  onSend,
+  onOpenSlots,
+  tenantSlug,
+  apiBase = '',
+}) => {
   const isUser = message.role === 'user'
   const content = String(message.content ?? '')
+  const card = !isUser && message.card ? message.card : null
+  const showBubble = isUser ? content.length > 0 : content.length > 0 || !!card
+
+  // Card actions: booking chips open the slot picker, the rest are sent as a
+  // normal message (the worker classifies them like any other input).
+  const handleCardAction = (action: CardAction) => {
+    if (action.open_slots) {
+      onOpenSlots?.()
+      return
+    }
+    onSend?.(action.send_message!)
+  }
 
   return (
     <div className={`chatbot-message ${isUser ? 'user' : 'assistant'}`}>
-      {!isUser && withAvatar && (
-        <div className="chatbot-avatar" style={{ backgroundColor: config.primary_color }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-            <rect x={2} y={3} width={20} height={14} rx={2} ry={2} />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
+      {!isUser && <BotHead config={config} />}
+      {showBubble && (
+        <div className="chatbot-bubble">
+          {content && <div className="chatbot-bubble-content chatbot-text">{renderContent(content)}</div>}
+          {card && (
+            <div className="chatbot-card-embed">
+              <CardBubble
+                card={card}
+                interactive={message.interactive !== false}
+                onAction={handleCardAction}
+                tenantSlug={tenantSlug}
+                apiBase={apiBase}
+              />
+            </div>
+          )}
         </div>
       )}
-      <div className="chatbot-bubble">
-        <div className="chatbot-bubble-content chatbot-text">{renderContent(content)}</div>
-      </div>
     </div>
   )
 }

@@ -329,27 +329,61 @@
   color: var(--primary);
 }
 
-/* Messages - symmetrical bubbles */
+/* Messages — bot header (avatar + name) on top, bubble below.
+   Bot messages stretch to the full panel width; user replies stay right. */
 .chatbot-message {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: 80%;
+  flex-direction: column;
+  gap: 5px;
   min-width: 0;
   animation: msgIn 0.25s ease;
 }
 
-.chatbot-message.user {
-  align-self: flex-end;
-  flex-direction: row-reverse;
+.chatbot-message.assistant {
+  align-self: stretch;
+  max-width: 100%;
 }
 
-.chatbot-message.assistant {
-  align-self: flex-start;
+.chatbot-message.user {
+  align-self: flex-end;
+  max-width: 80%;
+  align-items: flex-end;
 }
 
 .chatbot-message.assistant .chatbot-bubble {
-  max-width: 80%;
+  max-width: 100%;
+}
+
+.chatbot-message.user .chatbot-bubble {
+  max-width: 100%;
+}
+
+/* Avatar + bot name above the bubble */
+.chatbot-message-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chatbot-message-head .chatbot-avatar {
+  width: 26px;
+  height: 26px;
+}
+
+.chatbot-message-head .chatbot-avatar svg {
+  width: 13px;
+  height: 13px;
+}
+
+.chatbot-message-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+/* Answer + its suggestion card read as one message */
+.chatbot-bubble-content + .chatbot-card-embed {
+  margin-top: 8px;
 }
 
 @keyframes msgIn {
@@ -447,8 +481,7 @@
   font-weight: 600;
 }
 
-/* Typing indicator — sits inside a .chatbot-message row next to the avatar,
-   so it shares the same left edge as every other bot bubble. */
+/* Typing indicator — same header + bubble shape as a real bot message */
 .chatbot-typing {
   display: flex;
   gap: 5px;
@@ -456,7 +489,7 @@
   background: var(--surface);
   border-radius: var(--radius-lg);
   border-bottom-left-radius: 4px;
-  align-self: center;
+  align-self: flex-start;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }

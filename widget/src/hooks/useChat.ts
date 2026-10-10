@@ -55,11 +55,10 @@ export function trackEvent(
 }
 
 /**
- * Turn history rows into renderable messages. One DB row can hold BOTH the
- * answer text and its follow-up card (tool_calls), and MessageList renders a
- * card row *instead of* its text — so split each row into a text message plus
- * a separate card message, mirroring how they looked while streaming. Only
- * the newest card stays clickable (single pending card rule).
+ * Turn history rows into renderable messages. A row holds the answer text and
+ * its follow-up card (tool_calls) together — keep them together so a restored
+ * conversation shows the same single-message answers as the live stream.
+ * Only the newest card stays clickable (single pending card rule).
  */
 export function restoreHistory(rows: any[]): Message[] {
   const list = Array.isArray(rows) ? rows : []
@@ -71,18 +70,16 @@ export function restoreHistory(rows: any[]): Message[] {
   list.forEach((m, i) => {
     if (!m) return
     const content = String(m.content ?? '')
-    if (content) {
-      out.push({ id: m.id, role: m.role, content, intent: m.intent ?? undefined })
-    }
-    if (m.role === 'assistant' && m.card) {
-      out.push({
-        id: `${m.id}__card`,
-        role: 'assistant',
-        content: '',
-        card: m.card,
-        interactive: i === lastCardIndex,
-      })
-    }
+    const card = m.role === 'assistant' && m.card ? m.card : undefined
+    if (!content && !card) return
+    out.push({
+      id: m.id,
+      role: m.role,
+      content,
+      intent: m.intent ?? undefined,
+      card,
+      interactive: card ? i === lastCardIndex : undefined,
+    })
   })
   return out
 }
@@ -185,7 +182,7 @@ export function useChat(
       case 'content':
         setMessages(prev => {
           const last = prev[prev.length - 1]
-          if (last && last.role === 'assistant') {
+          if (last && last.role === 'assistant' && !last.card) {
             return [...prev.slice(0, -1), { ...last, content: last.content + data.content }]
           } else {
             return [...prev, {
@@ -205,17 +202,28 @@ export function useChat(
 
       case 'card':
         // Server-driven interactive card (docs/interactive-cards-plan.md).
-        // Appended as its own assistant message so cards render inline.
+        // Attached to the answer it belongs to so the reply and its
+        // suggestions render as ONE message, not two.
         if (data.card && data.card.id) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: data.card.id as string,
-              role: 'assistant' as const,
-              content: '',
-              card: data.card as Card,
-            },
-          ])
+          setMessages((prev) => {
+            const last = prev[prev.length - 1]
+            if (last && last.role === 'assistant' && !last.card && last.content) {
+              return [
+                ...prev.slice(0, -1),
+                { ...last, card: data.card as Card, interactive: true },
+              ]
+            }
+            return [
+              ...prev,
+              {
+                id: data.card.id as string,
+                role: 'assistant' as const,
+                content: '',
+                card: data.card as Card,
+                interactive: true,
+              },
+            ]
+          })
         }
         break
 
@@ -348,16 +356,13 @@ export function useChat(
         hour: '2-digit',
         minute: '2-digit'
       })
-      setMessages(prev => [...prev, {
-        id: `msg_${Date.now()}`,
-        role: 'assistant',
-        content: data.confirmation_message
-          ? `${data.confirmation_message} (${when}, ${at})`
-          : `You're booked for ${when} at ${at}. A confirmation email is on its way to ${email}.`
-      }])
+      const confirmationText = data.confirmation_message
+        ? `${data.confirmation_message} (${when}, ${at})`
+        : `You're booked for ${when} at ${at}. A confirmation email is on its way to ${email}.`
       // Local Phase-C confirmation card (widget-side booking path). Kept in
       // session state only — the DB row is the booking notification, so this
-      // card deliberately does not survive a history reload.
+      // card deliberately does not survive a history reload. It is attached
+      // to the confirmation text so the booking reads as one message.
       const gcal = (() => {
         const fmt = (ts: number) =>
           new Date(ts * 1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
@@ -369,9 +374,9 @@ export function useChat(
         return `https://calendar.google.com/calendar/render?${params.toString()}`
       })()
       setMessages(prev => [...prev, {
-        id: `card_${Date.now()}`,
+        id: `msg_${Date.now()}`,
         role: 'assistant' as const,
-        content: '',
+        content: confirmationText,
         card: {
           id: `card_${Date.now()}_confirm`,
           kind: 'booking_confirm' as const,

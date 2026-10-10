@@ -1,6 +1,5 @@
 import React from 'react'
-import { MessageBubble } from './MessageBubble'
-import { CardBubble } from './CardBubble'
+import { MessageBubble, BotHead } from './MessageBubble'
 
 interface MessageListProps {
   messages: any[]
@@ -64,50 +63,20 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="chatbot-message-list">
-      {messages.map((message, index) => {
-        // Every assistant message keeps the logo so all bot bubbles stay on the
-        // same vertical line (an avatar-less bubble would shift left out of line).
-        const withAvatar = message.role === 'assistant'
-        if (message.card && message.role === 'assistant') {
-          return (
-            <CardBubble
-              key={message.id || `card_${index}`}
-              card={message.card}
-              config={config}
-              withAvatar={withAvatar}
-              interactive={message.interactive !== false}
-              tenantSlug={tenantSlug}
-              apiBase={apiBase}
-              onAction={(action) => {
-                // Booking chips open the slot picker instead of chatting.
-                if (action.open_slots) {
-                  onOpenSlots()
-                  return
-                }
-                // Collapse the card to its transcript line after use
-                // (plan §3: cards are single-use).
-                if (action.send_message) onSend(action.send_message)
-              }}
-            />
-          )
-        }
-        return (
-          <MessageBubble
-            key={message.id || index}
-            message={message}
-            config={config}
-            withAvatar={withAvatar}
-          />
-        )
-      })}
+      {messages.map((message, index) => (
+        <MessageBubble
+          key={message.id || index}
+          message={message}
+          config={config}
+          onSend={onSend}
+          onOpenSlots={onOpenSlots}
+          tenantSlug={tenantSlug}
+          apiBase={apiBase}
+        />
+      ))}
       {isLoading && (
         <div className="chatbot-message assistant">
-          <div className="chatbot-avatar" style={{ backgroundColor: config.primary_color }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-              <rect x={2} y={3} width={20} height={14} rx={2} ry={2} />
-              <path d="M8 21h8M12 17v4" />
-            </svg>
-          </div>
+          <BotHead config={config} />
           <div className="chatbot-typing">
             <span></span>
             <span></span>

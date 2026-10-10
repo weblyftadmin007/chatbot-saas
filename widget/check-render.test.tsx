@@ -3,10 +3,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MessageBubble } from './src/components/MessageBubble'
 import { restoreHistory } from './src/hooks/useChat'
 
-const cfg = { primary_color: '#0EA5E9' }
+const cfg = { primary_color: '#0EA5E9', bot_name: 'Weblyft Assistant' }
 const render = (content: string) =>
   renderToStaticMarkup(
-    <MessageBubble message={{ role: 'assistant', content }} config={cfg} withAvatar={true} />,
+    <MessageBubble message={{ role: 'assistant', content }} config={cfg} />,
   )
 
 let failed = 0
@@ -46,23 +46,53 @@ check('two paragraphs', (e.match(/<p class="chatbot-para">/g) || []).length === 
 
 // 6. User message path unchanged
 const f = renderToStaticMarkup(
-  <MessageBubble message={{ role: 'user', content: 'hi' }} config={cfg} withAvatar={false} />,
+  <MessageBubble message={{ role: 'user', content: 'hi' }} config={cfg} />,
 )
 check('user bubble renders', f.includes('chatbot-message user') && f.includes('hi'), f)
+check('user message has no bot header', !f.includes('chatbot-message-head'), f)
 
-// 7. History restore: a row with answer text + follow-up card must split
-//    into two messages so the first answer is not hidden behind its card.
+// 7. Header: avatar + bot name above the bubble, not beside it
+check('bot header rendered', a.includes('chatbot-message-head') && a.includes('Weblyft Assistant'), a)
+check('avatar is in the head, not a side row', /chatbot-message-head[\s\S]*?chatbot-avatar/.test(a), a)
+
+// 8. Answer + card suggestions are ONE message
+const g = renderToStaticMarkup(
+  <MessageBubble
+    message={{
+      role: 'assistant',
+      content: 'Here are the prices:\n- **Lite**: $499',
+      card: { id: 'c1', kind: 'quick_replies', chips: ['Tell me more', 'Book a call'] },
+    }}
+    config={cfg}
+  />,
+)
+check(
+  'single message container for answer + card',
+  (g.match(/chatbot-message assistant/g) || []).length === 1,
+  g,
+)
+check('answer text present alongside card', g.includes('<strong>Lite</strong>') && g.includes('$499'), g)
+check('card present in same bubble', g.includes('chatbot-card') && g.includes('Tell me more'), g)
+check('card chips enabled by default', !/disabled/.test(g), g)
+check(
+  'card sits after the answer text',
+  g.indexOf('chatbot-bubble-content') < g.indexOf('chatbot-card'),
+  g,
+)
+
+// 9. History restore keeps answer + card together as one message
 const rows = [
   { id: 'u1', role: 'user', content: 'How much?' },
   { id: 'a1', role: 'assistant', content: 'Here are the prices: - **Lite**: $499', card: { id: 'c1', kind: 'quick_replies' } },
   { id: 'a2', role: 'assistant', content: 'Anything else?', card: { id: 'c2', kind: 'quick_replies' } },
+  { id: 'a3', role: 'assistant', content: '', card: { id: 'c3', kind: 'quick_replies' } },
 ]
 const restored = restoreHistory(rows) as any[]
-check('split: 5 messages (user + 2 text + 2 cards)', restored.length === 5, JSON.stringify(restored))
-check('answer text kept', restored.some((m) => m.id === 'a1' && m.content.includes('$499')), JSON.stringify(restored))
-check('card follows its answer', restored[2]?.id === 'a1__card' && restored[2]?.role === 'assistant', JSON.stringify(restored))
-check('newest card interactive', restored[4]?.interactive === true, JSON.stringify(restored))
-check('older card read-only', restored[2]?.interactive === false, JSON.stringify(restored))
+check('restore: one message per row', restored.length === 4, JSON.stringify(restored))
+check('answer text kept with its card', restored[1]?.content.includes('$499') && restored[1]?.card?.id === 'c1', JSON.stringify(restored))
+check('older cards read-only', restored[1]?.interactive === false && restored[2]?.interactive === false, JSON.stringify(restored))
+check('newest card interactive', restored[3]?.interactive === true, JSON.stringify(restored))
+check('card-only row kept', restored[3]?.content === '' && restored[3]?.card?.id === 'c3', JSON.stringify(restored))
 check('empty history safe', restoreHistory([]).length === 0 && restoreHistory(null as any).length === 0, 'null case')
 
 process.exit(failed ? 1 : 0)
