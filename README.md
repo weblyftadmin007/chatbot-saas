@@ -62,6 +62,10 @@ Roadmap (details in `DEPLOY.md` §0 and the PDF guides):
    - Widget: build `cd widget && npm run build`, output `widget/dist` → `chatbot-widget`
    - Admin: build `cd admin-dashboard && npm run build`, output `admin-dashboard/dist` → `chatbot-admin`
    - Set the Pages build env var `VITE_CLERK_PUBLISHABLE_KEY` on the admin project.
+   - ⚠️ The name `chatbot-admin.pages.dev` is already taken by an unrelated old app, so this
+     project's Pages hostname is suffixed. **Live admin dashboard: `https://chatbot-admin-b2w.pages.dev`**
+     (deployment alias `*.chatbot-admin-b2w.pages.dev`). Do not use `chatbot-admin.pages.dev` —
+     it is not this app.
 6. **Onboard your first tenant + knowledge** (`DEPLOY.md` §5), then embed on any site:
    ```html
    <script src="https://chatbot-widget.YOUR-SUBDOMAIN.pages.dev/widget.js"
