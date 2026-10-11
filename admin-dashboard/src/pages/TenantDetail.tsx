@@ -356,7 +356,7 @@ export function TenantDetail() {
                             )}
                           </td>
                           <td>
-                            {a.status === 'confirmed' && (
+                            {a.notify_status !== 'sent' && (
                               <button
                                 className="btn btn-sm btn-secondary"
                                 onClick={() => retryNotify(a.id)}
