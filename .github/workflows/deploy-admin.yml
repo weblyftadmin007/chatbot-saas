@@ -30,6 +30,7 @@ jobs:
         run: cd admin-dashboard && npm run build
         env:
           VITE_API_URL: https://chatbot-api.weblyftt.workers.dev
+          VITE_WIDGET_URL: https://chatbot-widget-0of.pages.dev
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
 
       - name: Deploy to Cloudflare Pages

@@ -1,7 +1,12 @@
 import React from 'react'
 
 export function PublishSection({ tenant }: { tenant: { slug: string } }) {
-  const widgetUrl = 'https://chatbot-widget.example.com/widget.js'
+  // Widget host is configurable at build time via VITE_WIDGET_URL (the
+  // Cloudflare Pages deployment of widget/dist). Falls back to the known
+  // production host so the link and snippet are never a dead placeholder.
+  const widgetBase = (import.meta.env.VITE_WIDGET_URL || 'https://chatbot-widget-0of.pages.dev')
+    .replace(/\/+$/, '')
+  const widgetUrl = `${widgetBase}/widget.js`
   const embedSnippet = `<script src="${widgetUrl}" data-tenant="${tenant.slug}"></script>`
 
   return (
@@ -27,7 +32,7 @@ export function PublishSection({ tenant }: { tenant: { slug: string } }) {
           Open live widget script
         </a>
         <span className="publishable-notice">
-          Place this file on your live site: <code>chatbot-widget.example.com/widget.js</code>
+          Place this file on your live site: <code>{widgetUrl}</code>
         </span>
       </div>
       <pre className="embed-code"><code>{embedSnippet}</code></pre>
