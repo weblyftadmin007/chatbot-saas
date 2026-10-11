@@ -19,13 +19,24 @@ interface TenantDetail {
 
 interface Conversation {
   id: string
-  end_user_id: string
-  end_user_email?: string
+  end_user_id?: string | null | number | Record<string, unknown> | unknown[]
+  end_user_email?: string | null
   status: string
   created_at: number
   updated_at: number
   message_count: number
   last_message: string
+}
+
+function userLabel(c: Conversation): string {
+  if (c.end_user_email) return c.end_user_email
+  const id = c.end_user_id
+  if (typeof id === 'string' && id.length > 0) {
+    return `User ${id.slice(0, 8)}`
+  }
+  if (typeof id === 'number') return `User ${id}`
+  if (id != null) return `User <non-string id>`
+  return 'User <no id>'
 }
 
 interface Appointment {
@@ -222,9 +233,7 @@ export function TenantDetail() {
                   <tbody>
                     {conversations.slice(0, 10).map((c) => (
                       <tr key={c.id}>
-                        <td>
-                          {c.end_user_email || `User ${c.end_user_id.slice(0, 8)}`}
-                        </td>
+                        <td>{userLabel(c)}</td>
                         <td className="last-message">{c.last_message}</td>
                         <td>
                           <span
@@ -271,8 +280,7 @@ export function TenantDetail() {
                   <tbody>
                     {conversations.map((c) => (
                       <tr key={c.id}>
-                        <td>
-                          {c.end_user_email || `User ${c.end_user_id.slice(0, 8)}`}
+                        <td>{userLabel(c)}
                         </td>
                         <td className="last-message">{c.last_message}</td>
                         <td>
