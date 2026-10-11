@@ -57,13 +57,29 @@ export function PublishSection({ tenant }: { tenant: { slug: string } }) {
         Add this to the tenant's website (before <code>&lt;/body&gt;</code>):
       </p>
       <pre className="embed-code"><code>{embedSnippet}</code></pre>
-      <button
-        type="button"
-        className="btn btn-sm btn-secondary embed-copy-btn"
-        onClick={copySnippet}
-      >
-        {copied ? 'Copied!' : 'Copy embed code'}
-      </button>
+      <div className="embed-actions">
+        <button
+          type="button"
+          className="btn btn-sm btn-secondary embed-copy-btn"
+          onClick={copySnippet}
+        >
+          {copied ? 'Copied!' : 'Copy embed code'}
+        </button>
+
+        <a
+          className="btn btn-sm btn-primary embed-test-btn"
+          href={
+            `https://ai-chatbot-proposal.pages.dev/test?` +
+            new URLSearchParams({
+              script: encodeURIComponent(embedSnippet),
+            })
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Test widget
+        </a>
+      </div>
     </div>
   )
 }

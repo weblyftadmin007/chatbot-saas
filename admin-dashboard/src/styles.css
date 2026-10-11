@@ -1023,8 +1023,16 @@ code {
   font-size: 12px;
 }
 
-.embed-copy-btn {
+.embed-actions {
+  display: flex;
+  gap: 10px;
   margin-top: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.embed-copy-btn {
+  margin-top: 0;
 }
 
 .embed-code code {
@@ -1037,6 +1045,15 @@ code {
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.embed-test-btn {
+  text-decoration: none;
+}
+
+.embed-test-btn:hover {
+  background: var(--primary-hover);
+  color: white;
 }
 
 /* Responsive */
