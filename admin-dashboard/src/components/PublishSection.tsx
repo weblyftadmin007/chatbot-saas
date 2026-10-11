@@ -1,13 +1,30 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 export function PublishSection({ tenant }: { tenant: { slug: string } }) {
-  // Widget host is configurable at build time via VITE_WIDGET_URL (the
-  // Cloudflare Pages deployment of widget/dist). Falls back to the known
-  // production host so the link and snippet are never a dead placeholder.
+  // Widget host and API origin are configurable at build time via
+  // VITE_WIDGET_URL / VITE_API_URL. Both fall back to the known production
+  // hosts so the link and snippet are never a dead placeholder.
   const widgetBase = (import.meta.env.VITE_WIDGET_URL || 'https://chatbot-widget-0of.pages.dev')
     .replace(/\/+$/, '')
+  const apiBase = (import.meta.env.VITE_API_URL || 'https://chatbot-api.weblyftt.workers.dev')
+    .replace(/\/+$/, '')
   const widgetUrl = `${widgetBase}/widget.js`
-  const embedSnippet = `<script src="${widgetUrl}" data-tenant="${tenant.slug}"></script>`
+  // The widget is served from a different origin than the API, so the embed
+  // code must pass data-api-url or the widget would call the wrong origin.
+  const embedSnippet = `<script src="${widgetUrl}" data-tenant="${tenant.slug}" data-api-url="${apiBase}"></script>`
+
+  const [copied, setCopied] = useState(false)
+
+  const copySnippet = async () => {
+    try {
+      await navigator.clipboard.writeText(embedSnippet)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard unavailable (e.g. insecure context) — leave the code
+      // visible so the user can select and copy it manually.
+    }
+  }
 
   return (
     <div className="publish-section">
@@ -35,7 +52,18 @@ export function PublishSection({ tenant }: { tenant: { slug: string } }) {
           Place this file on your live site: <code>{widgetUrl}</code>
         </span>
       </div>
+
+      <p className="embed-code-label">
+        Add this to the tenant's website (before <code>&lt;/body&gt;</code>):
+      </p>
       <pre className="embed-code"><code>{embedSnippet}</code></pre>
+      <button
+        type="button"
+        className="btn btn-sm btn-secondary embed-copy-btn"
+        onClick={copySnippet}
+      >
+        {copied ? 'Copied!' : 'Copy embed code'}
+      </button>
     </div>
   )
 }

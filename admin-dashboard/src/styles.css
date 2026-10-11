@@ -1010,6 +1010,23 @@ code {
 }
 
 /* Embed Code */
+.embed-code-label {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.embed-code-label code {
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.embed-copy-btn {
+  margin-top: 10px;
+}
+
 .embed-code code {
   display: block;
   background: #1E293B;
