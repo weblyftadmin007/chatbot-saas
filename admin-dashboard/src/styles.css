@@ -819,6 +819,61 @@ code {
   margin: 0;
 }
 
+/* Tenant Detail Page */
+.tenant-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.tenant-detail .tabs {
+  margin-bottom: 0;
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.table-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.table-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.table-card {
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+}
+
+.table-card table {
+  border-radius: var(--radius);
+}
+
+.tenant-detail .stats-grid {
+  margin-bottom: 0;
+}
+
+.last-message {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Embed Code */
 .embed-code code {
   display: block;

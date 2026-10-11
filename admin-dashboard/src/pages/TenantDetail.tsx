@@ -89,10 +89,6 @@ export function TenantDetail() {
     return new Date(timestamp * 1000).toLocaleString()
   }
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       confirmed: '#10B981',
@@ -154,6 +150,14 @@ export function TenantDetail() {
   if (loading) return <div className="loading">Loading...</div>
   if (!tenant) return <div className="error">Tenant not found</div>
 
+  const tabs: Array<{ id: string; label: string }> = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'conversations', label: 'Conversations' },
+    { id: 'appointments', label: 'Appointments' },
+    { id: 'knowledge', label: 'Knowledge' },
+    { id: 'settings', label: 'Settings' }
+  ]
+
   return (
     <div className="page">
       <div className="page-header">
@@ -175,25 +179,21 @@ export function TenantDetail() {
         </div>
       </div>
 
-      <div className="tabs">
-        {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'conversations', label: 'Conversations' },
-          { id: 'appointments', label: 'Appointments' },
-          { id: 'knowledge', label: 'Knowledge' },
-          { id: 'settings', label: 'Settings' }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id as any)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="tenant-detail">
+        <div className="tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id as any)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {activeTab === 'overview' && tenant && (
-          <div className="tab-content">
+          <section className="tab-panel">
             <div className="stats-grid">
               <div className="stat-card">
                 <h3>Conversations</h3>
@@ -217,202 +217,209 @@ export function TenantDetail() {
               </div>
             </div>
 
-            {conversations.length > 0 && (
-              <div className="table-card">
-                <h3>Recent Conversations</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>End User</th>
-                      <th>Last Message</th>
-                      <th>Status</th>
-                      <th>Messages</th>
-                      <th>Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {conversations.slice(0, 10).map((c) => (
-                      <tr key={c.id}>
-                        <td>{userLabel(c)}</td>
-                        <td className="last-message">{c.last_message}</td>
-                        <td>
-                          <span
-                            className="status-badge"
-                            style={{ backgroundColor: getStatusColor(c.status) }}
-                          >
-                            {c.status}
-                          </span>
-                        </td>
-                        <td>{c.message_count}</td>
-                        <td>{formatDateTime(c.updated_at)}</td>
+            {conversations.length > 0 ? (
+              <section className="table-section">
+                <h3 className="table-section-title">Recent Conversations</h3>
+                <div className="table-card">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>End User</th>
+                        <th>Last Message</th>
+                        <th>Status</th>
+                        <th>Messages</th>
+                        <th>Updated</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {conversations.length === 0 && (
+                    </thead>
+                    <tbody>
+                      {conversations.slice(0, 10).map((c) => (
+                        <tr key={c.id}>
+                          <td>{userLabel(c)}</td>
+                          <td className="last-message">{c.last_message}</td>
+                          <td>
+                            <span
+                              className="status-badge"
+                              style={{ backgroundColor: getStatusColor(c.status) }}
+                            >
+                              {c.status}
+                            </span>
+                          </td>
+                          <td>{c.message_count}</td>
+                          <td>{formatDateTime(c.updated_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : (
               <div className="empty-state">
                 <h2>No conversations yet</h2>
                 <p>Once the widget is live on the tenant's website, conversations will appear here.</p>
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {activeTab === 'conversations' && (
-          <div className="tab-content">
-            <div className="table-card">
-              <h3>All Conversations</h3>
+          <section className="tab-panel">
+            <section className="table-section">
+              <h3 className="table-section-title">All Conversations</h3>
               {conversations.length > 0 ? (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>End User</th>
-                      <th>Last Message</th>
-                      <th>Status</th>
-                      <th>Messages</th>
-                      <th>Created</th>
-                      <th>Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {conversations.map((c) => (
-                      <tr key={c.id}>
-                        <td>{userLabel(c)}
-                        </td>
-                        <td className="last-message">{c.last_message}</td>
-                        <td>
-                          <span
-                            className="status-badge"
-                            style={{ backgroundColor: getStatusColor(c.status) }}
-                          >
-                            {c.status}
-                          </span>
-                        </td>
-                        <td>{c.message_count}</td>
-                        <td>{formatDateTime(c.created_at)}</td>
-                        <td>{formatDateTime(c.updated_at)}</td>
+                <div className="table-card">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>End User</th>
+                        <th>Last Message</th>
+                        <th>Status</th>
+                        <th>Messages</th>
+                        <th>Created</th>
+                        <th>Updated</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {conversations.map((c) => (
+                        <tr key={c.id}>
+                          <td>{userLabel(c)}</td>
+                          <td className="last-message">{c.last_message}</td>
+                          <td>
+                            <span
+                              className="status-badge"
+                              style={{ backgroundColor: getStatusColor(c.status) }}
+                            >
+                              {c.status}
+                            </span>
+                          </td>
+                          <td>{c.message_count}</td>
+                          <td>{formatDateTime(c.created_at)}</td>
+                          <td>{formatDateTime(c.updated_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="empty-state">
                   <h2>No conversations</h2>
                   <p>Conversations will appear here once visitors start chatting with the bot.</p>
                 </div>
               )}
-            </div>
-          </div>
+            </section>
+          </section>
         )}
 
         {activeTab === 'appointments' && (
-          <div className="tab-content">
-            <div className="table-card">
-              <h3>Appointments</h3>
+          <section className="tab-panel">
+            <section className="table-section">
+              <h3 className="table-section-title">Appointments</h3>
               {appointments.length > 0 ? (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Start</th>
-                      <th>End</th>
-                      <th>Email</th>
-                      <th>Status</th>
-                      <th>Notification</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {appointments.map((a) => (
-                      <tr key={a.id}>
-                        <td>{a.title || '—'}</td>
-                        <td>{formatDateTime(a.start_time)}</td>
-                        <td>{formatDateTime(a.end_time)}</td>
-                        <td>{a.end_user_email || '—'}</td>
-                        <td>
-                          <span
-                            className="status-badge"
-                            style={{ backgroundColor: getStatusColor(a.status) }}
-                          >
-                            {a.status}
-                          </span>
-                        </td>
-                        <td>
-                          {a.notify_status && (
+                <div className="table-card">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Notification</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {appointments.map((a) => (
+                        <tr key={a.id}>
+                          <td>{a.title || '—'}</td>
+                          <td>{formatDateTime(a.start_time)}</td>
+                          <td>{formatDateTime(a.end_time)}</td>
+                          <td>{a.end_user_email || '—'}</td>
+                          <td>
                             <span
                               className="status-badge"
-                              style={{ backgroundColor: getNotifyColor(a.notify_status) }}
+                              style={{ backgroundColor: getStatusColor(a.status) }}
                             >
-                              {a.notify_status}
+                              {a.status}
                             </span>
-                          )}
-                          {a.notify_error && (
-                            <span className="notify-error">{a.notify_error}</span>
-                          )}
-                        </td>
-                        <td>
-                          {a.status === 'confirmed' && (
-                            <button
-                              className="btn btn-sm btn-secondary"
-                              onClick={() => retryNotify(a.id)}
-                            >
-                              Retry notify
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </td>
+                          <td>
+                            {a.notify_status && (
+                              <span
+                                className="status-badge"
+                                style={{ backgroundColor: getNotifyColor(a.notify_status) }}
+                              >
+                                {a.notify_status}
+                              </span>
+                            )}
+                            {a.notify_error && (
+                              <span className="notify-error">{a.notify_error}</span>
+                            )}
+                          </td>
+                          <td>
+                            {a.status === 'confirmed' && (
+                              <button
+                                className="btn btn-sm btn-secondary"
+                                onClick={() => retryNotify(a.id)}
+                              >
+                                Retry notify
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="empty-state">
                   <h2>No appointments</h2>
                   <p>Appointment bookings will appear here once the booking flow is enabled.</p>
                 </div>
               )}
-            </div>
-          </div>
+            </section>
+          </section>
         )}
 
         {activeTab === 'knowledge' && (
-          <FileUploader tenantId={tenantId!} onUpload={fetchData} />
+          <section className="tab-panel">
+            <FileUploader tenantId={tenantId!} onUpload={fetchData} />
+          </section>
         )}
 
         {activeTab === 'settings' && tenant && (
-          <div className="settings-form">
-            <BusinessHoursEditor
-              businessHours={tenant.business_hours}
-              timezone={tenant.timezone}
-              slotDuration={tenant.slot_duration}
-              bufferMinutes={tenant.buffer_minutes}
-              gasUrl={tenant.settings?.gas_url}
-              notificationEmail={tenant.settings?.notification_email}
-              spreadsheetId={tenant.settings?.spreadsheet_id}
-              gasSecret={tenant.settings?.gas_secret}
-              quickReplies={tenant.settings?.quick_replies}
-              bookingHorizon={tenant.settings?.booking_horizon_days}
-              sessionTimeout={tenant.settings?.session_timeout_minutes}
-              cardsEnabled={tenant.settings?.cards_enabled !== false}
-              botName={tenant.settings?.bot_name}
-              botAvatar={tenant.settings?.bot_avatar}
-              onSave={async (settings) => {
-                const res = await apiFetch(`/admin/tenants/${tenantId}`, {
-                  method: 'PATCH',
-                  body: JSON.stringify(settings)
-                })
-                if (res.ok) {
-                  const updated = await res.json()
-                  setTenant(updated)
-                  alert('Settings saved')
-                } else {
-                  alert('Failed to save settings')
-                }
-              }}
-            />
-          </div>
+          <section className="tab-panel">
+            <div className="settings-form">
+              <BusinessHoursEditor
+                businessHours={tenant.business_hours}
+                timezone={tenant.timezone}
+                slotDuration={tenant.slot_duration}
+                bufferMinutes={tenant.buffer_minutes}
+                gasUrl={tenant.settings?.gas_url}
+                notificationEmail={tenant.settings?.notification_email}
+                spreadsheetId={tenant.settings?.spreadsheet_id}
+                gasSecret={tenant.settings?.gas_secret}
+                quickReplies={tenant.settings?.quick_replies}
+                bookingHorizon={tenant.settings?.booking_horizon_days}
+                sessionTimeout={tenant.settings?.session_timeout_minutes}
+                cardsEnabled={tenant.settings?.cards_enabled !== false}
+                botName={tenant.settings?.bot_name}
+                botAvatar={tenant.settings?.bot_avatar}
+                onSave={async (settings) => {
+                  const res = await apiFetch(`/admin/tenants/${tenantId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(settings)
+                  })
+                  if (res.ok) {
+                    const updated = await res.json()
+                    setTenant(updated)
+                    alert('Settings saved')
+                  } else {
+                    alert('Failed to save settings')
+                  }
+                }}
+              />
+            </div>
+          </section>
         )}
       </div>
 
