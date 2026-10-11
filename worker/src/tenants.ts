@@ -30,21 +30,30 @@ export async function tenantById(db: Client, id: string): Promise<SqlRow | null>
   return r.rows[0] ?? null
 }
 
-/** The four animated avatars a tenant can pick between (admin → Settings). */
-export const BOT_AVATAR_IDS = ['boy-1', 'boy-2', 'girl-1', 'girl-2'] as const
+/** The eight animated avatars a tenant can pick between (admin → Settings). */
+export const BOT_AVATAR_IDS = [
+  'person-1',
+  'person-2',
+  'person-3',
+  'person-4',
+  'person-5',
+  'person-6',
+  'person-7',
+  'person-8',
+] as const
 
-/** Validate a stored/requested avatar id; anything unknown falls back to Boy 1. */
+/** Validate a stored/requested avatar id; anything unknown falls back to Person 1. */
 export function sanitizeBotAvatar(value: unknown): string {
   return typeof value === 'string' && (BOT_AVATAR_IDS as readonly string[]).includes(value)
     ? value
-    : 'boy-1'
+    : 'person-1'
 }
 
 export interface WidgetConfig {
   tenant_slug: string
   tenant_name: string
   bot_name: string
-  /** Animated avatar id: boy-1 | boy-2 | girl-1 | girl-2. */
+  /** Animated avatar id: person-1 | person-2 | person-3 | person-4 | person-5 | person-6 | person-7 | person-8. */
   bot_avatar: string
   greeting: string
   primary_color: string

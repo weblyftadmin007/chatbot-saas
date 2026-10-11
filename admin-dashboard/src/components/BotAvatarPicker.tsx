@@ -1,7 +1,7 @@
 import React from 'react'
 
 /**
- * The four animated bot avatars tenants can choose between (mirrors
+ * The eight animated bot avatars tenants can choose between (mirrors
  * widget/src/components/BotAvatars.tsx — the two apps are built separately).
  * The selection is saved into the tenant's settings as `bot_avatar`.
  *
@@ -9,13 +9,17 @@ import React from 'react'
  * soft white circle where the face is drawn as one aligned unit (head base,
  * hair only on top, ears at the sides, eyes on one eye line, nose above
  * mouth, mouth lower on the face) so the features no longer overlap oddly.
- * One clear trait per avatar so all four are easy to tell apart.
+ * One clear trait per avatar so all eight are easy to tell apart.
  */
 export const BOT_AVATARS = [
-  { id: 'boy-1', label: 'Boy 1' },
-  { id: 'boy-2', label: 'Boy 2' },
-  { id: 'girl-1', label: 'Girl 1' },
-  { id: 'girl-2', label: 'Girl 2' },
+  { id: 'person-1', label: 'Person 1' },
+  { id: 'person-2', label: 'Person 2' },
+  { id: 'person-3', label: 'Person 3' },
+  { id: 'person-4', label: 'Person 4' },
+  { id: 'person-5', label: 'Person 5' },
+  { id: 'person-6', label: 'Person 6' },
+  { id: 'person-7', label: 'Person 7' },
+  { id: 'person-8', label: 'Person 8' },
 ] as const
 
 /** Eye that blinks on a loop (SMIL). */
@@ -227,13 +231,14 @@ const Mouth: React.FC<{ cx: number; mouthY: number }> = ({ cx, mouthY }) => (
   />
 )
 
-export const BoyOneAvatar: React.FC = () => {
+/** person-1 (P1) — short brown hair, blue collared shirt + white collar + dark blue tie. */
+export const PersonOneAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 13
   const ry = 13.5
   return (
-    <svg viewBox="0 0 64 64" data-avatar="boy-1">
+    <svg viewBox="0 0 64 64" data-avatar="person-1">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
       <Body topColor="#274F8A" />
@@ -255,13 +260,14 @@ export const BoyOneAvatar: React.FC = () => {
   )
 }
 
-export const BoyTwoAvatar: React.FC = () => {
+/** person-2 (P2) — short black curly/textured hair, dark brown skin, red shirt + rounded white neckline. */
+export const PersonTwoAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 13
   const ry = 13.5
   return (
-    <svg viewBox="0 0 64 64" data-avatar="boy-2">
+    <svg viewBox="0 0 64 64" data-avatar="person-2">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
       <Body topColor="#2F7A8C" />
@@ -320,13 +326,14 @@ export const BoyTwoAvatar: React.FC = () => {
   )
 }
 
-export const GirlOneAvatar: React.FC = () => {
+/** person-3 (P3) — short dark brown hair, fair skin, dark eyes, yellow-and-white striped shirt. */
+export const PersonThreeAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 12.4
   const ry = 13.4
   return (
-    <svg viewBox="0 0 64 64" data-avatar="girl-1">
+    <svg viewBox="0 0 64 64" data-avatar="person-3">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
       <Body topColor="#7A3A7E" />
@@ -416,13 +423,14 @@ export const GirlOneAvatar: React.FC = () => {
   )
 }
 
-export const GirlTwoAvatar: React.FC = () => {
+/** person-4 (P4) — brown hair + beard + mustache, square glasses, dark purple shirt + white collared shirt underneath. */
+export const PersonFourAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 12.4
   const ry = 13.4
   return (
-    <svg viewBox="0 0 64 64" data-avatar="girl-2">
+    <svg viewBox="0 0 64 64" data-avatar="person-4">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
       <g>
@@ -531,16 +539,512 @@ export const GirlTwoAvatar: React.FC = () => {
   )
 }
 
+/** person-5 (P5) — dark brown hair in a top bun with a stray strand on the left, fair skin, green shirt + white round collar. */
+export const PersonFiveAvatar: React.FC = () => {
+  const headCenterX = 32
+  const headCenterY = 28
+  const rx = 12.4
+  const ry = 13.4
+  return (
+    <svg viewBox="0 0 64 64" data-avatar="person-5">
+      <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
+      <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
+      <Body topColor="#3F7A3A" />
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0 0; 0 -1; 0 0"
+          dur="2.6s"
+          repeatCount="indefinite"
+        />
+        <FaceBase cx={headCenterX} cy={headCenterY} rx={rx} ry={ry} skinColor="#F2C9A0" earColor="#E5AE89" hairColor="#2A2520" />
+        <g>
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="0 0; 0 -0.6; 0 0"
+            dur="2.5s"
+            repeatCount="indefinite"
+          />
+          <ellipse cx={headCenterX} cy={headCenterY - ry * 1.05} rx="6.2" ry="4.2" fill="#2A2520" />
+          <ellipse cx={headCenterX} cy={headCenterY - ry * 1.12} rx="4.2" ry="2.6" fill="#1A1410" opacity="0.5" />
+          <ellipse cx={headCenterX} cy={headCenterY - ry * 1.05} rx="6.2" ry="1.4" fill="#1A1410" opacity="0.55" />
+          <path
+            d={`M${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX - rx * 1.1).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX - rx * 0.45).toFixed(2)} ${(headCenterY - ry * 1.2).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 1.12).toFixed(2)}
+               C${(headCenterX + rx * 0.45).toFixed(2)} ${(headCenterY - ry * 1.2).toFixed(2)}
+                 ${(headCenterX + rx * 1.1).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX + rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX + rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX + rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${headCenterX} ${(headCenterY + ry * 0.06).toFixed(2)}
+               C${(headCenterX - rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${(headCenterX - rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)} Z`}
+            fill="#2A2520"
+          />
+          <path
+            d={`M${(headCenterX - rx * 0.75).toFixed(2)} ${(headCenterY - ry * 0.35).toFixed(2)}
+               C${(headCenterX - rx * 1.18).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX - rx * 1.08).toFixed(2)} ${(headCenterY + ry * 0.12).toFixed(2)}
+                 ${(headCenterX - rx * 0.62).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}`}
+            fill="none"
+            stroke="#2A2520"
+            strokeWidth="3.4"
+            strokeLinecap="round"
+          />
+          <path
+            d={`M${(headCenterX - rx * 0.75).toFixed(2)} ${(headCenterY - ry * 0.35).toFixed(2)}
+               C${(headCenterX - rx * 1.18).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX - rx * 1.08).toFixed(2)} ${(headCenterY + ry * 0.12).toFixed(2)}
+                 ${(headCenterX - rx * 0.62).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}`}
+            fill="none"
+            stroke="#1A1410"
+            strokeWidth="1"
+            opacity="0.5"
+          />
+        </g>
+        <path
+          d={`M${(headCenterX - rx * 0.92)} ${(headCenterY - ry * 0.5)}
+             C${(headCenterX - rx * 1.15)} ${(headCenterY - ry * 0.1)}
+               ${(headCenterX - rx * 0.9)} ${(headCenterY + ry * 0.3)}
+               ${(headCenterX - rx * 0.78)} ${(headCenterY + ry * 0.35)} Z`}
+          fill="#2A2520"
+        />
+        <path
+          d={`M${(headCenterX + rx * 0.92)} ${(headCenterY - ry * 0.5)}
+             C${(headCenterX + rx * 1.15)} ${(headCenterY - ry * 0.1)}
+               ${(headCenterX + rx * 0.9)} ${(headCenterY + ry * 0.3)}
+               ${(headCenterX + rx * 0.78)} ${(headCenterY + ry * 0.35)} Z`}
+          fill="#2A2520"
+        />
+        <Eyes cx={headCenterX} eyeY={headCenterY - ry * 0.24} dur="3.8s" />
+        <Nose cx={headCenterX} noseY={headCenterY + ry * 0.04} />
+        <Mouth cx={headCenterX} mouthY={headCenterY + ry * 0.34} />
+      </g>
+    </svg>
+  )
+}
+
+/** person-6 (P6) — shoulder-length reddish-brown hair, fair skin, magenta shirt + purple/dark-pink collared neckline. */
+export const PersonSixAvatar: React.FC = () => {
+  const headCenterX = 32
+  const headCenterY = 28
+  const rx = 12.4
+  const ry = 13.4
+  return (
+    <svg viewBox="0 0 64 64" data-avatar="person-6">
+      <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
+      <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="-1.6 32 62; 1.6 32 62; -1.6 32 62"
+          dur="3.2s"
+          repeatCount="indefinite"
+        />
+        <path
+          d="M14 64c0-14 8-22 20-22s18 8 18 20z"
+          fill="#C2185B"
+          stroke="#D8CCC0"
+          strokeWidth="1.1"
+          opacity="0.94"
+        />
+        <path
+          d="M14 64c0-14 8-22 20-22s18 8 18 20z"
+          fill="none"
+          stroke="#8E8678"
+          strokeWidth="0.9"
+          opacity="0.32"
+        />
+        <path
+          d="M24.5 44 L32 41 L39.5 44 L37.5 48 L32 46.5 L26.5 48 Z"
+          fill="#6A1B5C"
+          stroke="#8E8678"
+          strokeWidth="0.9"
+          opacity="0.5"
+        />
+        <path
+          d="M26.5 48 L32 46.5 L37.5 48"
+          fill="none"
+          stroke="#F1D1AB"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          opacity="0.95"
+        />
+      </g>
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0 0; 0 -0.6; 0 0"
+          dur="3.1s"
+          repeatCount="indefinite"
+        />
+        <FaceBase cx={headCenterX} cy={headCenterY} rx={rx} ry={ry} skinColor="#F2C9A0" earColor="#E5AE89" hairColor="#7A3A1F" />
+        <g>
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="0 0; 0 -0.5; 0 0"
+            dur="2.8s"
+            repeatCount="indefinite"
+          />
+          <path
+            d={`M${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX - rx * 1.1).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX - rx * 0.45).toFixed(2)} ${(headCenterY - ry * 1.2).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 1.12).toFixed(2)}
+               C${(headCenterX + rx * 0.45).toFixed(2)} ${(headCenterY - ry * 1.2).toFixed(2)}
+                 ${(headCenterX + rx * 1.1).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX + rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX + rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX + rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${headCenterX} ${(headCenterY + ry * 0.06).toFixed(2)}
+               C${(headCenterX - rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${(headCenterX - rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)} Z`}
+            fill="#7A3A1F"
+          />
+          <path
+            d={`M${(headCenterX - rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)}
+               C${(headCenterX - rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.7).toFixed(2)}
+                 ${(headCenterX - rx * 0.28).toFixed(2)} ${(headCenterY - ry * 0.82).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 0.74).toFixed(2)}
+               C${(headCenterX + rx * 0.28).toFixed(2)} ${(headCenterY - ry * 0.82).toFixed(2)}
+                 ${(headCenterX + rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.7).toFixed(2)}
+                 ${(headCenterX + rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)}
+               C${(headCenterX + rx * 0.5).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX + rx * 0.05).toFixed(2)} ${(headCenterY - ry * 0.12).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 0.1).toFixed(2)}
+               C${(headCenterX - rx * 0.05).toFixed(2)} ${(headCenterY - ry * 0.12).toFixed(2)}
+                 ${(headCenterX - rx * 0.5).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX - rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)} Z`}
+            fill="#4A2410"
+            opacity="0.55"
+          />
+          <path
+            d={`M${(headCenterX - rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.35).toFixed(2)}
+               C${(headCenterX - rx * 1.05).toFixed(2)} ${(headCenterY + ry * 0.05).toFixed(2)}
+                 ${(headCenterX - rx * 1.02).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX - rx * 0.78).toFixed(2)} ${(headCenterY + ry * 0.78).toFixed(2)}
+               C${(headCenterX - rx * 0.5).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX - rx * 0.35).toFixed(2)} ${(headCenterY + ry * 0.32).toFixed(2)}
+                 ${(headCenterX - rx * 0.35).toFixed(2)} ${(headCenterY + ry * 0.05).toFixed(2)} Z`}
+            fill="#7A3A1F"
+          />
+          <path
+            d={`M${(headCenterX + rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.35).toFixed(2)}
+               C${(headCenterX + rx * 1.05).toFixed(2)} ${(headCenterY + ry * 0.05).toFixed(2)}
+                 ${(headCenterX + rx * 1.02).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX + rx * 0.78).toFixed(2)} ${(headCenterY + ry * 0.78).toFixed(2)}
+               C${(headCenterX + rx * 0.5).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX + rx * 0.35).toFixed(2)} ${(headCenterY + ry * 0.32).toFixed(2)}
+                 ${(headCenterX + rx * 0.35).toFixed(2)} ${(headCenterY + ry * 0.05).toFixed(2)} Z`}
+            fill="#7A3A1F"
+          />
+        </g>
+        <Eyes cx={headCenterX} eyeY={headCenterY - ry * 0.24} dur="4.1s" />
+        <Nose cx={headCenterX} noseY={headCenterY + ry * 0.04} />
+        <Mouth cx={headCenterX} mouthY={headCenterY + ry * 0.34} />
+      </g>
+    </svg>
+  )
+}
+
+/** person-7 (P7) — dark hair in two pigtail buns, fair skin, round glasses, blue shirt with darker blue polka dots. */
+export const PersonSevenAvatar: React.FC = () => {
+  const headCenterX = 32
+  const headCenterY = 28
+  const rx = 12.4
+  const ry = 13.4
+  return (
+    <svg viewBox="0 0 64 64" data-avatar="person-7">
+      <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
+      <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="-1.6 32 62; 1.6 32 62; -1.6 32 62"
+          dur="3.2s"
+          repeatCount="indefinite"
+        />
+        <path
+          d="M14 64c0-14 8-22 20-22s18 8 18 20z"
+          fill="#2F6FB2"
+          stroke="#D8CCC0"
+          strokeWidth="1.1"
+          opacity="0.94"
+        />
+        <path
+          d="M14 64c0-14 8-22 20-22s18 8 18 20z"
+          fill="none"
+          stroke="#8E8678"
+          strokeWidth="0.9"
+          opacity="0.32"
+        />
+        <circle cx={21.5} cy={50} r="1.4" fill="#1B4A78" opacity="0.85" />
+        <circle cx={26} cy={53.5} r="1.4" fill="#1B4A78" opacity="0.85" />
+        <circle cx={32} cy="54" r="1.4" fill="#1B4A78" opacity="0.85" />
+        <circle cx={38} cy="53.5" r="1.4" fill="#1B4A78" opacity="0.85" />
+        <circle cx="42.5" cy="50" r="1.4" fill="#1B4A78" opacity="0.85" />
+        <circle cx="19" cy="46.5" r="1.2" fill="#1B4A78" opacity="0.85" />
+        <circle cx="45" cy="46.5" r="1.2" fill="#1B4A78" opacity="0.85" />
+        <path
+          d="M26.5 44 L32 46.5 L37.5 44"
+          fill="none"
+          stroke="#F1D1AB"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          opacity="0.95"
+        />
+        <path
+          d="M26.5 44 L37.5 44"
+          fill="none"
+          stroke="#F1D1AB"
+          strokeWidth="1.1"
+          strokeLinecap="round"
+          opacity="0.75"
+        />
+      </g>
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0 0; 0 -1; 0 0"
+          dur="2.6s"
+          repeatCount="indefinite"
+        />
+        <FaceBase cx={headCenterX} cy={headCenterY} rx={rx} ry={ry} skinColor="#F2C9A0" earColor="#E5AE89" hairColor="#2A2520" />
+        <g>
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="0 0; 0 -1; 0 0"
+            dur="2.5s"
+            repeatCount="indefinite"
+          />
+          <path
+            d={`M${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX - rx * 1.1).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX - rx * 0.45).toFixed(2)} ${(headCenterY - ry * 1.2).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 1.12).toFixed(2)}
+               C${(headCenterX + rx * 0.45).toFixed(2)} ${(headCenterY - ry * 1.2).toFixed(2)}
+                 ${(headCenterX + rx * 1.1).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX + rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX + rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX + rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${headCenterX} ${(headCenterY + ry * 0.06).toFixed(2)}
+               C${(headCenterX - rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${(headCenterX - rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+                 ${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)} Z`}
+            fill="#2A2520"
+          />
+          <ellipse cx={headCenterX - rx * 0.92} cy={headCenterY - ry * 0.7} rx="4" ry="2.6" fill="#2A2520" />
+          <ellipse cx={headCenterX - rx * 0.92} cy={headCenterY - ry * 1.1} rx="2.6" ry="1.6" fill="#1A1410" opacity="0.5" />
+          <ellipse cx={headCenterX + rx * 0.92} cy={headCenterY - ry * 0.7} rx="4" ry="2.6" fill="#2A2520" />
+          <ellipse cx={headCenterX + rx * 0.92} cy={headCenterY - ry * 1.1} rx="2.6" ry="1.6" fill="#1A1410" opacity="0.5" />
+          <ellipse cx={headCenterX - rx * 0.92} cy={headCenterY - ry * 0.7} rx="4" ry="0.8" fill="#1A1410" opacity="0.55" />
+          <ellipse cx={headCenterX + rx * 0.92} cy={headCenterY - ry * 0.7} rx="4" ry="0.8" fill="#1A1410" opacity="0.55" />
+        </g>
+        <circle cx={headCenterX - 3.6} cy={headCenterY - ry * 0.26} r={4.3} fill="none" stroke="#243246" strokeWidth="1.4" />
+        <circle cx={headCenterX + 3.6} cy={headCenterY - ry * 0.26} r={4.3} fill="none" stroke="#243246" strokeWidth="1.4" />
+        <line x1={headCenterX - 0.4} y1={headCenterY - ry * 0.26} x2={headCenterX + 0.4} y2={headCenterY - ry * 0.26} stroke="#243246" strokeWidth="1.4" />
+        <path
+          d={`M${(headCenterX - rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)}
+             C${(headCenterX - rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.7).toFixed(2)}
+               ${(headCenterX - rx * 0.28).toFixed(2)} ${(headCenterY - ry * 0.82).toFixed(2)}
+               ${headCenterX} ${(headCenterY - ry * 0.74).toFixed(2)}
+             C${(headCenterX + rx * 0.28).toFixed(2)} ${(headCenterY - ry * 0.82).toFixed(2)}
+               ${(headCenterX + rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.7).toFixed(2)}
+               ${(headCenterX + rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)}
+             C${(headCenterX + rx * 0.5).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+               ${(headCenterX + rx * 0.05).toFixed(2)} ${(headCenterY - ry * 0.12).toFixed(2)}
+               ${headCenterX} ${(headCenterY - ry * 0.1).toFixed(2)}
+             C${(headCenterX - rx * 0.05).toFixed(2)} ${(headCenterY - ry * 0.12).toFixed(2)}
+               ${(headCenterX - rx * 0.5).toFixed(2)} ${(headCenterY - ry * 0.18).toFixed(2)}
+               ${(headCenterX - rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)} Z`}
+          fill="#1A1410"
+          opacity="0.55"
+        />
+        <Eyes cx={headCenterX} eyeY={headCenterY - ry * 0.26} />
+        <Nose cx={headCenterX} noseY={headCenterY + ry * 0.04} />
+        <Mouth cx={headCenterX} mouthY={headCenterY + ry * 0.34} />
+      </g>
+    </svg>
+  )
+}
+
+/** person-8 (P8) — long voluminous dark curly hair, brown skin, dark eyes, orange-yellow sleeveless top + small white flower badge on right shoulder. */
+export const PersonEightAvatar: React.FC = () => {
+  const headCenterX = 32
+  const headCenterY = 28
+  const rx = 12.4
+  const ry = 13.4
+  return (
+    <svg viewBox="0 0 64 64" data-avatar="person-8">
+      <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
+      <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          values="-1.6 32 62; 1.6 32 62; -1.6 32 62"
+          dur="3.2s"
+          repeatCount="indefinite"
+        />
+        <path
+          d="M14 64c0-14 8-22 20-22s18 8 18 20z"
+          fill="#F2A63C"
+          stroke="#D8CCC0"
+          strokeWidth="1.1"
+          opacity="0.94"
+        />
+        <path
+          d="M14 64c0-14 8-22 20-22s18 8 18 20z"
+          fill="none"
+          stroke="#8E8678"
+          strokeWidth="0.9"
+          opacity="0.32"
+        />
+        <path
+          d={`M${(headCenterX - rx * 0.78).toFixed(2)} ${(headCenterY + ry * 0.25).toFixed(2)}
+             C${(headCenterX - rx * 1.05).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+               ${(headCenterX - rx * 1.02).toFixed(2)} ${(headCenterY - ry * 0.42).toFixed(2)}
+               ${(headCenterX - rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.55).toFixed(2)}
+             L${(headCenterX - rx * 0.55).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+               L${(headCenterX - rx * 0.4).toFixed(2)} ${(headCenterY + ry * 0.6).toFixed(2)}
+             L${(headCenterX + rx * 0.4).toFixed(2)} ${(headCenterY + ry * 0.6).toFixed(2)}
+               L${(headCenterX + rx * 0.55).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+             L${(headCenterX + rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.55).toFixed(2)}
+               C${(headCenterX + rx * 1.02).toFixed(2)} ${(headCenterY - ry * 0.42).toFixed(2)}
+               ${(headCenterX + rx * 1.05).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+               ${(headCenterX + rx * 0.78).toFixed(2)} ${(headCenterY + ry * 0.25).toFixed(2)} Z`}
+          fill="none"
+          stroke="#8E8678"
+          strokeWidth="0.9"
+          opacity="0.45"
+        />
+        <g>
+          <circle cx={headCenterX + rx * 0.72} cy={headCenterY + ry * 0.22} r="2.3" fill="#FFFFFF" opacity="0.95" />
+          <circle cx={headCenterX + rx * 0.72 - 0.85} cy={headCenterY + ry * 0.22 - 0.5} r="1.1" fill="#FFFFFF" opacity="0.95" />
+          <circle cx={headCenterX + rx * 0.72 + 0.85} cy={headCenterY + ry * 0.22 - 0.5} r="1.1" fill="#FFFFFF" opacity="0.95" />
+          <circle cx={headCenterX + rx * 0.72 - 0.85} cy={headCenterY + ry * 0.22 + 0.5} r="1.1" fill="#FFFFFF" opacity="0.95" />
+          <circle cx={headCenterX + rx * 0.72 + 0.85} cy={headCenterY + ry * 0.22 + 0.5} r="1.1" fill="#FFFFFF" opacity="0.95" />
+          <circle cx={headCenterX + rx * 0.72} cy={headCenterY + ry * 0.22} r="0.9" fill="#E8A090" opacity="0.95" />
+        </g>
+      </g>
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0 0; 0 -0.6; 0 0"
+          dur="3.2s"
+          repeatCount="indefinite"
+        />
+        <FaceBase cx={headCenterX} cy={headCenterY} rx={rx} ry={ry} skinColor="#C98A5A" earColor="#B57A4E" hairColor="#2A2520" />
+        <g>
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="0 0; 0 -0.5; 0 0"
+            dur="2.5s"
+            repeatCount="indefinite"
+          />
+          <path
+            d={`M${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX - rx * 1.25).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX - rx * 0.5).toFixed(2)} ${(headCenterY - ry * 1.35).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 1.28).toFixed(2)}
+               C${(headCenterX + rx * 0.5).toFixed(2)} ${(headCenterY - ry * 1.35).toFixed(2)}
+                 ${(headCenterX + rx * 1.25).toFixed(2)} ${(headCenterY - ry * 1.05).toFixed(2)}
+                 ${(headCenterX + rx).toFixed(2)} ${headCenterY.toFixed(2)}
+               C${(headCenterX + rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.15).toFixed(2)}
+                 ${(headCenterX + rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${headCenterX} ${(headCenterY + ry * 0.06).toFixed(2)}
+               C${(headCenterX - rx * 0.22).toFixed(2)} ${(headCenterY + ry * 0.02).toFixed(2)}
+                 ${(headCenterX - rx * 0.7).toFixed(2)} ${(headCenterY - ry * 0.15).toFixed(2)}
+                 ${(headCenterX - rx).toFixed(2)} ${headCenterY.toFixed(2)} Z`}
+            fill="#2A2520"
+          />
+          <path
+            d={`M${(headCenterX - rx * 0.95).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)}
+               C${(headCenterX - rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.75).toFixed(2)}
+                 ${(headCenterX - rx * 0.28).toFixed(2)} ${(headCenterY - ry * 0.92).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 0.82).toFixed(2)}
+               C${(headCenterX + rx * 0.28).toFixed(2)} ${(headCenterY - ry * 0.92).toFixed(2)}
+                 ${(headCenterX + rx * 0.62).toFixed(2)} ${(headCenterY - ry * 0.75).toFixed(2)}
+                 ${(headCenterX + rx * 0.95).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)}
+               C${(headCenterX + rx * 0.5).toFixed(2)} ${(headCenterY - ry * 0.2).toFixed(2)}
+                 ${(headCenterX + rx * 0.05).toFixed(2)} ${(headCenterY - ry * 0.12).toFixed(2)}
+                 ${headCenterX} ${(headCenterY - ry * 0.12).toFixed(2)}
+               C${(headCenterX - rx * 0.05).toFixed(2)} ${(headCenterY - ry * 0.12).toFixed(2)}
+                 ${(headCenterX - rx * 0.5).toFixed(2)} ${(headCenterY - ry * 0.2).toFixed(2)}
+                 ${(headCenterX - rx * 0.95).toFixed(2)} ${(headCenterY - ry * 0.02).toFixed(2)} Z`}
+            fill="#1A1410"
+            opacity="0.5"
+          />
+          <path
+            d={`M${(headCenterX - rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.2).toFixed(2)}
+               C${(headCenterX - rx * 1.12).toFixed(2)} ${(headCenterY + ry * 0.15).toFixed(2)}
+                 ${(headCenterX - rx * 1.05).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX - rx * 0.72).toFixed(2)} ${(headCenterY + ry * 0.72).toFixed(2)}
+               C${(headCenterX - rx * 0.5).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX - rx * 0.4).toFixed(2)} ${(headCenterY + ry * 0.32).toFixed(2)}
+                 ${(headCenterX - rx * 0.4).toFixed(2)} ${(headCenterY + ry * 0.1).toFixed(2)} Z`}
+            fill="#2A2520"
+          />
+          <path
+            d={`M${(headCenterX + rx * 0.92).toFixed(2)} ${(headCenterY - ry * 0.2).toFixed(2)}
+               C${(headCenterX + rx * 1.12).toFixed(2)} ${(headCenterY + ry * 0.15).toFixed(2)}
+                 ${(headCenterX + rx * 1.05).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX + rx * 0.72).toFixed(2)} ${(headCenterY + ry * 0.72).toFixed(2)}
+               C${(headCenterX + rx * 0.5).toFixed(2)} ${(headCenterY + ry * 0.55).toFixed(2)}
+                 ${(headCenterX + rx * 0.4).toFixed(2)} ${(headCenterY + ry * 0.32).toFixed(2)}
+                 ${(headCenterX + rx * 0.4).toFixed(2)} ${(headCenterY + ry * 0.1).toFixed(2)} Z`}
+            fill="#2A2520"
+          />
+          <ellipse cx={headCenterX - rx * 0.95} cy={headCenterY - ry * 0.5} rx="2.2" ry="2.4" fill="#1A1410" opacity="0.7" />
+          <ellipse cx={headCenterX - rx * 0.5} cy={headCenterY - ry * 0.95} rx="2.2" ry="2.4" fill="#1A1410" opacity="0.7" />
+          <ellipse cx={headCenterX} cy={headCenterY - ry * 1.1} rx="2.3" ry="2.5" fill="#1A1410" opacity="0.7" />
+          <ellipse cx={headCenterX + rx * 0.5} cy={headCenterY - ry * 0.95} rx="2.2" ry="2.4" fill="#1A1410" opacity="0.7" />
+          <ellipse cx={headCenterX + rx * 0.95} cy={headCenterY - ry * 0.5} rx="2.2" ry="2.4" fill="#1A1410" opacity="0.7" />
+          <ellipse cx={headCenterX - rx * 0.72} cy={headCenterY - ry * 0.08} rx="2.1" ry="2.3" fill="#1A1410" opacity="0.6" />
+          <ellipse cx={headCenterX + rx * 0.72} cy={headCenterY - ry * 0.08} rx="2.1" ry="2.3" fill="#1A1410" opacity="0.6" />
+        </g>
+        <Eyes cx={headCenterX} eyeY={headCenterY - ry * 0.24} dur="4.0s" />
+        <Nose cx={headCenterX} noseY={headCenterY + ry * 0.04} />
+        <Mouth cx={headCenterX} mouthY={headCenterY + ry * 0.34} />
+      </g>
+    </svg>
+  )
+}
+
 export const BotAvatar: React.FC<{ id?: string | null }> = ({ id }) => {
   switch (id) {
-    case 'boy-2':
-      return <BoyTwoAvatar />
-    case 'girl-1':
-      return <GirlOneAvatar />
-    case 'girl-2':
-      return <GirlTwoAvatar />
+    case 'person-1':
+      return <PersonOneAvatar />
+    case 'person-2':
+      return <PersonTwoAvatar />
+    case 'person-3':
+      return <PersonThreeAvatar />
+    case 'person-4':
+      return <PersonFourAvatar />
+    case 'person-5':
+      return <PersonFiveAvatar />
+    case 'person-6':
+      return <PersonSixAvatar />
+    case 'person-7':
+      return <PersonSevenAvatar />
+    case 'person-8':
+      return <PersonEightAvatar />
     default:
-      return <BoyOneAvatar />
+      return <PersonOneAvatar />
   }
 }
 
@@ -549,7 +1053,7 @@ interface BotAvatarPickerProps {
   onChange: (id: string) => void
 }
 
-/** Radio-style picker showing all four animated avatars. */
+/** Radio-style picker showing all eight animated avatars. */
 export function BotAvatarPicker({ value, onChange }: BotAvatarPickerProps) {
   return (
     <div className="avatar-picker" role="radiogroup" aria-label="Bot avatar">

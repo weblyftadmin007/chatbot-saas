@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { FileUploader } from '../components/FileUploader'
 import { BusinessHoursEditor } from '../components/BusinessHoursEditor'
+import { PublishSection } from '../components/PublishSection'
 import { apiFetch } from '../api'
 
 interface TenantDetail {
@@ -150,9 +151,7 @@ export function TenantDetail() {
           <p className="tenant-slug">Slug: {tenant.slug} • Plan: {tenant.plan}</p>
         </div>
         <div className="page-header-actions">
-          <span className="embed-code">
-            Embed: <code><script src="..." data-tenant="{tenant.slug}"></script></code>
-          </span>
+          <PublishSection tenant={tenant} />
           <button
             className="btn btn-danger"
             onClick={() => {
@@ -181,132 +180,192 @@ export function TenantDetail() {
             {tab.label}
           </button>
         ))}
-      </div>
 
-      <div className="tab-content">
         {activeTab === 'overview' && tenant && (
-          <div className="overview-grid">
-            <div className="stat-card">
-              <h3>Total Conversations</h3>
-              <p className="stat-value">{conversations.length}</p>
+          <div className="tab-content">
+            <div className="stats-grid">
+              <div className="stat-card">
+                <h3>Conversations</h3>
+                <p className="stat-value">{conversations.length}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Appointments</h3>
+                <p className="stat-value">{appointments.length}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Schedule Settings</h3>
+                <p>
+                  Slot duration: <strong>{tenant.slot_duration} min</strong>
+                </p>
+                <p>
+                  Buffer time: <strong>{tenant.buffer_minutes} min</strong>
+                </p>
+                <p>
+                  Timezone: <strong>{tenant.timezone}</strong>
+                </p>
+              </div>
             </div>
-            <div className="stat-card">
-              <h3>Total Appointments</h3>
-              <p className="stat-value">{appointments.length}</p>
-            </div>
-            <div className="stat-card">
-              <h3>Confirmed Bookings</h3>
-              <p className="stat-value">
-                {appointments.filter(a => a.status === 'confirmed').length}
-              </p>
-            </div>
-            <div className="stat-card">
-              <h3>Pending</h3>
-              <p className="stat-value">
-                {appointments.filter(a => a.status === 'pending').length}
-              </p>
-            </div>
+
+            {conversations.length > 0 && (
+              <div className="table-card">
+                <h3>Recent Conversations</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>End User</th>
+                      <th>Last Message</th>
+                      <th>Status</th>
+                      <th>Messages</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {conversations.slice(0, 10).map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          {c.end_user_email || `User ${c.end_user_id.slice(0, 8)}`}
+                        </td>
+                        <td className="last-message">{c.last_message}</td>
+                        <td>
+                          <span
+                            className="status-badge"
+                            style={{ backgroundColor: getStatusColor(c.status) }}
+                          >
+                            {c.status}
+                          </span>
+                        </td>
+                        <td>{c.message_count}</td>
+                        <td>{formatDateTime(c.updated_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {conversations.length === 0 && (
+              <div className="empty-state">
+                <h2>No conversations yet</h2>
+                <p>Once the widget is live on the tenant's website, conversations will appear here.</p>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'conversations' && (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Messages</th>
-                  <th>Status</th>
-                  <th>Last Message</th>
-                  <th>Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {conversations.map((conv) => (
-                  <tr key={conv.id}>
-                    <td><code>{conv.id.slice(0, 8)}...</code></td>
-                    <td>{conv.end_user_email || (conv.end_user_id ? conv.end_user_id.slice(0, 8) + '...' : 'Anonymous')}</td>
-                    <td>{conv.message_count}</td>
-                    <td>
-                      <span className="badge" style={{ backgroundColor: getStatusColor(conv.status) }}>
-                        {conv.status}
-                      </span>
-                    </td>
-                    <td className="truncate" style={{ maxWidth: 300 }}>{conv.last_message}</td>
-                    <td>{formatDateTime(conv.updated_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="tab-content">
+            <div className="table-card">
+              <h3>All Conversations</h3>
+              {conversations.length > 0 ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>End User</th>
+                      <th>Last Message</th>
+                      <th>Status</th>
+                      <th>Messages</th>
+                      <th>Created</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {conversations.map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          {c.end_user_email || `User ${c.end_user_id.slice(0, 8)}`}
+                        </td>
+                        <td className="last-message">{c.last_message}</td>
+                        <td>
+                          <span
+                            className="status-badge"
+                            style={{ backgroundColor: getStatusColor(c.status) }}
+                          >
+                            {c.status}
+                          </span>
+                        </td>
+                        <td>{c.message_count}</td>
+                        <td>{formatDateTime(c.created_at)}</td>
+                        <td>{formatDateTime(c.updated_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="empty-state">
+                  <h2>No conversations</h2>
+                  <p>Conversations will appear here once visitors start chatting with the bot.</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {activeTab === 'appointments' && (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Customer</th>
-                  <th>Notifications</th>
-                  <th>Reminder</th>
-                </tr>
-              </thead>
-              <tbody>
-                {appointments.map((appt) => (
-                  <tr key={appt.id}>
-                    <td>{formatDateTime(appt.start_time).split(',')[0]}</td>
-                    <td>{formatTime(appt.start_time)} - {formatTime(appt.end_time)}</td>
-                    <td>{appt.title || 'Appointment'}</td>
-                    <td>
-                      <span className="badge" style={{ backgroundColor: getStatusColor(appt.status) }}>
-                        {appt.status}
-                      </span>
-                    </td>
-                    <td>{appt.end_user_email || 'Unknown'}</td>
-                    <td>
-                      <span className="badge" style={{ backgroundColor: getNotifyColor(appt.notify_status || 'pending') }}>
-                        {appt.notify_status || 'pending'}
-                      </span>
-                      {(appt.notify_status === 'failed' || appt.notify_status === 'pending') && (
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          style={{ marginLeft: 8 }}
-                          onClick={() => retryNotify(appt.id)}
-                        >
-                          Retry
-                        </button>
-                      )}
-                      {appt.notify_error && (
-                        <span
-                          title={appt.notify_error}
-                          style={{ marginLeft: 8, cursor: 'help', color: '#EF4444' }}
-                        >
-                          ⚠
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="badge" style={{ backgroundColor: getNotifyColor(appt.remind_status || 'pending') }}>
-                        {appt.remind_status || 'pending'}
-                      </span>
-                      {appt.notify_error && (appt.remind_status === 'remind_failed' || appt.remind_status === 'pending') && (
-                        <span
-                          title={appt.notify_error}
-                          style={{ marginLeft: 8, cursor: 'help', color: '#EF4444' }}
-                        >
-                          ⚠
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="tab-content">
+            <div className="table-card">
+              <h3>Appointments</h3>
+              {appointments.length > 0 ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Start</th>
+                      <th>End</th>
+                      <th>Email</th>
+                      <th>Status</th>
+                      <th>Notification</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appointments.map((a) => (
+                      <tr key={a.id}>
+                        <td>{a.title || '—'}</td>
+                        <td>{formatDateTime(a.start_time)}</td>
+                        <td>{formatDateTime(a.end_time)}</td>
+                        <td>{a.end_user_email || '—'}</td>
+                        <td>
+                          <span
+                            className="status-badge"
+                            style={{ backgroundColor: getStatusColor(a.status) }}
+                          >
+                            {a.status}
+                          </span>
+                        </td>
+                        <td>
+                          {a.notify_status && (
+                            <span
+                              className="status-badge"
+                              style={{ backgroundColor: getNotifyColor(a.notify_status) }}
+                            >
+                              {a.notify_status}
+                            </span>
+                          )}
+                          {a.notify_error && (
+                            <span className="notify-error">{a.notify_error}</span>
+                          )}
+                        </td>
+                        <td>
+                          {a.status === 'confirmed' && (
+                            <button
+                              className="btn btn-sm btn-secondary"
+                              onClick={() => retryNotify(a.id)}
+                            >
+                              Retry notify
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="empty-state">
+                  <h2>No appointments</h2>
+                  <p>Appointment bookings will appear here once the booking flow is enabled.</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -1,7 +1,7 @@
 import React from 'react'
 
 /**
- * The four bot avatars every tenant can choose between (admin → tenant →
+ * The eight bot avatars every tenant can choose between (admin → tenant →
  * Settings → Assistant → Avatar). The choice is stored in the tenant's
  * settings JSON as `bot_avatar` and delivered through /widget/config.
  *
@@ -11,18 +11,26 @@ import React from 'react'
  * natural eye line, brows just above the eyes, a small nose, and the mouth
  * lower on the face. One clear trait per avatar so all four are easy to tell
  * apart:
- *   boy-1  — short dark hair, navy top, gentle head bob + blink
- *   boy-2  — curly hair, glasses, teal top, waving hand + blink
- *   girl-1 — twin ponytails, plum top, ponytail bob + blink
- *   girl-2 — blonde bob with a bow, magenta top, gentle sway + blink
+ *   person-1 — short brown hair, blue collared shirt + white collar + dark blue tie
+ *   person-2 — short black curly/textured hair, glasses, teal top, waving hand + blink
+ *   person-3 — twin ponytails, plum top, ponytail bob + blink
+ *   person-4 — blonde bob with a bow, magenta top, gentle sway + blink
+ *   person-5 — dark brown hair in a top bun with a stray strand on the left, green shirt + white round collar
+ *   person-6 — shoulder-length reddish-brown hair, magenta shirt + purple/dark-pink collared neckline
+ *   person-7 — dark hair in two pigtail buns, round glasses, blue shirt with darker blue polka dots
+ *   person-8 — long voluminous dark curly hair, brown skin, orange-yellow sleeveless top + white flower badge
  *
  * Background is white so the avatars stay readable on any host page.
  */
 export const BOT_AVATARS = [
-  { id: 'boy-1', label: 'Boy 1' },
-  { id: 'boy-2', label: 'Boy 2' },
-  { id: 'girl-1', label: 'Girl 1' },
-  { id: 'girl-2', label: 'Girl 2' },
+  { id: 'person-1', label: 'Person 1' },
+  { id: 'person-2', label: 'Person 2' },
+  { id: 'person-3', label: 'Person 3' },
+  { id: 'person-4', label: 'Person 4' },
+  { id: 'person-5', label: 'Person 5' },
+  { id: 'person-6', label: 'Person 6' },
+  { id: 'person-7', label: 'Person 7' },
+  { id: 'person-8', label: 'Person 8' },
 ] as const
 
 export type BotAvatarId = (typeof BOT_AVATARS)[number]['id']
@@ -285,15 +293,15 @@ const Mouth: React.FC<{ cx: number; mouthY: number }> = ({ cx, mouthY }) => (
   />
 )
 
-/** boy-1 — short dark hair, navy top, gentle head bob + blink. */
-export const BoyOneAvatar: React.FC = () => {
+/** person-1 (P1) — short brown hair, blue collared shirt + white collar + dark blue tie. */
+export const PersonOneAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 13
   const ry = 13.5
 
   return (
-    <svg viewBox="0 0 64 64" data-avatar="boy-1">
+    <svg viewBox="0 0 64 64" data-avatar="person-1">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
 
@@ -340,15 +348,15 @@ export const BoyOneAvatar: React.FC = () => {
   )
 }
 
-/** boy-2 — curly hair, glasses, teal top, waving hand + blink. */
-export const BoyTwoAvatar: React.FC = () => {
+/** person-2 (P2) — short black curly/textured hair, dark brown skin, red shirt + rounded white neckline. */
+export const PersonTwoAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 13
   const ry = 13.5
 
   return (
-    <svg viewBox="0 0 64 64" data-avatar="boy-2">
+    <svg viewBox="0 0 64 64" data-avatar="person-2">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
 
@@ -397,25 +405,25 @@ export const BoyTwoAvatar: React.FC = () => {
           hairColor="#443A32"
         />
 
-        {/* curly hair: soft knots sitting on top of the head */}
+        {/* short black curly / textured hair: tight soft curls across the top of the head */}
         <g>
           <animateTransform
             attributeName="transform"
-            type="rotate"
-            values="0 32 22; -10 32 22; 0 32 22"
-            dur="3.1s"
+            type="translate"
+            values="0 0; 0 -0.5; 0 0"
+            dur="2.5s"
             repeatCount="indefinite"
           />
-          <ellipse cx={headCenterX - 10.1} cy={headCenterY - 5.4} rx={3.3} ry={3.5} fill="#443A32" />
-          <ellipse cx={headCenterX - 5.8} cy={headCenterY - 9.7} rx="3.4" ry="3.6" fill="#443A32" />
-          <ellipse cx={headCenterX} cy={headCenterY - 11.1} rx="3.4" ry="3.6" fill="#443A32" />
-          <ellipse cx={headCenterX + 5.8} cy={headCenterY - 9.7} rx="3.4" ry="3.6" fill="#443A32" />
-          <ellipse cx={headCenterX + 10.1} cy={headCenterY - 5.4} rx="3.3" ry="3.5" fill="#443A32" />
-          <ellipse cx={headCenterX - 11} cy={headCenterY - 1.4} rx="3.1" ry="3.3" fill="#443A32" />
-          <ellipse cx={headCenterX + 11} cy={headCenterY - 1.4} rx="3.1" ry="3.3" fill="#443A32" />
-          <ellipse cx={headCenterX - 4.2} cy={headCenterY - 11.1} rx="2.8" ry="2.9" fill="#443A32" />
-          <ellipse cx={headCenterX + 4.2} cy={headCenterY - 11.1} rx="2.8" ry="2.9" fill="#443A32" />
-          <ellipse cx={headCenterX} cy={headCenterY - 7.9} rx="2.7" ry="2.8" fill="#443A32" />
+          <ellipse cx={headCenterX - 9.5} cy={headCenterY - 4.6} rx="2.1" ry="2.2" fill="#1A1410" />
+          <ellipse cx={headCenterX - 5.6} cy={headCenterY - 7.4} rx="2.2" ry="2.3" fill="#1A1410" />
+          <ellipse cx={headCenterX} cy={headCenterY - 8.9} rx="2.2" ry="2.3" fill="#1A1410" />
+          <ellipse cx={headCenterX + 5.6} cy={headCenterY - 7.4} rx="2.2" ry="2.3" fill="#1A1410" />
+          <ellipse cx={headCenterX + 9.5} cy={headCenterY - 4.6} rx="2.1" ry="2.2" fill="#1A1410" />
+          <ellipse cx={headCenterX - 10.6} cy={headCenterY - 1.8} rx="1.8" ry="2.1" fill="#1A1410" />
+          <ellipse cx={headCenterX + 10.6} cy={headCenterY - 1.8} rx="1.8" ry="2.1" fill="#1A1410" />
+          <ellipse cx={headCenterX - 3.4} cy={headCenterY - 8.9} rx="1.7" ry="1.8" fill="#1A1410" />
+          <ellipse cx={headCenterX + 3.4} cy={headCenterY - 8.9} rx="1.7" ry="1.8" fill="#1A1410" />
+          <ellipse cx={headCenterX} cy={headCenterY - 6.4} rx="1.6" ry="1.8" fill="#1A1410" />
         </g>
 
         {/* glasses: sit around the eyes, not over the mouth */}
@@ -434,15 +442,15 @@ export const BoyTwoAvatar: React.FC = () => {
   )
 }
 
-/** girl-1 — twin ponytails, plum top, ponytail bob + blink. */
-export const GirlOneAvatar: React.FC = () => {
+/** person-3 (P3) — short dark brown hair, fair skin, dark eyes, yellow-and-white striped shirt. */
+export const PersonThreeAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 12.4
   const ry = 13.4
 
   return (
-    <svg viewBox="0 0 64 64" data-avatar="girl-1">
+    <svg viewBox="0 0 64 64" data-avatar="person-3">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
 
@@ -564,15 +572,15 @@ export const GirlOneAvatar: React.FC = () => {
   )
 }
 
-/** girl-2 — blonde bob with a bow, magenta top, gentle sway + blink. */
-export const GirlTwoAvatar: React.FC = () => {
+/** person-4 (P4) — brown hair + beard + mustache, square glasses, dark purple shirt + white collared shirt underneath. */
+export const PersonFourAvatar: React.FC = () => {
   const headCenterX = 32
   const headCenterY = 28
   const rx = 12.4
   const ry = 13.4
 
   return (
-    <svg viewBox="0 0 64 64" data-avatar="girl-2">
+    <svg viewBox="0 0 64 64" data-avatar="person-4">
       <circle cx={32} cy={32} r="32" fill="#FFFFFF" />
       <circle cx={32} cy={32} r="31.3" fill="none" stroke="#E8DDD0" strokeWidth="1.2" />
 
@@ -710,16 +718,17 @@ export const GirlTwoAvatar: React.FC = () => {
   )
 }
 
-/** Renders the tenant's chosen avatar; unknown/missing ids fall back to Boy 1. */
+/** Renders the tenant's chosen avatar; unknown/missing ids fall back to Person 1. */
 export const BotAvatar: React.FC<{ id?: string | null }> = ({ id }) => {
   switch (id) {
-    case 'boy-2':
-      return <BoyTwoAvatar />
-    case 'girl-1':
-      return <GirlOneAvatar />
-    case 'girl-2':
-      return <GirlTwoAvatar />
-    default:
-      return <BoyOneAvatar />
+    case 'person-1': return <PersonOneAvatar />
+    case 'person-2': return <PersonTwoAvatar />
+    case 'person-3': return <PersonThreeAvatar />
+    case 'person-4': return <PersonFourAvatar />
+    case 'person-5': return <PersonFiveAvatar />
+    case 'person-6': return <PersonSixAvatar />
+    case 'person-7': return <PersonSevenAvatar />
+    case 'person-8': return <PersonEightAvatar />
+    default: return <PersonOneAvatar />
   }
 }

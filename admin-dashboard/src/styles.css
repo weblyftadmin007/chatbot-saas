@@ -129,6 +129,57 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.embed-code-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.embed-code-link:hover {
+  background: var(--primary-hover);
+}
+
+.embed-code-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.publishable-notice {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.publishable-notice code {
+  background: #1E293B;
+  color: #E2E8F0;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.publish-section {
+  margin-bottom: 16px;
+}
+
+.publish-section-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
 /* Layout */
