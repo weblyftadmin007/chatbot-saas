@@ -66,6 +66,13 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
     }
   }, [isOpen, unreadCount, config.data, session, chat])
 
+  // Close the chat when the visitor taps anything outside the panel.
+  // This is what makes the chat closeable on mobile without hunting for the
+  // 'x' — on desktop the header close button still works, too.
+  const handleBackdropClick = useCallback(() => {
+    setIsOpen(false)
+  }, [])
+
   const handleClose = useCallback(() => {
     setIsOpen(false)
   }, [])
@@ -123,26 +130,33 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ tenantSlug, apiBase = ''
         botName={config.data.bot_name}
       />
       {isOpen && (
-        <ChatPanel
-          config={config.data}
-          messages={chat.messages}
-          isLoading={chat.isLoading}
-          onSendMessage={handleSendMessage}
-          onClose={handleClose}
-          conversationId={chat.conversationId}
-          sessionId={session.sessionId}
-          slots={chat.slots}
-          pendingAction={chat.pendingAction}
-          selectSlot={handleSelectSlot}
-          onDateChange={handleDateChange}
-          onClosePicker={chat.closePicker}
-          onOpenSlots={chat.openSlotPicker}
-          tenantSlug={tenantSlug}
-          apiBase={apiBase}
-          horizonDays={config.data.booking_horizon_days ?? 60}
-          busy={bookingBusy}
-          error={bookingError}
-        />
+        <>
+          <div
+            className="chatbot-backdrop"
+            onClick={handleBackdropClick}
+            aria-hidden="true"
+          />
+          <ChatPanel
+            config={config.data}
+            messages={chat.messages}
+            isLoading={chat.isLoading}
+            onSendMessage={handleSendMessage}
+            onClose={handleClose}
+            conversationId={chat.conversationId}
+            sessionId={session.sessionId}
+            slots={chat.slots}
+            pendingAction={chat.pendingAction}
+            selectSlot={handleSelectSlot}
+            onDateChange={handleDateChange}
+            onClosePicker={chat.closePicker}
+            onOpenSlots={chat.openSlotPicker}
+            tenantSlug={tenantSlug}
+            apiBase={apiBase}
+            horizonDays={config.data.booking_horizon_days ?? 60}
+            busy={bookingBusy}
+            error={bookingError}
+          />
+        </>
       )}
     </>
   )

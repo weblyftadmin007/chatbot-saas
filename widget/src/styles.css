@@ -82,7 +82,22 @@
   border: 2px solid white;
 }
 
-/* ==================== Panel ==================== */
+/* ==================== Outside-backdrop layer ==================== */
+/*
+ * On mobile the chat should be closeable by tapping anything outside the
+ * panel, so visitors can keep scrolling the site instead of hunting for the
+ * small 'x'. A full-screen, transparent backdrop sits under the panel and
+ * closes the chat when touched (pointer-events:none on the panel itself so
+ * the backdrop handles the taps). On desktop the close button in the header
+ * stays the primary way out — the backdrop is present but mostly unobtrusive.
+ */
+.chatbot-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: transparent;
+}
+
 .chatbot-panel {
   position: fixed;
   bottom: 24px;
@@ -98,6 +113,7 @@
   overflow: hidden;
   z-index: 10000;
   animation: panelIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
 }
 
 .chatbot-panel.mobile {
@@ -107,6 +123,25 @@
   bottom: 0;
   right: 0;
   border-radius: 0;
+  pointer-events: auto;
+}
+
+.chatbot-panel * {
+  pointer-events: auto;
+}
+
+/* Keep the typing dots readable inside the bot's tinted avatar bubble. */
+.chatbot-avatar.bot-avatar {
+  background: none;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.chatbot-avatar.bot-avatar svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 @keyframes panelIn {
