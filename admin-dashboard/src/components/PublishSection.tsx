@@ -71,7 +71,7 @@ export function PublishSection({ tenant }: { tenant: { slug: string } }) {
           href={
             `https://ai-chatbot-proposal.pages.dev/test?` +
             new URLSearchParams({
-              script: encodeURIComponent(embedSnippet),
+              tenant: tenant.slug,
             })
           }
           target="_blank"
