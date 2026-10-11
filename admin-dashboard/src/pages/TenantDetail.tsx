@@ -58,6 +58,11 @@ export function TenantDetail() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [activeTab, setActiveTab] = useState<'overview' | 'conversations' | 'appointments' | 'knowledge' | 'settings'>('overview')
+  const [convPage, setConvPage] = useState(1)
+  const [apptPage, setApptPage] = useState(1)
+  const [apptNotifyFilter, setApptNotifyFilter] = useState<'all' | 'sent' | 'unsent'>('all')
+  const [apptStatusFilter, setApptStatusFilter] = useState<string>('all')
+  const [apptDateFilter, setApptDateFilter] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -149,6 +154,45 @@ export function TenantDetail() {
 
   if (loading) return <div className="loading">Loading...</div>
   if (!tenant) return <div className="error">Tenant not found</div>
+
+  const CONVS_PER_PAGE = 10
+  const convTotalPages = Math.max(1, Math.ceil(conversations.length / CONVS_PER_PAGE))
+  const convPageSafe = Math.min(Math.max(1, convPage), convTotalPages)
+  const convStart = (convPageSafe - 1) * CONVS_PER_PAGE
+  const convPageItems = conversations.slice(convStart, convStart + CONVS_PER_PAGE)
+
+  // Appointments: filter, then paginate.
+  const APPTS_PER_PAGE = 10
+  const apptStatuses = Array.from(
+    new Set(appointments.map((a) => a.status).filter(Boolean))
+  )
+
+  const apptMatchesDate = (a: Appointment): boolean => {
+    if (!apptDateFilter) return true
+    const day = new Date(a.start_time * 1000)
+    const key =
+      `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+    return key === apptDateFilter
+  }
+
+  const filteredAppointments = appointments.filter((a) => {
+    if (apptNotifyFilter === 'sent' && a.notify_status !== 'sent') return false
+    if (apptNotifyFilter === 'unsent' && a.notify_status === 'sent') return false
+    if (apptStatusFilter !== 'all' && a.status !== apptStatusFilter) return false
+    return apptMatchesDate(a)
+  })
+
+  const apptTotalPages = Math.max(1, Math.ceil(filteredAppointments.length / APPTS_PER_PAGE))
+  const apptPageSafe = Math.min(Math.max(1, apptPage), apptTotalPages)
+  const apptStart = (apptPageSafe - 1) * APPTS_PER_PAGE
+  const apptPageItems = filteredAppointments.slice(apptStart, apptStart + APPTS_PER_PAGE)
+
+  const resetApptFilters = () => {
+    setApptNotifyFilter('all')
+    setApptStatusFilter('all')
+    setApptDateFilter('')
+    setApptPage(1)
+  }
 
   const tabs: Array<{ id: string; label: string }> = [
     { id: 'overview', label: 'Overview' },
@@ -266,39 +310,65 @@ export function TenantDetail() {
             <section className="table-section">
               <h3 className="table-section-title">All Conversations</h3>
               {conversations.length > 0 ? (
-                <div className="table-card">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>End User</th>
-                        <th>Last Message</th>
-                        <th>Status</th>
-                        <th>Messages</th>
-                        <th>Created</th>
-                        <th>Updated</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {conversations.map((c) => (
-                        <tr key={c.id}>
-                          <td>{userLabel(c)}</td>
-                          <td className="last-message">{c.last_message}</td>
-                          <td>
-                            <span
-                              className="status-badge"
-                              style={{ backgroundColor: getStatusColor(c.status) }}
-                            >
-                              {c.status}
-                            </span>
-                          </td>
-                          <td>{c.message_count}</td>
-                          <td>{formatDateTime(c.created_at)}</td>
-                          <td>{formatDateTime(c.updated_at)}</td>
+                <>
+                  <div className="table-card">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>End User</th>
+                          <th>Last Message</th>
+                          <th>Status</th>
+                          <th>Messages</th>
+                          <th>Created</th>
+                          <th>Updated</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {convPageItems.map((c) => (
+                          <tr key={c.id}>
+                            <td>{userLabel(c)}</td>
+                            <td className="last-message">{c.last_message}</td>
+                            <td>
+                              <span
+                                className="status-badge"
+                                style={{ backgroundColor: getStatusColor(c.status) }}
+                              >
+                                {c.status}
+                              </span>
+                            </td>
+                            <td>{c.message_count}</td>
+                            <td>{formatDateTime(c.created_at)}</td>
+                            <td>{formatDateTime(c.updated_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {convTotalPages > 1 && (
+                    <div className="pager">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        disabled={convPageSafe <= 1}
+                        onClick={() => setConvPage(convPageSafe - 1)}
+                      >
+                        Previous
+                      </button>
+                      <span className="pager-info">
+                        Page {convPageSafe} of {convTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        disabled={convPageSafe >= convTotalPages}
+                        onClick={() => setConvPage(convPageSafe + 1)}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="empty-state">
                   <h2>No conversations</h2>
@@ -313,63 +383,162 @@ export function TenantDetail() {
           <section className="tab-panel">
             <section className="table-section">
               <h3 className="table-section-title">Appointments</h3>
-              {appointments.length > 0 ? (
-                <div className="table-card">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Title</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Notification</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {appointments.map((a) => (
-                        <tr key={a.id}>
-                          <td>{a.title || '—'}</td>
-                          <td>{formatDateTime(a.start_time)}</td>
-                          <td>{formatDateTime(a.end_time)}</td>
-                          <td>{a.end_user_email || '—'}</td>
-                          <td>
-                            <span
-                              className="status-badge"
-                              style={{ backgroundColor: getStatusColor(a.status) }}
-                            >
-                              {a.status}
-                            </span>
-                          </td>
-                          <td>
-                            {a.notify_status && (
-                              <span
-                                className="status-badge"
-                                style={{ backgroundColor: getNotifyColor(a.notify_status) }}
-                              >
-                                {a.notify_status}
-                              </span>
-                            )}
-                            {a.notify_error && (
-                              <span className="notify-error">{a.notify_error}</span>
-                            )}
-                          </td>
-                          <td>
-                            {a.notify_status !== 'sent' && (
-                              <button
-                                className="btn btn-sm btn-secondary"
-                                onClick={() => retryNotify(a.id)}
-                              >
-                                Retry notify
-                              </button>
-                            )}
-                          </td>
-                        </tr>
+              {appointments.length > 0 && (
+                <div className="filter-bar">
+                  <label className="filter-field">
+                    <span>Email</span>
+                    <select
+                      value={apptNotifyFilter}
+                      onChange={(e) => {
+                        setApptNotifyFilter(e.target.value as 'all' | 'sent' | 'unsent')
+                        setApptPage(1)
+                      }}
+                    >
+                      <option value="all">All</option>
+                      <option value="sent">Sent</option>
+                      <option value="unsent">Not sent</option>
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span>Status</span>
+                    <select
+                      value={apptStatusFilter}
+                      onChange={(e) => {
+                        setApptStatusFilter(e.target.value)
+                        setApptPage(1)
+                      }}
+                    >
+                      <option value="all">All</option>
+                      {apptStatuses.map((s) => (
+                        <option key={s} value={s}>{s}</option>
                       ))}
-                    </tbody>
-                  </table>
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span>Date</span>
+                    <input
+                      type="date"
+                      value={apptDateFilter}
+                      onChange={(e) => {
+                        setApptDateFilter(e.target.value)
+                        setApptPage(1)
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={resetApptFilters}
+                  >
+                    Clear filters
+                  </button>
                 </div>
+              )}
+
+              {appointments.length > 0 ? (
+                filteredAppointments.length > 0 ? (
+                  <>
+                    <div className="table-card">
+                      <table className="appointments-table">
+                        <thead>
+                          <tr>
+                            <th>Appointment</th>
+                            <th>When</th>
+                            <th>Customer</th>
+                            <th>Status</th>
+                            <th>Notification</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {apptPageItems.map((a) => (
+                            <tr key={a.id}>
+                              <td className="appt-title">{a.title || 'Untitled'}</td>
+                              <td className="appt-when">
+                                <span className="appt-when-start">{formatDateTime(a.start_time)}</span>
+                                <span className="appt-when-end">ends {formatDateTime(a.end_time)}</span>
+                              </td>
+                              <td className="appt-customer">{a.end_user_email || '—'}</td>
+                              <td>
+                                <span
+                                  className="status-badge"
+                                  style={{ backgroundColor: getStatusColor(a.status) }}
+                                >
+                                  {a.status}
+                                </span>
+                              </td>
+                              <td className="notify-cell">
+                                {a.notify_status && (
+                                  <span
+                                    className="status-badge"
+                                    style={{ backgroundColor: getNotifyColor(a.notify_status) }}
+                                  >
+                                    {a.notify_status}
+                                  </span>
+                                )}
+                                {a.notify_error && (
+                                  <span className="notify-error">{a.notify_error}</span>
+                                )}
+                              </td>
+                              <td className="appt-action">
+                                {a.notify_status !== 'sent' ? (
+                                  <button
+                                    className="btn btn-sm btn-secondary"
+                                    onClick={() => retryNotify(a.id)}
+                                  >
+                                    Retry notify
+                                  </button>
+                                ) : (
+                                  <span className="appt-sent-note">Email sent</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {apptTotalPages > 1 && (
+                      <div className="pager">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary"
+                          disabled={apptPageSafe <= 1}
+                          onClick={() => setApptPage(apptPageSafe - 1)}
+                        >
+                          Previous
+                        </button>
+                        <span className="pager-info">
+                          Page {apptPageSafe} of {apptTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary"
+                          disabled={apptPageSafe >= apptTotalPages}
+                          onClick={() => setApptPage(apptPageSafe + 1)}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <h2>No matching appointments</h2>
+                    <p>No appointments match the current filters.</p>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      style={{ marginTop: 12 }}
+                      onClick={resetApptFilters}
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                )
               ) : (
                 <div className="empty-state">
                   <h2>No appointments</h2>

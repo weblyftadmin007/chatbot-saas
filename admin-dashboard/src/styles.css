@@ -874,6 +874,141 @@ code {
   white-space: nowrap;
 }
 
+/* Status + notification badges (tables) */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.notify-error {
+  display: block;
+  margin-top: 6px;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #B91C1C;
+  word-break: break-word;
+}
+
+/* Filter bar (appointments) */
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.filter-field select,
+.filter-field input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-card);
+  color: var(--text);
+  min-height: 36px;
+}
+
+.filter-field select:focus,
+.filter-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+/* Pagination pager (conversations table) */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.pager-info {
+  font-size: 13px;
+  color: var(--text-muted);
+  min-width: 110px;
+  text-align: center;
+}
+
+/* Appointments table */
+.appointments-table td {
+  vertical-align: top;
+}
+
+.appt-title {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 140px;
+}
+
+.appt-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.appt-when-start {
+  color: var(--text);
+}
+
+.appt-when-end {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.appt-customer {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notify-cell {
+  min-width: 140px;
+}
+
+.appt-action {
+  white-space: nowrap;
+}
+
+.appt-sent-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.appt-sent-note::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10B981;
+  flex-shrink: 0;
+}
+
 /* Embed Code */
 .embed-code code {
   display: block;
